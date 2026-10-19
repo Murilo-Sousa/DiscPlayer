@@ -1,0 +1,4 @@
+# Dependências do teste de ponta a ponta (opcional). Depois de instalar, rode uma vez:
+#   playwright install chromium
+playwright>=1.48
+pytest>=8.0

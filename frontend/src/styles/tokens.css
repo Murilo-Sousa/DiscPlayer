@@ -1,0 +1,61 @@
+/*
+ * Tokens de design do DiscPlayer.
+ *
+ * Preto-grafite neutro para a superfície, texto de alto contraste e uma única cor de
+ * destaque (amarelo de marca-texto). O destaque só aparece onde algo está "preenchido":
+ * o quarto do logotipo, as notas, o jogo zerado, o foco do teclado e a ação principal.
+ */
+:root {
+  color-scheme: dark;
+
+  --bg: #131316;
+  --surface: #1a1a1f;
+  --surface-2: #222229;
+  --surface-3: #2b2b33;
+  --line: #2d2d36;
+  --line-strong: #464652;
+
+  --text: #f0efeb;
+  --text-2: #bab9c3;
+  --text-3: #8f8e9a;
+
+  --accent: #e5d25b;
+  --accent-hover: #f1e07c;
+  --accent-ink: #1c1907;
+  --accent-soft: rgb(229 210 91 / 0.14);
+
+  --danger: #ee8a80;
+  --danger-soft: rgb(238 138 128 / 0.14);
+  --focus: #f1e07c;
+
+  --font-ui: "Adventor", "Century Gothic", "URW Gothic", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --font-read: "Lora", Georgia, "Times New Roman", serif;
+
+  --step--1: 0.8125rem;
+  --step-0: 1rem;
+  --step-1: 1.125rem;
+  --step-2: 1.375rem;
+  --step-3: 1.75rem;
+  --step-4: clamp(2rem, 1.5rem + 2vw, 2.75rem);
+  --step-5: clamp(2.5rem, 1.7rem + 3.6vw, 4rem);
+
+  --radius-xs: 3px;
+  --radius: 6px;
+  --radius-lg: 12px;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4.5rem;
+
+  --container: 76rem;
+  --gutter: clamp(1rem, 4vw, 2rem);
+  --header-h: 4rem;
+  --mobile-nav-h: 3.75rem;
+
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}

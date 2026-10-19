@@ -1,0 +1,25 @@
+{
+  "name": "discplayer-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Front-end do DiscPlayer (React + Vite)",
+  "engines": {
+    "node": ">=20.19"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node tests/run.mjs"
+  },
+  "dependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^5.0.0",
+    "esbuild": ">=0.25.0 <1",
+    "vite": "^7.0.0"
+  }
+}

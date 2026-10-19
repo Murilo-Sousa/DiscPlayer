@@ -1,0 +1,29 @@
+/* Fontes hospedadas junto com o site (nenhuma requisição a terceiros). Licenças em src/assets/fonts/LICENSES.md. */
+@font-face {
+  font-family: "Adventor";
+  src: url("../assets/fonts/adventor-regular.woff") format("woff");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Adventor";
+  src: url("../assets/fonts/adventor-bold.woff") format("woff");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Lora";
+  src: url("../assets/fonts/lora-variable.woff") format("woff");
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Lora";
+  src: url("../assets/fonts/lora-italic-variable.woff") format("woff");
+  font-weight: 400 700;
+  font-style: italic;
+  font-display: swap;
+}

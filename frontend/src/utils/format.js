@@ -42,6 +42,12 @@ export function formatAverage(value) {
 const dateFormat = new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "short", year: "numeric" });
 const monthYearFormat = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" });
 
+/** "Hoje" no fuso de quem usa o site, como "AAAA-MM-DD". O servidor usa isso (e não a data UTC) ao preencher datas. */
+export function localToday(now = new Date()) {
+  const pad = (number) => String(number).padStart(2, "0");
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
 /** Datas "AAAA-MM-DD" são datas de calendário: não passam por fuso horário. */
 export function parseDate(value) {
   if (!value) return null;

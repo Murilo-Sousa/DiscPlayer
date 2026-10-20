@@ -1,5 +1,8 @@
 """Uma pessoa nova usa o DiscPlayer do começo ao fim."""
 import re
+from datetime import datetime, timedelta, timezone
+
+from playwright.sync_api import expect
 
 from helpers import PASSWORD, login, open_game, register, set_rating
 
@@ -96,3 +99,22 @@ def test_configuracoes_editam_perfil_e_exigem_https_na_foto(stack, client):
     assert "Principalmente RPG" in page.locator("main").inner_text()
     assert page.locator("main img[src='https://media.rawg.io/avatar.png']").count() >= 1
     assert client.errors == []
+
+
+def test_data_automatica_usa_o_fuso_de_quem_joga(stack, make_client):
+    """Às 22h30 em São Paulo já é "amanhã" em UTC: o diário deve registrar o dia local."""
+    c = make_client(timezone_id="America/Sao_Paulo")
+    page = c.page
+    agora = datetime.now(timezone.utc)
+    # 01h30 UTC do dia de hoje = 22h30 do dia anterior em São Paulo (UTC-3).
+    page.clock.set_fixed_time(datetime(agora.year, agora.month, agora.day, 1, 30, tzinfo=timezone.utc))
+    dia_local = (agora.date() - timedelta(days=1)).isoformat()
+
+    register(c, "Ana Souza", "ana")
+    open_game(c, "minecraft")
+    page.get_by_role("button", name="Jogando").click()
+    expect(page.get_by_label("Comecei em")).to_have_value(dia_local)
+
+    page.get_by_role("button", name="Zerado").click()
+    expect(page.get_by_label("Terminei em")).to_have_value(dia_local)
+    assert c.errors == []

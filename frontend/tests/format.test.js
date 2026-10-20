@@ -12,6 +12,7 @@ import {
   hueFrom,
   initials,
   isImageUrl,
+  localToday,
   paragraphs,
   parseGameParam,
   plural,
@@ -114,4 +115,26 @@ test("isImageUrl aceita só endereços https completos", () => {
   for (const bad of ["http://exemplo.com/a.png", "javascript:alert(1)", "data:image/png;base64,AAAA", "//exemplo.com/a.png", "https://", "https://localhost", "exemplo.com/a.png", "", null, undefined, 42]) {
     assert.equal(isImageUrl(bad), false, String(bad));
   }
+});
+
+test("localToday usa a data do fuso local, não a de UTC", () => {
+  const original = process.env.TZ;
+  try {
+    // 01h19 de 20/10 em UTC ainda é 22h19 de 19/10 no Brasil: o diário deve registrar dia 19.
+    const instant = new Date("2026-10-20T01:19:00Z");
+    process.env.TZ = "America/Sao_Paulo";
+    assert.equal(localToday(instant), "2026-10-19");
+    // E 23h de 19/10 em UTC já é 12h de 20/10 na Nova Zelândia.
+    process.env.TZ = "Pacific/Auckland";
+    assert.equal(localToday(new Date("2026-10-19T23:00:00Z")), "2026-10-20");
+    process.env.TZ = "UTC";
+    assert.equal(localToday(instant), "2026-10-20");
+  } finally {
+    if (original === undefined) delete process.env.TZ;
+    else process.env.TZ = original;
+  }
+});
+
+test("localToday preenche mês e dia com zero à esquerda", () => {
+  assert.equal(localToday(new Date(2026, 0, 5, 12)), "2026-01-05");
 });

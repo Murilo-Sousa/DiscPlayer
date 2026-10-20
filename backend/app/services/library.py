@@ -67,6 +67,7 @@ def upsert_entry(
     is_favorite=UNSET,
     started_at=UNSET,
     completed_at=UNSET,
+    today: str | None = None,
 ) -> tuple[sqlite3.Row, bool]:
     """Cria ou atualiza a entrada do jogo. Devolve (entrada, foi_criada).
 
@@ -76,7 +77,8 @@ def upsert_entry(
       * mudar o status registra uma atividade ("logged"). Zerar o mesmo jogo
         duas vezes gera duas atividades, mas continua uma única entrada;
       * ao passar para "jogando" sem data de início (ou "zerado" sem data de
-        término), a data de hoje é preenchida — o cliente pode enviar a sua;
+        término), a data de hoje é preenchida — o cliente pode enviar a sua e
+        também pode informar o "hoje" do fuso dele (`today`; sem ele, vale UTC);
       * a data de término não pode ser anterior à de início.
     """
     game_id = game["id"]
@@ -106,11 +108,11 @@ def upsert_entry(
 
         status_changed = current is None or new_status != current["status"]
         if status_changed:
-            today = today_utc().isoformat()
+            fill_date = today or today_utc().isoformat()
             if new_status == "jogando" and started_at is UNSET and new_started is None:
-                new_started = today
+                new_started = fill_date
             if new_status == "zerado" and completed_at is UNSET and new_completed is None:
-                new_completed = today
+                new_completed = fill_date
 
         if new_started and new_completed and new_completed < new_started:
             raise ApiError(

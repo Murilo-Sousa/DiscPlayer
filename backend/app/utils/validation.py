@@ -13,7 +13,7 @@ from urllib.parse import urlparse
 from flask import request
 
 from ..errors import ApiError
-from .dates import max_allowed_date, parse_iso_date
+from .dates import max_allowed_date, parse_iso_date, today_utc
 
 UNSET: Any = object()  # "campo ausente" (diferente de null, que limpa o campo)
 
@@ -162,6 +162,24 @@ def read_date(data: dict, key: str, label: str, errors: FieldErrors) -> Any:
     if parsed.year < 1970:
         errors.add(key, f"{label} é anterior a 1970.")
         return UNSET
+    return parsed.isoformat()
+
+
+def read_client_today(data: dict, errors: FieldErrors) -> str | None:
+    """Data de "hoje" no fuso de quem usa o site ('AAAA-MM-DD'), ou None se não foi enviada.
+
+    O servidor só conhece UTC: sem isso, quem joga à noite no Brasil (depois das 21h)
+    recebe a data de amanhã ao marcar "Jogando" ou "Zerado". Os fusos vão de UTC-12 a
+    UTC+14, então a data local difere da de UTC em no máximo um dia; qualquer outro valor
+    é rejeitado, e o campo não serve para forjar datas distantes.
+    """
+    value = data.get("today")
+    if value is None:
+        return None
+    parsed = parse_iso_date(value)
+    if parsed is None or abs((parsed - today_utc()).days) > 1:
+        errors.add("today", "A data de hoje informada é inválida.")
+        return None
     return parsed.isoformat()
 
 

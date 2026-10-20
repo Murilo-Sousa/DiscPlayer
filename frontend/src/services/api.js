@@ -1,4 +1,5 @@
 // Funções da API REST do DiscPlayer. Cada uma devolve o JSON já decodificado.
+import { localToday } from "../utils/format.js";
 import { http } from "./http.js";
 
 export const authApi = {
@@ -21,7 +22,8 @@ export const gamesApi = {
 
 export const libraryApi = {
   mine: (params, options) => http.get("/library", { ...options, params }),
-  save: (rawgId, data) => http.put(`/library/${rawgId}`, data),
+  // `today` é a data local de quem usa o site: o servidor a usa ao preencher início/término automaticamente.
+  save: (rawgId, data) => http.put(`/library/${rawgId}`, { today: localToday(), ...data }),
   remove: (rawgId) => http.delete(`/library/${rawgId}`),
 };
 

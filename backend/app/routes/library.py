@@ -11,7 +11,7 @@ from ..services import games as games_service
 from ..services import library as library_service
 from ..services.library import STATUSES
 from ..utils.pagination import page_args, page_envelope
-from ..utils.validation import UNSET, FieldErrors, json_body, read_bool, read_date
+from ..utils.validation import UNSET, FieldErrors, json_body, read_bool, read_client_today, read_date
 
 bp = Blueprint("library", __name__, url_prefix="/api/library")
 
@@ -80,6 +80,9 @@ def _read_changes(data: dict) -> dict:
     favorite = read_bool(data, "is_favorite", "Favorito", errors)
     if favorite is not UNSET:
         changes["is_favorite"] = favorite
+    today = read_client_today(data, errors)
+    if today is not None:
+        changes["today"] = today
     errors.raise_if_any()
     return changes
 

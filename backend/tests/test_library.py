@@ -6,6 +6,7 @@ from datetime import date, timedelta
 import pytest
 
 from app.services import rawg
+from app.utils.dates import today_utc
 
 from . import fake_rawg
 from .conftest import CELESTE, HADES, HOLLOW
@@ -70,7 +71,7 @@ def test_all_five_statuses_are_accepted(ana):
 
 
 def test_dates_are_filled_automatically_but_the_client_can_override(ana):
-    today = date.today().isoformat()
+    today = today_utc().isoformat()  # sem `today` do cliente, o servidor usa a data UTC
     playing = put(ana, HADES, status="jogando").get_json()["entry"]
     assert playing["started_at"] == today and playing["completed_at"] is None
 
@@ -197,3 +198,38 @@ def test_library_entries_carry_the_users_rating(ana):
     assert ana.get("/api/library").get_json()["items"][0]["rating"] is None
     ana.post(f"/api/games/{HADES}/reviews", {"rating": 9.5})
     assert ana.get("/api/library").get_json()["items"][0]["rating"] == 9.5
+
+
+def test_client_today_is_used_for_automatic_dates(ana):
+    # Às 22h no Brasil já é "amanhã" em UTC: a data automática deve ser a do fuso de quem joga.
+    local_today = (today_utc() - timedelta(days=1)).isoformat()
+    playing = put(ana, HADES, status="jogando", today=local_today).get_json()["entry"]
+    assert playing["started_at"] == local_today
+
+    done = put(ana, HADES, status="zerado", today=local_today).get_json()["entry"]
+    assert done["completed_at"] == local_today and done["started_at"] == local_today
+
+    # Datas escolhidas pela pessoa continuam valendo mais do que o "hoje" informado.
+    other = put(ana, CELESTE, status="zerado", completed_at="2025-12-31", today=local_today).get_json()["entry"]
+    assert other["completed_at"] == "2025-12-31"
+
+
+def test_client_today_one_day_ahead_is_accepted(ana):
+    # Fusos adiantados (por exemplo, Nova Zelândia) estão um dia à frente de UTC.
+    ahead = (today_utc() + timedelta(days=1)).isoformat()
+    assert put(ana, HADES, status="jogando", today=ahead).get_json()["entry"]["started_at"] == ahead
+
+
+@pytest.mark.parametrize("offset_days", [-2, 2, 400])
+def test_client_today_far_from_utc_is_rejected(ana, offset_days):
+    bad = (today_utc() + timedelta(days=offset_days)).isoformat()
+    response = put(ana, HADES, status="jogando", today=bad)
+    assert response.status_code == 422
+    assert "today" in response.get_json()["error"]["fields"]
+
+
+@pytest.mark.parametrize("bad", ["amanhã", "2026-13-40", "", 5, ["2026-10-19"]])
+def test_client_today_with_bad_format_is_rejected(ana, bad):
+    response = put(ana, HADES, status="jogando", today=bad)
+    assert response.status_code == 422
+    assert "today" in response.get_json()["error"]["fields"]

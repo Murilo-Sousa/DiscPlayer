@@ -1,5 +1,7 @@
 # DiscPlayer
 
+[![CI](https://github.com/Murilo-Sousa/discplayer/actions/workflows/ci.yml/badge.svg)](https://github.com/Murilo-Sousa/discplayer/actions/workflows/ci.yml)
+
 Diário e comunidade de videogames, no espírito do Letterboxd: registre o que você joga, avalie de 0 a 10, escreva reviews, monte listas e acompanhe o que outras pessoas estão jogando.
 
 Os dados dos jogos (nome, capa, gêneros, plataformas, datas, nota agregada) vêm da [RAWG](https://rawg.io). Todo o resto — contas, diário, notas, reviews, listas, seguidores, atividade — é da própria comunidade do DiscPlayer e fica no seu banco SQLite. Nada na tela é inventado: sem dados, o site mostra um estado vazio explicando como começar.
@@ -11,16 +13,20 @@ Os dados dos jogos (nome, capa, gêneros, plataformas, datas, nota agregada) vê
 - [Estrutura do projeto](#estrutura-do-projeto)
 - [Requisitos](#requisitos)
 - [Passo a passo: rodando em desenvolvimento](#passo-a-passo-rodando-em-desenvolvimento)
+- [Colocar o projeto no GitHub](#colocar-o-projeto-no-github)
 - [Desenvolver sem chave da RAWG](#desenvolver-sem-chave-da-rawg)
 - [Variáveis de ambiente](#variáveis-de-ambiente)
 - [Testes](#testes)
 - [Rodando em produção](#rodando-em-produção)
+- [Publicar de graça na internet (PythonAnywhere)](#publicar-de-graça-na-internet-pythonanywhere)
 - [Banco de dados](#banco-de-dados)
 - [API](#api)
 - [Segurança](#segurança)
 - [Decisões de produto e design](#decisões-de-produto-e-design)
+- [Decisões técnicas](#decisões-técnicas)
 - [Solução de problemas](#solução-de-problemas)
 - [Limitações conhecidas](#limitações-conhecidas)
+- [Próximos passos](#próximos-passos)
 - [Créditos e licenças](#créditos-e-licenças)
 
 ## O que tem
@@ -77,6 +83,8 @@ DiscPlayer/
 │   ├── public/favicon.svg
 │   ├── index.html  vite.config.js  package.json
 ├── e2e/                         # testes de navegador (opcional)
+├── deploy/pythonanywhere_wsgi.py  # modelo de arquivo WSGI para hospedar de graça
+├── docs/hospedagem-pythonanywhere.md
 ├── .gitignore
 └── README.md
 ```
@@ -87,6 +95,8 @@ DiscPlayer/
 - **Node.js 20.19 ou mais novo** com npm (`node --version`)
 - Uma **chave da API da RAWG** (gratuita) — ou use o [servidor de dados fictícios](#desenvolver-sem-chave-da-rawg) enquanto não tiver uma
 
+> **Windows: depois de instalar o Python ou o Node.js, feche o terminal e abra outro.** Terminais abertos antes da instalação não enxergam os programas novos e mostram erros como *"npm não é reconhecido como nome de cmdlet"*. Se o terminal estiver dentro de um editor (como o VS Code), feche o editor inteiro e abra de novo. Para conferir: `node --version` e `npm --version` devem mostrar números de versão.
+
 ### Como conseguir a chave da RAWG
 
 1. Crie uma conta em <https://rawg.io/apidocs> e gere uma chave gratuita.
@@ -96,7 +106,14 @@ A chave **nunca vai para o navegador**: só o back-end fala com a RAWG. O plano 
 
 ## Passo a passo: rodando em desenvolvimento
 
-São dois processos, cada um no seu terminal: a API (porta 5000) e o front-end (porta 5173).
+São dois processos, cada um no seu terminal: a API (porta 5000) e o front-end (porta 5173). Os dois precisam ficar abertos ao mesmo tempo.
+
+**No Windows, os comandos mudam conforme o terminal.** Olhe o começo da linha para saber qual você está usando:
+
+| Começo da linha | Terminal | Ativar o ambiente virtual | Copiar o `.env` |
+| --- | --- | --- | --- |
+| `PS C:\...>` | PowerShell | `.venv\Scripts\Activate.ps1` | `Copy-Item .env.example .env` |
+| `C:\...>` | Prompt de Comando (cmd) | `.venv\Scripts\activate.bat` | `copy .env.example .env` |
 
 ### 1. Back-end (terminal 1)
 
@@ -119,6 +136,18 @@ py -m venv .venv
 pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
+
+Windows (Prompt de Comando):
+
+```bat
+cd backend
+py -m venv .venv
+.venv\Scripts\activate.bat
+pip install -r requirements.txt
+copy .env.example .env
+```
+
+Quando o ambiente virtual está ativo, aparece `(.venv)` no começo da linha. Se o PowerShell responder *"a execução de scripts foi desabilitada neste sistema"* no `Activate.ps1`, rode `Set-ExecutionPolicy -Scope Process Bypass` (vale só para aquela janela, não muda nada permanente) e repita o comando. Outra saída é usar o Prompt de Comando.
 
 Abra `backend/.env` e preencha `RAWG_API_KEY=` com a sua chave. Não é preciso mexer no resto para desenvolver.
 
@@ -146,6 +175,10 @@ npm install
 npm run dev
 ```
 
+O `npm install` demora na primeira vez. Linhas `WARN` costumam ser inofensivas; `ERR!` não. Quando o `npm run dev` mostrar `Local: http://localhost:5173/`, o site está no ar.
+
+> **PowerShell:** se aparecer *"npm.ps1 não pode ser carregado porque a execução de scripts foi desabilitada"*, rode `Set-ExecutionPolicy -Scope Process Bypass` e repita, ou use `npm.cmd install` e `npm.cmd run dev`.
+
 Abra <http://localhost:5173>. O Vite repassa tudo que começa com `/api` para o Flask, então o navegador enxerga uma única origem: o cookie de sessão funciona sem configurar CORS.
 
 Para apontar o proxy para outra porta ou máquina: `VITE_BACKEND_URL=http://127.0.0.1:5001 npm run dev` (no PowerShell: `$env:VITE_BACKEND_URL="http://127.0.0.1:5001"; npm run dev`).
@@ -156,6 +189,20 @@ Para apontar o proxy para outra porta ou máquina: `VITE_BACKEND_URL=http://127.
 2. Abra um jogo pelo catálogo, marque um status, dê uma nota e escreva uma review.
 3. Crie uma lista, abra seu diário e seu perfil público (`/u/seu-usuario`).
 4. Para ver o lado social, crie uma segunda conta em outra janela anônima, siga a primeira e curta a review dela.
+
+## Colocar o projeto no GitHub
+
+O projeto já traz um `.gitignore` que impede o envio do seu `.env` (com a chave da RAWG), do `.venv`, do `node_modules` e do banco de dados. O passo a passo completo, para Windows (PowerShell e Prompt de Comando), com login pelo navegador, token e os avisos que costumam assustar, está na **Parte 1** de [docs/hospedagem-pythonanywhere.md](docs/hospedagem-pythonanywhere.md#parte-1--colocar-o-código-no-github). O resumo:
+
+```bash
+git init -b main
+git add .
+git commit -m "DiscPlayer: primeira versão"
+git remote add origin https://github.com/SEU-USUARIO/discplayer.git
+git push -u origin main
+```
+
+Antes do `git commit`, confira que nenhum arquivo sensível entrou (nada deve aparecer): no PowerShell, `git ls-files | Select-String "node_modules|\.venv|instance|\.db|\.env$"`; no Prompt de Comando, `git ls-files | findstr /R "node_modules \.venv instance \.db \.env$"`.
 
 ## Desenvolver sem chave da RAWG
 
@@ -218,7 +265,7 @@ A suíte usa o executor nativo do Node (`node:test`) com esbuild (que já vem ju
 
 ### Ponta a ponta no navegador (opcional)
 
-Sobem o Flask de verdade, com banco temporário e a RAWG fictícia, e controlam um Chromium real: cadastro, status, nota, review, lista, diário, perfil, seguir, curtir, feed, privacidade de lista, validação e CSRF no servidor, teclado, celular sem rolagem horizontal e o comportamento com a RAWG fora do ar.
+Sobem o Flask de verdade, com banco temporário e a RAWG fictícia, e controlam um Chromium real: cadastro, status, nota, review, lista, diário, perfil, seguir, curtir, feed, privacidade de lista, validação e CSRF no servidor, teclado, celular sem rolagem horizontal e as datas automáticas do diário no fuso de quem joga e o comportamento com a RAWG fora do ar.
 
 ```bash
 # 1. gere o front-end
@@ -234,6 +281,10 @@ pytest
 ```
 
 Para testar uma pasta de build diferente: `E2E_DIST=/caminho/do/dist pytest`. Sem `frontend/dist`, os testes são pulados com uma mensagem explicando o motivo.
+
+### Integração contínua
+
+O workflow `.github/workflows/ci.yml` roda a cada push na `main` e em todo Pull Request: o back-end em Python 3.11 e 3.13, o front-end (`npm ci`, `npm test` e `npm run build`) e o teste de ponta a ponta com Chromium, usando o build recém-gerado. O resultado aparece na aba **Actions** do repositório e no selo no topo deste README.
 
 ## Rodando em produção
 
@@ -265,6 +316,16 @@ Orientações:
 - Faça backup do arquivo SQLite (`sqlite3 discplayer.db ".backup copia.db"` copia com o banco em uso). O modo WAL cria arquivos `-wal` e `-shm` ao lado; eles fazem parte do banco enquanto o app roda.
 - Use **um único processo** do app por banco (ver [Limitações](#limitações-conhecidas)).
 
+## Publicar de graça na internet (PythonAnywhere)
+
+O GitHub guarda o código, mas **não executa** o DiscPlayer (o GitHub Pages só serve sites estáticos, e aqui há uma API Python e um banco SQLite). Para outras pessoas abrirem um link, o projeto precisa rodar em um servidor.
+
+A opção gratuita que melhor combina com este projeto é a **PythonAnywhere**: ela roda Flask, guarda os arquivos (o banco SQLite não se perde), oferece HTTPS e libera o acesso a `api.rawg.io` no plano gratuito. O guia completo, com o código no GitHub e o passo a passo do painel, está em **[docs/hospedagem-pythonanywhere.md](docs/hospedagem-pythonanywhere.md)**, e o modelo do arquivo WSGI está em `deploy/pythonanywhere_wsgi.py`.
+
+Limites do plano gratuito (conferidos em 17/10/2026; confirme na PythonAnywhere): 1 web app com 1 processo, 512 MiB de disco, endereço `seunome.pythonanywhere.com` e **validade de 1 mês, que você precisa estender manualmente**. Outras hospedagens gratuitas populares (como o plano grátis do Render) usam disco temporário e **apagariam o banco** a cada reinício, por isso não servem para este projeto sem trocar o SQLite por um banco externo.
+
+Antes de abrir o site ao público, leia os [Termos da RAWG](https://rawg.io/apidocs) (o plano gratuito é para projetos pessoais e sem fins comerciais, com link de volta para a RAWG) e as [Limitações conhecidas](#limitações-conhecidas).
+
 ## Banco de dados
 
 SQLite com `PRAGMA foreign_keys=ON`, modo WAL e `busy_timeout`. As migrações ficam em `backend/migrations/NNNN_nome.sql` e são aplicadas em ordem, cada uma numa transação, registradas na tabela `schema_migrations`. Para evoluir o esquema, crie `0002_algo.sql`; nunca edite uma migração já aplicada.
@@ -291,7 +352,7 @@ Respostas em JSON. Erros sempre no formato `{"error": {"code": "...", "message":
 | Conta | `GET /api/auth/me`, `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/logout`, `PATCH /api/auth/me` (nome, bio, foto) |
 | Jogos (RAWG) | `GET /api/games` (busca, filtros, ordem, página), `/api/games/featured`, `/api/games/top-rated`, `/api/games/<id>`, `/api/genres`, `/api/platforms` |
 | Reviews | `GET /api/reviews` (recentes), `GET /api/games/<id>/reviews`, `POST /api/games/<id>/reviews`, `GET`/`PATCH`/`DELETE /api/reviews/<id>`, `PUT`/`DELETE /api/reviews/<id>/like` |
-| Diário | `GET /api/library`, `PUT`/`DELETE /api/library/<id_do_jogo>` |
+| Diário | `GET /api/library`, `PUT`/`DELETE /api/library/<id_do_jogo>` (o `PUT` aceita `today`, a data local de quem usa o site, usada ao preencher início e término automaticamente) |
 | Listas | `GET`/`POST /api/lists`, `GET /api/me/lists`, `GET`/`PATCH`/`DELETE /api/lists/<id>`, `POST /api/lists/<id>/games`, `DELETE /api/lists/<id>/games/<jogo>`, `PUT /api/lists/<id>/order` |
 | Pessoas | `GET /api/users/<usuario>` e `/library`, `/reviews`, `/lists`, `/activity`, `/followers`, `/following`; `PUT`/`DELETE /api/users/<usuario>/follow` |
 | Feed e busca | `GET /api/activity`, `GET /api/feed`, `GET /api/search?q=` |
@@ -319,9 +380,24 @@ Respostas em JSON. Erros sempre no formato `{"error": {"code": "...", "message":
 - **Estados vazios que convidam**: o site novo e vazio mostra como começar, não números inventados.
 - **Falhas da RAWG não derrubam o site**: há cache com validade, uma cópia local dos jogos já usados pela comunidade e mensagens que explicam o que faltou, com botão "Tentar de novo".
 
+## Decisões técnicas
+
+- **Flask com `sqlite3` e SQL puro, sem ORM.** As consultas são explícitas e parametrizadas, fáceis de auditar. As migrações são arquivos `.sql` numerados, aplicados em transação e registrados em `schema_migrations`; as escritas usam `BEGIN IMMEDIATE` para não disputar o banco.
+- **Sessão em cookie assinado e `HttpOnly` + CSRF por token sincronizado, em vez de JWT no `localStorage`.** Nada sensível fica ao alcance do JavaScript da página. O token CSRF vem de `GET /api/auth/me`, é comparado em tempo constante e o cabeçalho `Origin` também é conferido.
+- **A nota mora só em `reviews.rating`.** O diário não guarda nota, então nunca existem duas notas divergentes para o mesmo jogo.
+- **Cópia local mínima dos jogos, criada sob demanda.** Diário, listas e perfis continuam funcionando se a RAWG cair. A RAWG só é acessada pelo back-end (a chave nunca chega ao navegador), com cache com validade e cópia expirada servida em caso de falha.
+- **Datas de calendário no fuso de quem joga.** O servidor trabalha em UTC, mas quem marca "Jogando" às 22h no Brasil já está no "amanhã" de UTC. O navegador envia o seu "hoje" (`today`) e o servidor só o aceita se estiver a no máximo um dia de UTC, o que cobre todos os fusos e impede forjar datas distantes.
+- **Roteador próprio sobre a History API**, em vez de uma biblioteca: o app tem poucas rotas e o roteador cobre o que ele precisa (parâmetros de rota e de busca, links ativos, redirecionamento) sem dependência extra, e o foco e o título ao trocar de página ficam no layout.
+- **CSS próprio com variáveis (tokens) e fontes hospedadas junto do site.** Sem framework de UI e sem scripts, estilos ou fontes de terceiros (só as capas vêm da CDN da RAWG): a política de segurança do servidor (`script-src 'self'`) vale para a página inteira.
+- **Testes que não dependem de rede.** O back-end usa uma RAWG simulada, e o teste de navegador sobe o Flask real com um servidor RAWG fictício. Os testes de mutação feitos durante o desenvolvimento (quebrar o CSRF, a privacidade de listas, o passo da nota, a regra do avatar e a data local de propósito) confirmaram que a suíte pega essas regressões.
+
 ## Solução de problemas
 
 **`flask: command not found`** — o ambiente virtual não está ativo. Rode `source .venv/bin/activate` (ou `.venv\Scripts\Activate.ps1`) dentro de `backend/`, ou use `python -m flask --app wsgi run --debug`.
+
+**`'npm' não é reconhecido` (ou *"não é reconhecido como nome de cmdlet"*)** — o Node.js não está instalado ou o terminal foi aberto antes da instalação. Instale a versão LTS em nodejs.org, **feche todos os terminais** (e o editor, se for o VS Code), abra outro e teste `node --version` e `npm --version`. Para atualizar a lista de programas só na janela atual do PowerShell, sem reiniciar: `$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")`.
+
+**"A execução de scripts foi desabilitada neste sistema" (PowerShell, no `Activate.ps1` ou no `npm`)** — rode `Set-ExecutionPolicy -Scope Process Bypass` na mesma janela e repita o comando, ou use o Prompt de Comando (`.venv\Scripts\activate.bat`, `npm.cmd`).
 
 **`ModuleNotFoundError` ao rodar o back-end ou o pytest** — rode `pip install -r requirements.txt` com o ambiente virtual ativo, dentro de `backend/`.
 
@@ -347,7 +423,7 @@ Respostas em JSON. Erros sempre no formato `{"error": {"code": "...", "message":
 
 Estas são limitações reais do projeto como entregue, não promessas futuras.
 
-- **Verificação parcial no ambiente de desenvolvimento do projeto.** O ambiente em que o código foi escrito não tinha acesso à internet aberta. Por isso, **nunca foi testado contra a RAWG de verdade** (apenas contra simulações fiéis ao formato documentado: confira os formatos de campos como `results`, `rating`, `released` com sua chave antes de publicar), **`npm install` / `vite build` / `npm run dev` não foram executados lá** (o front-end foi compilado e exercitado com esbuild, que o Vite usa por baixo), e o **waitress** não foi iniciado. Os comandos acima são os padrão dessas ferramentas, mas rode-os e reporte qualquer diferença.
+- **Verificação parcial.** O código foi escrito num ambiente sem acesso à internet aberta. Por isso, **nunca foi testado contra a RAWG de verdade** (apenas contra simulações fiéis ao formato documentado: confira os formatos de campos como `results`, `rating`, `released` com sua chave antes de publicar) e o **waitress** não foi iniciado. O que já foi confirmado fora desse ambiente: o CI do GitHub executa `npm ci`, `npm test`, o build de produção do Vite e os testes de navegador sobre esse build (Ubuntu, Node 22), e o back-end passa em Python 3.11 e 3.13.
 - **Cache da RAWG e limite de requisições ficam na memória do processo.** Reiniciar o app os esvazia, e **mais de um processo** (vários workers) teria contagens e caches separados. Para escalar além de um processo, troque por Redis ou similar.
 - **SQLite** atende bem uma instância única; não é pensado para várias máquinas escrevendo no mesmo arquivo.
 - **Avatar** é uma URL https informada pela pessoa (sem upload de imagem). O navegador a carrega diretamente.
@@ -358,8 +434,20 @@ Estas são limitações reais do projeto como entregue, não promessas futuras.
 - **Sem internacionalização**: a interface está só em português do Brasil.
 - **Sem testes automatizados de acessibilidade completos**: a auditoria feita foi manual (teclado, leitor de tela em estrutura, contraste) e por inspeção do DOM. Faça uma revisão com tecnologias assistivas reais antes de publicar.
 
+## Próximos passos
+
+Ideias priorizadas para as próximas versões (nenhuma está implementada):
+
+1. **Conta completa:** troca e recuperação de senha por e-mail, verificação de e-mail, exclusão de conta e exportação dos próprios dados.
+2. **Moderação:** denunciar e ocultar reviews, bloquear usuários.
+3. **Diário mais fiel ao hábito de jogar:** várias jogadas do mesmo jogo (com data, plataforma e horas) e aviso de spoiler nas reviews.
+4. **Compartilhamento:** prévia (título e capa) ao colar links de jogos, perfis e listas, e uma retrospectiva do ano para compartilhar.
+5. **Comunidade:** notificações, comentários em reviews e listas, importação da biblioteca da Steam.
+6. **Escala:** cache e limite de requisições compartilhados entre processos, busca de texto nas reviews e, se necessário, outro banco no lugar do SQLite.
+
 ## Créditos e licenças
 
+- Código sob a licença **MIT** (arquivo `LICENSE`).
 - Dados e imagens de jogos: [RAWG](https://rawg.io) — o uso da API exige atribuição e respeito aos termos de uso deles.
 - Fontes: **TeX Gyre Adventor** (GUST Font License) e **Lora** (SIL Open Font License). Autoria, licenças e links de origem estão em `frontend/src/assets/fonts/LICENSES.md`.
 - Os jogos, capas e nomes do servidor fictício de desenvolvimento são inventados e existem só para testes.

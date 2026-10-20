@@ -127,10 +127,22 @@ def _fake_cover(route):
 class Client:
     """Um navegador com sua própria sessão (cookies) apontado para a pilha do teste."""
 
-    def __init__(self, browser, base: str, width: int = 1280, height: int = 900, mobile: bool = False):
+    def __init__(
+        self,
+        browser,
+        base: str,
+        width: int = 1280,
+        height: int = 900,
+        mobile: bool = False,
+        timezone_id: str | None = None,
+    ):
         self.base = base
         self.context = browser.new_context(
-            viewport={"width": width, "height": height}, locale="pt-BR", is_mobile=mobile, has_touch=mobile
+            viewport={"width": width, "height": height},
+            locale="pt-BR",
+            is_mobile=mobile,
+            has_touch=mobile,
+            timezone_id=timezone_id,
         )
         self.context.route(re.compile(r"https://media\.rawg\.io/.*"), _fake_cover)
         self.page = self.context.new_page()

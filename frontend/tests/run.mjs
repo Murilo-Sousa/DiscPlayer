@@ -5,7 +5,7 @@
 //
 // Os testes de componentes usam renderização no servidor (react-dom/server), então não
 // precisam de navegador. O comportamento no navegador é coberto pelo teste de ponta a ponta
-// (veja e2e/README.md).
+// (veja a seção "Ponta a ponta no navegador" do README.md).
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { createRequire } from "node:module";

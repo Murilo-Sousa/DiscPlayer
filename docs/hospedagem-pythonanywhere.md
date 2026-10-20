@@ -6,7 +6,7 @@ Este guia leva o projeto do seu computador até um endereço público do tipo `h
 >
 > 1. As informações sobre o plano gratuito foram conferidas nas páginas oficiais em **17/10/2026**. Planos e limites mudam: se algo na tela da PythonAnywhere for diferente do que está aqui, vale a tela deles.
 > 2. O guia **não foi executado de ponta a ponta na PythonAnywhere** (o ambiente onde o projeto foi escrito não alcança o site deles). O que foi testado: o arquivo `deploy/pythonanywhere_wsgi.py` em modo produção, atrás de um balanceador de carga simulado (cookie `Secure`, limite de cadastros por IP real). O resto segue a documentação da PythonAnywhere.
-> 3. O comando `npm run build` (parte 2) também ainda não foi executado por mim com o Vite. Se ele mostrar um erro, copie a mensagem e peça ajuda antes de seguir.
+> 3. O comando `npm run build` (parte 2) roda no CI do GitHub (Ubuntu, Node 22) a cada envio de código, mas ainda não foi visto no Windows. Se ele mostrar um erro, copie a mensagem e peça ajuda antes de seguir.
 
 ## O que esperar do plano gratuito
 

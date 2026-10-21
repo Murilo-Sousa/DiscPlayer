@@ -1,12 +1,15 @@
 import { useState } from "react";
+import { assetUrl } from "../services/http.js";
 import { cx } from "../utils/cx.js";
-import { hueFrom, initials, isImageUrl } from "../utils/format.js";
+import { hueFrom, initials, isAvatarPath } from "../utils/format.js";
 
 /** Foto do usuário ou, sem foto, as iniciais sobre uma cor derivada do nome de usuário (cada pessoa tem a sua). */
 export function Avatar({ user, size = 36, className }) {
-  const [broken, setBroken] = useState(false);
+  // Guarda QUAL foto falhou (e não "alguma"): ao trocar de foto, a nova tem a sua chance de carregar.
+  const [brokenUrl, setBrokenUrl] = useState(null);
   const label = user?.display_name || user?.username || "";
-  const showImage = isImageUrl(user?.avatar_url) && !broken;
+  const url = user?.avatar_url;
+  const showImage = isAvatarPath(url) && brokenUrl !== url;
   return (
     <span
       className={cx("avatar", className)}
@@ -14,15 +17,7 @@ export function Avatar({ user, size = 36, className }) {
       aria-hidden="true"
     >
       {showImage ? (
-        <img
-          src={user.avatar_url}
-          alt=""
-          width={size}
-          height={size}
-          loading="lazy"
-          referrerPolicy="no-referrer"
-          onError={() => setBroken(true)}
-        />
+        <img src={assetUrl(url)} alt="" width={size} height={size} loading="lazy" onError={() => setBrokenUrl(url)} />
       ) : (
         <span className="avatar-initials">{initials(label)}</span>
       )}

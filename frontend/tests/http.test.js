@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test } from "node:test";
-import { ApiError, http, resetHttpState, setCsrfToken } from "../src/services/http.js";
+import { ApiError, assetUrl, http, resetHttpState, setCsrfToken } from "../src/services/http.js";
 
 const realFetch = globalThis.fetch;
 let calls;
@@ -128,4 +128,55 @@ test("falha de rede vira ApiError 'network' com texto para o usuário", async ()
 test("AbortError é repassado como está (a tela cancelou de propósito)", async () => {
   mockFetch(Object.assign(new Error("aborted"), { name: "AbortError" }));
   await assert.rejects(http.get("/x"), (error) => error.name === "AbortError");
+});
+
+test("FormData (envio de arquivo) vai como está, sem Content-Type de JSON, mas com CSRF", async () => {
+  setCsrfToken("tok-up");
+  mockFetch(json({ user: { username: "ana" } }));
+  const form = new FormData();
+  form.append("file", new Blob(["x"], { type: "image/png" }), "foto.png");
+  await http.post("/auth/me/avatar", form);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].body, form, "o corpo não é serializado como JSON");
+  assert.equal(calls[0].headers["Content-Type"], undefined, "o navegador define o multipart com o boundary");
+  assert.equal(calls[0].headers["X-CSRF-Token"], "tok-up");
+  assert.equal(calls[0].method, "POST");
+});
+
+test("o envio de arquivo também renova o CSRF vencido e tenta de novo com o mesmo arquivo", async () => {
+  setCsrfToken("velho");
+  mockFetch(
+    json({ error: { code: "csrf_invalid", message: "Sessão expirada." } }, { status: 403 }),
+    json({ user: null, csrf_token: "novo" }), // GET /auth/me
+    json({ ok: true }),
+  );
+  const form = new FormData();
+  form.append("file", new Blob(["x"]), "foto.png");
+  await http.post("/auth/me/avatar", form);
+  const last = calls.at(-1);
+  assert.equal(last.headers["X-CSRF-Token"], "novo");
+  assert.equal(last.body, form);
+});
+
+test("413 (arquivo grande demais) tem mensagem própria quando o servidor não explica", async () => {
+  setCsrfToken("t");
+  mockFetch(new Response("", { status: 413 }));
+  await assert.rejects(http.post("/auth/me/avatar", new FormData()), (error) => {
+    assert.equal(error.status, 413);
+    assert.match(error.message, /grande demais/);
+    return true;
+  });
+});
+
+test("DELETE com corpo (exclusão de conta) envia a senha em JSON", async () => {
+  setCsrfToken("t");
+  mockFetch(json({ user: null }));
+  await http.delete("/auth/me", { body: { password: "segredo-123" } });
+  assert.equal(calls[0].method, "DELETE");
+  assert.equal(calls[0].headers["Content-Type"], "application/json");
+  assert.equal(calls[0].body, JSON.stringify({ password: "segredo-123" }));
+});
+
+test("assetUrl mantém o endereço da API (mesma origem) como está", () => {
+  assert.equal(assetUrl("/api/avatars/abc"), "/api/avatars/abc");
 });

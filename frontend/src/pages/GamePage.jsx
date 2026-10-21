@@ -167,12 +167,21 @@ export default function GamePage() {
               <DiaryPanel
                 rawgId={game.rawg_id}
                 entry={viewer?.entry ?? null}
+                playthroughs={viewer?.playthroughs ?? []}
                 onSaved={(entry) => {
                   patchViewer({ entry });
                   state.reload();
                 }}
+                onReplayed={({ entry, playthroughs }) => {
+                  patchViewer({ entry, playthroughs });
+                  state.reload();
+                }}
+                onPlaythroughsChanged={({ entry, playthroughs }) => {
+                  patchViewer({ entry, playthroughs });
+                  state.reload();
+                }}
                 onRemoved={() => {
-                  patchViewer({ entry: null });
+                  patchViewer({ entry: null, playthroughs: [] });
                   state.reload();
                 }}
               />

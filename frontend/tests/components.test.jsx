@@ -14,6 +14,7 @@ import { StatusPicker } from "../src/components/StatusPicker.jsx";
 import { Tabs } from "../src/components/Tabs.jsx";
 import { buildOptions } from "../src/layouts/SearchBox.jsx";
 import { safeNext } from "../src/pages/AuthPages.jsx";
+import { PHOTO_MAX_BYTES, checkPhotoFile } from "../src/pages/SettingsPage.jsx";
 import { count, html } from "./helpers.jsx";
 
 const game = { rawg_id: 3, name: "Hades", slug: "hades", cover_url: "https://media.rawg.io/a.jpg", cover_thumb_url: "https://media.rawg.io/t.jpg", released: "2020-09-17" };
@@ -108,6 +109,43 @@ test("ReviewCard sem texto mostra só a nota", () => {
   assert.match(markup, /8,5/);
 });
 
+test("ReviewCard com spoilers esconde o texto: ele nem chega ao HTML antes do clique", () => {
+  const secret = { ...review, body: "O mentor era o vilão desde o começo.", has_spoilers: true };
+  const markup = html(<ReviewCard review={secret} />);
+  assert.doesNotMatch(markup, /mentor/);
+  assert.doesNotMatch(markup, /review-body/);
+  assert.match(markup, /Contém spoilers/);
+  assert.match(markup, /Esta review conta partes da história/);
+  assert.match(markup, /<button[^>]*aria-expanded="false"[^>]*>Mostrar texto<\/button>/);
+  assert.match(markup, /8,5/, "a nota continua visível");
+  assert.match(markup, /Ana Souza/, "o autor continua visível");
+});
+
+test("ReviewCard com spoilers: o autor vê o próprio texto e review sem aviso não muda", () => {
+  const secret = { ...review, body: "O mentor era o vilão.", has_spoilers: true };
+  const own = html(<ReviewCard review={secret} alwaysShow />);
+  assert.match(own, /O mentor era o vilão\./);
+  assert.match(own, /Contém spoilers/, "o selo continua, para quem escreveu saber que está marcada");
+  assert.doesNotMatch(own, /Mostrar texto/);
+
+  const normal = html(<ReviewCard review={{ ...review, has_spoilers: false }} />);
+  assert.doesNotMatch(normal, /spoiler/i);
+  assert.match(normal, /Primeiro parágrafo/);
+});
+
+test("ReviewCard marcada com spoilers mas sem texto não mostra aviso nenhum", () => {
+  const markup = html(<ReviewCard review={{ ...review, body: null, has_spoilers: true }} />);
+  assert.doesNotMatch(markup, /spoiler/i);
+  assert.doesNotMatch(markup, /Mostrar texto/);
+});
+
+test("ReviewCard com spoilers continua escapando HTML depois de revelado", () => {
+  const hostile = { ...review, body: "<img src=x onerror=alert(1)>", has_spoilers: true };
+  const markup = html(<ReviewCard review={hostile} alwaysShow />);
+  assert.doesNotMatch(markup, /<img src=x/);
+  assert.match(markup, /&lt;img src=x/);
+});
+
 test("ReviewCard: botão de curtir (pressionado) ou só a contagem", () => {
   const liked = html(<ReviewCard review={{ ...review, liked: true }} onLike={() => {}} canLike />);
   assert.match(liked, /aria-pressed="true"/);
@@ -192,10 +230,21 @@ test("Cover usa a miniatura e, sem imagem, mostra as iniciais", () => {
 
 test("Avatar: iniciais quando não há foto e imagem quando há", () => {
   assert.match(html(<Avatar user={user} />), />AS</);
-  const withPhoto = html(<Avatar user={{ ...user, avatar_url: "https://example.com/a.png" }} />);
-  assert.match(withPhoto, /<img src="https:\/\/example.com\/a.png"/);
-  // http:// e esquemas perigosos nunca viram <img>: ficam as iniciais.
-  for (const bad of ["http://example.com/a.png", "javascript:alert(1)", "data:image/png;base64,AAAA"]) {
+  const withPhoto = html(<Avatar user={{ ...user, avatar_url: "/api/avatars/Zm9vYmFyYmF6cXV4" }} />);
+  assert.match(withPhoto, /<img src="\/api\/avatars\/Zm9vYmFyYmF6cXV4"/);
+  assert.doesNotMatch(withPhoto, /avatar-initials/);
+});
+
+test("Avatar nunca vira <img> para endereços que não são da foto enviada", () => {
+  // Nem endereço externo (rastreamento), nem esquemas perigosos: ficam as iniciais.
+  for (const bad of [
+    "https://example.com/a.png",
+    "http://example.com/a.png",
+    "javascript:alert(1)",
+    "data:image/png;base64,AAAA",
+    "/api/avatars/../../x",
+    "/api/lists",
+  ]) {
     const markup = html(<Avatar user={{ ...user, avatar_url: bad }} />);
     assert.doesNotMatch(markup, /<img/, bad);
     assert.match(markup, />AS</);
@@ -215,6 +264,28 @@ test("ActivityItem narra cada tipo de atividade em português", () => {
   const list = html(<ul><ActivityItem activity={{ id: 2, type: "list_created", user, created_at: new Date().toISOString(), list: { id: 9, title: "Curtos e bons" } }} /></ul>);
   assert.match(list, /criou a lista/);
   assert.match(list, /href="\/listas\/9"/);
+});
+
+test("ActivityItem: recomeço aparece como 'voltou a jogar' e uma mudança comum de status, não", () => {
+  const base = { id: 1, user, created_at: new Date().toISOString(), game, type: "logged", status: "jogando" };
+  assert.match(html(<ul><ActivityItem activity={{ ...base, replay: true }} /></ul>), /voltou a jogar/);
+  const normal = html(<ul><ActivityItem activity={{ ...base, replay: false }} /></ul>);
+  assert.match(normal, /começou a jogar/);
+  assert.doesNotMatch(normal, /voltou/);
+  assert.match(html(<ul><ActivityItem showUser={false} activity={{ ...base, replay: true }} /></ul>), />Voltou a jogar /);
+});
+
+test("ActivityItem não mostra trecho de review com spoilers, só o aviso", () => {
+  const base = { id: 1, user, created_at: new Date().toISOString(), game, type: "reviewed" };
+  const hidden = html(<ul><ActivityItem activity={{ ...base, review: { id: 1, rating: 9, has_spoilers: true, excerpt: null, like_count: 0 } }} /></ul>);
+  assert.match(hidden, /Contém spoilers/);
+  assert.match(hidden, /9/);
+  assert.doesNotMatch(hidden, /activity-excerpt/);
+  // Mesmo que um servidor falho mandasse o trecho, a tela não o mostra.
+  const leaked = html(<ul><ActivityItem activity={{ ...base, review: { id: 1, rating: 9, has_spoilers: true, excerpt: "O vilão era o mentor", like_count: 0 } }} /></ul>);
+  assert.doesNotMatch(leaked, /O vilão era o mentor/);
+  const open = html(<ul><ActivityItem activity={{ ...base, review: { id: 1, rating: 9, has_spoilers: false, excerpt: "Trilha linda", like_count: 0 } }} /></ul>);
+  assert.match(open, /Trilha linda/);
 });
 
 test("ActivityItem sem autor (histórico próprio) começa a frase com maiúscula", () => {
@@ -267,4 +338,16 @@ test("buildOptions monta grupos na ordem e termina com 'ver todos'", () => {
 test("buildOptions codifica o termo da busca na URL", () => {
   const options = buildOptions({ games: { items: [] }, users: [], lists: [], reviews: [] }, "a&b=c d");
   assert.equal(options[0].to, "/buscar?q=a%26b%3Dc%20d");
+});
+
+// ----------------------------------------------------------------------------- foto de perfil
+test("checkPhotoFile confere tipo, tamanho e arquivo vazio antes de enviar", () => {
+  const file = (type, size) => ({ type, size, name: "foto" });
+  for (const type of ["image/jpeg", "image/png", "image/webp"]) assert.equal(checkPhotoFile(file(type, 1000)), null, type);
+  assert.equal(checkPhotoFile(file("image/png", PHOTO_MAX_BYTES)), null, "exatamente 5 MB ainda vale");
+  assert.match(checkPhotoFile(file("image/png", PHOTO_MAX_BYTES + 1)), /grande demais/);
+  assert.match(checkPhotoFile(file("image/png", 0)), /vazio/);
+  for (const type of ["image/gif", "image/svg+xml", "application/pdf", "text/html", ""]) {
+    assert.match(checkPhotoFile(file(type, 1000)), /JPG, PNG ou WebP/, type);
+  }
 });

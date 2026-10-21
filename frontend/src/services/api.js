@@ -8,6 +8,15 @@ export const authApi = {
   login: (data) => http.post("/auth/login", data),
   logout: () => http.post("/auth/logout"),
   updateProfile: (data) => http.patch("/auth/me", data),
+  // A foto vai como arquivo (multipart): o servidor valida, recorta e reprocessa a imagem.
+  uploadAvatar: (file) => {
+    const form = new FormData();
+    form.append("file", file);
+    return http.post("/auth/me/avatar", form);
+  },
+  removeAvatar: () => http.delete("/auth/me/avatar"),
+  // Exclui a conta e tudo o que é dela. Pede a senha de novo.
+  deleteAccount: (password) => http.delete("/auth/me", { body: { password } }),
 };
 
 export const gamesApi = {
@@ -25,6 +34,9 @@ export const libraryApi = {
   // `today` é a data local de quem usa o site: o servidor a usa ao preencher início/término automaticamente.
   save: (rawgId, data) => http.put(`/library/${rawgId}`, { today: localToday(), ...data }),
   remove: (rawgId) => http.delete(`/library/${rawgId}`),
+  // "Jogar de novo": a jogada atual vai para o histórico do jogo e começa outra (início em hoje, no fuso de quem usa).
+  replay: (rawgId) => http.post(`/library/${rawgId}/replay`, { today: localToday() }),
+  removePlaythrough: (rawgId, id) => http.delete(`/library/${rawgId}/playthroughs/${id}`),
 };
 
 export const reviewsApi = {

@@ -15,10 +15,12 @@ const SORTS = [
 ];
 
 function captionFor(entry) {
-  if (entry.status === "zerado" && entry.completed_at) return `Zerado em ${formatDate(entry.completed_at)}`;
-  if (entry.status === "jogando" && entry.started_at) return `Desde ${formatDate(entry.started_at)}`;
-  if (entry.status === "abandonado" && entry.updated_at) return `Largado em ${formatDate(entry.updated_at)}`;
-  return null;
+  let base = null;
+  if (entry.status === "zerado" && entry.completed_at) base = `Zerado em ${formatDate(entry.completed_at)}`;
+  else if (entry.status === "jogando" && entry.started_at) base = `Desde ${formatDate(entry.started_at)}`;
+  else if (entry.status === "abandonado" && entry.updated_at) base = `Largado em ${formatDate(entry.updated_at)}`;
+  if (entry.plays > 1) return base ? `${base} · ${entry.plays}ª jogada` : `${entry.plays}ª jogada`;
+  return base;
 }
 
 /**

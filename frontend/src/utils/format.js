@@ -26,6 +26,22 @@ export const STATUS_VERBS = {
   pausado: "pausou",
 };
 
+/** "Começou a jogar" de quem recomeçou um jogo que já tinha terminado, largado ou pausado. */
+export const REPLAY_VERB = "voltou a jogar";
+
+/** Status em que "Jogar de novo" faz sentido: a jogada atual já terminou ou foi interrompida. */
+export const REPLAYABLE = ["zerado", "abandonado", "pausado"];
+
+/** Resumo das datas de uma jogada: "12 mar 2025 → 20 mar 2025", "Desde …", "Até …" ou "Sem datas". */
+export function playSpan(play) {
+  const start = play?.started_at ? formatDate(play.started_at) : "";
+  const end = play?.completed_at ? formatDate(play.completed_at) : "";
+  if (start && end) return `${start} → ${end}`;
+  if (start) return `Desde ${start}`;
+  if (end) return `Até ${end}`;
+  return "Sem datas";
+}
+
 /** Nota de 0 a 10 com vírgula decimal: 8.5 -> "8,5"; 10 -> "10"; null -> "—". */
 export function formatRating(value) {
   if (value === null || value === undefined || Number.isNaN(Number(value))) return "—";
@@ -106,15 +122,12 @@ export function initials(name) {
   return (Array.from(words[0])[0] + Array.from(words[words.length - 1])[0]).toUpperCase();
 }
 
-/** Endereço de imagem que o site aceita carregar: só https (a política de segurança bloqueia o resto). */
-export function isImageUrl(value) {
-  if (typeof value !== "string") return false;
-  try {
-    const url = new URL(value.trim());
-    return url.protocol === "https:" && url.hostname.includes(".");
-  } catch {
-    return false;
-  }
+/**
+ * A foto de perfil é um arquivo enviado e guardado no servidor, entregue em "/api/avatars/<código>".
+ * Nada além disso vira <img>: nem endereço externo, nem esquemas como javascript: ou data:.
+ */
+export function isAvatarPath(value) {
+  return typeof value === "string" && /^\/api\/avatars\/[A-Za-z0-9_-]{8,64}$/.test(value);
 }
 
 /** Matiz estável (0-359) derivado de um texto, para avatares e capas sem imagem. */

@@ -13,10 +13,11 @@ from flask import Blueprint, Response, current_app, send_from_directory
 bp = Blueprint("spa", __name__)
 
 # O front-end só carrega recursos do próprio domínio, com duas exceções:
-# imagens (capas da RAWG e avatares https) e estilos em linha do React (atributo style).
+# imagens (capas da RAWG em https; a foto de perfil é do próprio domínio; blob: é a prévia da foto
+# escolhida, criada pelo próprio navegador antes do envio) e estilos em linha do React (atributo style).
 CONTENT_SECURITY_POLICY = (
     "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
-    "img-src 'self' https: data:; font-src 'self'; connect-src 'self'; "
+    "img-src 'self' https: data: blob:; font-src 'self'; connect-src 'self'; "
     "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
 )
 

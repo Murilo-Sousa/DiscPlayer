@@ -9,7 +9,7 @@ from ..auth import viewer_id
 from ..db import fetch_all
 from ..errors import ApiError
 from ..security import rate_limit
-from ..serializers import entry_from_row, game_from_local, game_from_row, review_from_row
+from ..serializers import entry_from_row, game_from_local, game_from_row, playthrough_from_row, review_from_row
 from ..services import games as games_service
 from ..services import lists as lists_service
 from ..services import library as library_service
@@ -178,6 +178,11 @@ def game_detail(rawg_id: int):
         mine = reviews_service.get_user_review(uid, local["id"], uid) if local else None
         payload["viewer"] = {
             "entry": entry_from_row(entry) if entry else None,
+            "playthroughs": [
+                playthrough_from_row(r) for r in library_service.list_playthroughs(uid, local["id"])
+            ]
+            if entry
+            else [],
             "review": review_from_row(mine, with_game=False, with_user=False) if mine else None,
             "list_ids": sorted(lists_service.membership(uid, rawg_id)),
         }

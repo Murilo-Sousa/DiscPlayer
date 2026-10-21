@@ -1,15 +1,18 @@
-"""Cadastro, login, logout e edição do perfil da conta."""
+"""Cadastro, login, logout, edição do perfil, foto e exclusão da conta."""
 from __future__ import annotations
 
+import secrets
 import sqlite3
 
-from flask import Blueprint, jsonify
+from flask import Blueprint, current_app, jsonify, request
 
 from ..auth import check_password, current_user, end_session, hash_password, login_required, start_session
 from ..db import execute, fetch_one, transaction
 from ..errors import ApiError
 from ..security import csrf_token, rate_limit
 from ..serializers import user_private
+from ..services import accounts as accounts_service
+from ..services import avatars as avatars_service
 from ..utils.dates import utcnow_iso
 from ..utils.validation import (
     UNSET,
@@ -18,7 +21,6 @@ from ..utils.validation import (
     read_email,
     read_password,
     read_text,
-    read_url,
     read_username,
 )
 
@@ -61,9 +63,9 @@ def register():
                 taken["email"] = "Já existe uma conta com este e-mail."
             if not taken:
                 cursor = execute(
-                    "INSERT INTO users (username, display_name, email, password_hash, created_at)"
-                    " VALUES (?, ?, ?, ?, ?)",
-                    (username, display_name, email, password_hash, utcnow_iso()),
+                    "INSERT INTO users (username, display_name, email, password_hash, session_key, created_at)"
+                    " VALUES (?, ?, ?, ?, ?, ?)",
+                    (username, display_name, email, password_hash, secrets.token_hex(16), utcnow_iso()),
                 )
                 user_id = cursor.lastrowid
     except sqlite3.IntegrityError:  # duas requisições simultâneas com os mesmos dados
@@ -124,11 +126,8 @@ def update_me():
     if bio is not UNSET:
         updates["bio"] = bio
 
-    # Só https: a página só carrega imagens de origens https (CSP) e http causaria conteúdo misto.
-    avatar_url = read_url(data, "avatar_url", "A foto", errors, schemes=("https",))
-    if avatar_url is not UNSET:
-        updates["avatar_url"] = avatar_url
-
+    # A foto NÃO é editada aqui: `avatar_url` enviado no corpo é ignorado. Ela só muda por
+    # POST/DELETE /api/auth/me/avatar, que guardam uma imagem reprocessada pelo servidor.
     errors.raise_if_any()
     if updates:
         # Os nomes das colunas vêm do código acima (lista fechada), nunca do cliente.
@@ -137,3 +136,44 @@ def update_me():
             execute(f"UPDATE users SET {assignments} WHERE id = ?", (*updates.values(), user["id"]))
     row = fetch_one("SELECT * FROM users WHERE id = ?", (user["id"],))
     return jsonify({"user": user_private(row)})
+
+
+@bp.post("/me/avatar")
+@login_required
+@rate_limit("avatar", 20, 3600)
+def upload_avatar():
+    """Envia a foto do perfil (multipart/form-data, campo `file`; JPG, PNG ou WebP)."""
+    upload = request.files.get("file")
+    if upload is None or not upload.filename:
+        raise ApiError(
+            422, "validation_error", "Revise a foto escolhida.", fields={"file": "Escolha uma imagem para enviar."}
+        )
+    limit = current_app.config["AVATAR_MAX_UPLOAD_BYTES"]
+    raw = upload.stream.read(limit + 1)
+    if len(raw) > limit:
+        raise ApiError(413, "payload_too_large", "A foto é grande demais. Envie um arquivo de até 5 MB.")
+    avatars_service.set_avatar(current_user()["id"], raw)
+    return jsonify({"user": user_private(fetch_one("SELECT * FROM users WHERE id = ?", (current_user()["id"],)))})
+
+
+@bp.delete("/me/avatar")
+@login_required
+def delete_avatar():
+    avatars_service.remove_avatar(current_user()["id"])
+    return jsonify({"user": user_private(fetch_one("SELECT * FROM users WHERE id = ?", (current_user()["id"],)))})
+
+
+@bp.delete("/me")
+@login_required
+@rate_limit("delete-account", 5, 3600)
+def delete_account():
+    """Exclui a conta e todos os dados dela. Pede a senha de novo: um cookie roubado não basta."""
+    user = current_user()
+    data = json_body()
+    password = data.get("password")
+    if not isinstance(password, str) or not password:
+        raise ApiError(422, "validation_error", "Revise os campos destacados.", fields={"password": "Informe sua senha."})
+    if not check_password(user["password_hash"], password):
+        raise ApiError(403, "invalid_password", "Senha incorreta.", fields={"password": "Senha incorreta."})
+    accounts_service.delete_account(user["id"])
+    return jsonify({"user": None, "csrf_token": end_session()})

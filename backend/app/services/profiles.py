@@ -27,14 +27,21 @@ def _distribution(user_id: int) -> list[int]:
 
 
 def completions_by_month(user_id: int, year: int) -> list[int]:
-    """Jogos zerados em cada mês do ano (índice 0 = janeiro), pela data de término."""
+    """Zeradas em cada mês do ano (índice 0 = janeiro), pela data de término.
+
+    Conta a jogada atual e as jogadas anteriores: zerar o mesmo jogo duas vezes
+    no ano conta duas vezes, e recomeçar um jogo não apaga a conclusão anterior.
+    """
     counts = [0] * 12
     for row in fetch_all(
-        "SELECT CAST(substr(completed_at, 6, 2) AS INTEGER) AS month, COUNT(*) AS n"
-        " FROM library_entries"
-        " WHERE user_id = ? AND status = 'zerado' AND completed_at BETWEEN ? AND ?"
-        " GROUP BY month",
-        (user_id, f"{year}-01-01", f"{year}-12-31"),
+        "SELECT CAST(substr(completed_at, 6, 2) AS INTEGER) AS month, COUNT(*) AS n FROM ("
+        " SELECT completed_at FROM library_entries"
+        "  WHERE user_id = :u AND status = 'zerado' AND completed_at BETWEEN :a AND :b"
+        " UNION ALL"
+        " SELECT completed_at FROM playthroughs"
+        "  WHERE user_id = :u AND status = 'zerado' AND completed_at BETWEEN :a AND :b"
+        ") GROUP BY month",
+        {"u": user_id, "a": f"{year}-01-01", "b": f"{year}-12-31"},
     ):
         if 1 <= row["month"] <= 12:
             counts[row["month"] - 1] = row["n"]
@@ -73,6 +80,11 @@ def stats_for(user_id: int, *, include_private_lists: bool) -> dict:
         " FROM library_entries WHERE user_id = ?",
         (year_start, user_id),
     )
+    past_completions = fetch_one(
+        "SELECT COUNT(*) AS n FROM playthroughs"
+        " WHERE user_id = ? AND status = 'zerado' AND completed_at >= ?",
+        (user_id, year_start),
+    )["n"]
     reviews = fetch_one(
         "SELECT COUNT(*) AS n, AVG(rating) AS avg, COALESCE(SUM(body IS NOT NULL), 0) AS with_text"
         " FROM reviews WHERE user_id = ?",
@@ -92,7 +104,7 @@ def stats_for(user_id: int, *, include_private_lists: bool) -> dict:
         "by_status": {
             key: library[key] for key in ("quero_jogar", "jogando", "zerado", "abandonado", "pausado")
         },
-        "completed_this_year": library["completed_this_year"],
+        "completed_this_year": library["completed_this_year"] + past_completions,
         "completions_by_month": completions_by_month(user_id, year),
         "favorites": library["favorites"],
         "ratings": reviews["n"],

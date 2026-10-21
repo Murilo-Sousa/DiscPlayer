@@ -5,12 +5,12 @@ que estas funções esperam:
 
   usuário   username, display_name, avatar_url            (+ bio, created_at)
   jogo      rawg_id, game_name, game_slug, cover_url      (+ release_date)
-  review    review_id, rating, body, review_created_at, review_updated_at,
-            like_count, liked
+  review    review_id, rating, body, has_spoilers, review_created_at,
+            review_updated_at, like_count, liked
   registro  status, is_favorite, started_at, completed_at,
-            entry_created_at, entry_updated_at              (+ rating)
-  atividade activity_id, type, activity_status, activity_created_at,
-            review_*, list_id, list_title
+            entry_created_at, entry_updated_at, plays       (+ rating)
+  atividade activity_id, type, activity_status, activity_is_replay,
+            activity_created_at, review_*, list_id, list_title
 """
 from __future__ import annotations
 
@@ -19,6 +19,10 @@ import sqlite3
 from .services.rawg import thumb_url
 
 EXCERPT_LENGTH = 280
+
+
+def excerpt(body: str) -> str:
+    return body[:EXCERPT_LENGTH].rstrip() + ("…" if len(body) > EXCERPT_LENGTH else "")
 
 
 def _has(row: sqlite3.Row, key: str) -> bool:
@@ -85,6 +89,17 @@ def entry_from_row(row: sqlite3.Row) -> dict:
         "completed_at": row["completed_at"],
         "created_at": row["entry_created_at"],
         "updated_at": row["entry_updated_at"],
+        "plays": row["plays"],
+    }
+
+
+def playthrough_from_row(row: sqlite3.Row) -> dict:
+    return {
+        "id": row["id"],
+        "status": row["status"],
+        "started_at": row["started_at"],
+        "completed_at": row["completed_at"],
+        "created_at": row["created_at"],
     }
 
 
@@ -93,6 +108,7 @@ def review_from_row(row: sqlite3.Row, *, with_game: bool = True, with_user: bool
         "id": row["review_id"],
         "rating": row["rating"],
         "body": row["body"],
+        "has_spoilers": bool(row["has_spoilers"]),
         "created_at": row["review_created_at"],
         "updated_at": row["review_updated_at"],
         "like_count": row["like_count"],
@@ -133,14 +149,18 @@ def activity_from_row(row: sqlite3.Row) -> dict:
     }
     if row["type"] == "logged":
         data["status"] = row["activity_status"]
+        data["replay"] = bool(row["activity_is_replay"])
         data["game"] = game_from_row(row)
     elif row["type"] == "reviewed":
         body = row["review_body"]
+        spoilers = bool(row["review_has_spoilers"])
         data["game"] = game_from_row(row)
         data["review"] = {
             "id": row["review_id"],
             "rating": row["review_rating"],
-            "excerpt": (body[:EXCERPT_LENGTH].rstrip() + ("…" if len(body) > EXCERPT_LENGTH else "")) if body else None,
+            "has_spoilers": spoilers,
+            # Trechos de reviews com spoilers nunca aparecem em feeds: só a nota e o aviso.
+            "excerpt": excerpt(body) if body and not spoilers else None,
             "like_count": row["review_like_count"],
         }
     elif row["type"] == "list_created":

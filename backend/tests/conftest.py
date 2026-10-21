@@ -1,6 +1,8 @@
 """Fixtures compartilhadas. Nenhum teste fala com a RAWG de verdade."""
 from __future__ import annotations
 
+import io
+
 import pytest
 
 from app import create_app
@@ -47,6 +49,15 @@ class Api:
 
     def delete(self, url, json=None, **kw):
         return self._send("delete", url, json, **kw)
+
+    def upload(self, url, file=None, *, name="file", filename="foto.png", csrf=True, headers=None, method="post"):
+        """Envia um arquivo como multipart/form-data (como o <input type=file> do navegador)."""
+        merged = dict(self.headers)
+        if csrf:
+            merged["X-CSRF-Token"] = self._token()
+        merged.update(headers or {})
+        data = {} if file is None else {name: (io.BytesIO(file), filename)}
+        return getattr(self.client, method)(url, data=data, headers=merged, content_type="multipart/form-data")
 
     def register(self, username="ana", email=None, password=PASSWORD, **extra):
         body = {"username": username, "email": email or f"{username}@exemplo.com", "password": password, **extra}

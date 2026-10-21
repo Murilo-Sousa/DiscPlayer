@@ -7,8 +7,10 @@ from ..db import execute, fetch_all, fetch_one, transaction
 from ..errors import ApiError
 from ..utils.dates import utcnow_iso
 
+KEEP = object()  # "não mexer neste campo" (None é um valor válido: limpa o texto)
+
 REVIEW_COLUMNS = """
-    r.id AS review_id, r.rating, r.body,
+    r.id AS review_id, r.rating, r.body, r.has_spoilers,
     r.created_at AS review_created_at, r.updated_at AS review_updated_at,
     u.username, u.display_name, u.avatar_url,
     g.rawg_id, g.name AS game_name, g.slug AS game_slug, g.cover_url, g.release_date,
@@ -82,7 +84,9 @@ def get_author_id(review_id: int) -> int | None:
     return row["user_id"] if row else None
 
 
-def create_review(user_id: int, game_id: int, rating: float, body: str | None) -> int:
+def create_review(
+    user_id: int, game_id: int, rating: float, body: str | None, has_spoilers: bool = False
+) -> int:
     now = utcnow_iso()
     with transaction():
         if fetch_one("SELECT 1 FROM reviews WHERE user_id = ? AND game_id = ?", (user_id, game_id)):
@@ -92,8 +96,9 @@ def create_review(user_id: int, game_id: int, rating: float, body: str | None) -
                 "Você já avaliou este jogo. Edite a sua avaliação em vez de criar outra.",
             )
         cursor = execute(
-            "INSERT INTO reviews (user_id, game_id, rating, body, created_at) VALUES (?, ?, ?, ?, ?)",
-            (user_id, game_id, rating, body, now),
+            "INSERT INTO reviews (user_id, game_id, rating, body, has_spoilers, created_at)"
+            " VALUES (?, ?, ?, ?, ?, ?)",
+            (user_id, game_id, rating, body, _spoiler_flag(body, has_spoilers), now),
         )
         review_id = cursor.lastrowid
         execute(
@@ -104,16 +109,25 @@ def create_review(user_id: int, game_id: int, rating: float, body: str | None) -
     return review_id  # type: ignore[return-value]
 
 
-def update_review(review_id: int, *, rating=None, body="__keep__") -> None:
-    """Atualiza nota e/ou texto. `updated_at` marca a edição (nulo até a primeira)."""
-    sets, params = ["updated_at = ?"], [utcnow_iso()]
-    if rating is not None:
-        sets.append("rating = ?")
-        params.append(rating)
-    if body != "__keep__":
-        sets.append("body = ?")
-        params.append(body)
+def _spoiler_flag(body: str | None, has_spoilers: bool) -> int:
+    """O aviso só faz sentido para quem tem texto: sem texto, nunca fica marcado."""
+    return int(bool(has_spoilers) and body is not None)
+
+
+def update_review(review_id: int, *, rating=None, body=KEEP, has_spoilers=KEEP) -> None:
+    """Atualiza nota, texto e/ou aviso de spoilers. `updated_at` marca a edição (nulo até a primeira)."""
     with transaction():
+        current = fetch_one("SELECT body, has_spoilers FROM reviews WHERE id = ?", (review_id,))
+        new_body = current["body"] if body is KEEP else body
+        new_flag = bool(current["has_spoilers"]) if has_spoilers is KEEP else has_spoilers
+        sets, params = ["updated_at = ?", "body = ?", "has_spoilers = ?"], [
+            utcnow_iso(),
+            new_body,
+            _spoiler_flag(new_body, new_flag),
+        ]
+        if rating is not None:
+            sets.append("rating = ?")
+            params.append(rating)
         execute(f"UPDATE reviews SET {', '.join(sets)} WHERE id = ?", (*params, review_id))
 
 

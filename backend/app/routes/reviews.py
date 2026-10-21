@@ -1,4 +1,4 @@
-"""Reviews: criar, editar, excluir e curtir. A nota (0 a 10, passos de 0,5) é obrigatória; o texto, não."""
+"""Reviews: criar, editar, excluir e curtir. A nota (0 a 10, passos de 0,5) é obrigatória; o texto e o aviso de spoilers, não."""
 from __future__ import annotations
 
 from flask import Blueprint, jsonify
@@ -9,8 +9,9 @@ from ..security import rate_limit
 from ..serializers import review_from_row
 from ..services import games as games_service
 from ..services import reviews as reviews_service
+from ..services.reviews import KEEP
 from ..utils.pagination import page_args, page_envelope
-from ..utils.validation import UNSET, FieldErrors, json_body, read_rating, read_text
+from ..utils.validation import UNSET, FieldErrors, json_body, read_bool, read_rating, read_text
 
 bp = Blueprint("reviews", __name__, url_prefix="/api")
 
@@ -54,10 +55,17 @@ def create_review(rawg_id: int):
     errors = FieldErrors()
     rating = read_rating(data, errors, required=True)
     body = read_text(data, "body", "A review", errors, max_len=REVIEW_MAX_LENGTH, multiline=True)
+    spoilers = read_bool(data, "has_spoilers", "O aviso de spoilers", errors)
     errors.raise_if_any()
     user = current_user()
     game = games_service.ensure_game(rawg_id)  # metadados vêm da RAWG, nunca do cliente
-    review_id = reviews_service.create_review(user["id"], game["id"], rating, None if body is UNSET else body)
+    review_id = reviews_service.create_review(
+        user["id"],
+        game["id"],
+        rating,
+        None if body is UNSET else body,
+        False if spoilers is UNSET else spoilers,
+    )
     row = reviews_service.get_review(review_id, user["id"])
     response = jsonify({"review": review_from_row(row)})
     response.status_code = 201
@@ -72,14 +80,16 @@ def update_review(review_id: int):
     errors = FieldErrors()
     rating = read_rating(data, errors)
     body = read_text(data, "body", "A review", errors, max_len=REVIEW_MAX_LENGTH, multiline=True)
-    if rating is UNSET and body is UNSET and not errors:
-        errors.add("rating", "Envie a nota ou o texto para atualizar a review.")
+    spoilers = read_bool(data, "has_spoilers", "O aviso de spoilers", errors)
+    if rating is UNSET and body is UNSET and spoilers is UNSET and not errors:
+        errors.add("rating", "Envie a nota, o texto ou o aviso de spoilers para atualizar a review.")
     errors.raise_if_any()
     _require_author(review_id)
     reviews_service.update_review(
         review_id,
         rating=None if rating is UNSET else rating,
-        body="__keep__" if body is UNSET else body,  # None limpa o texto e mantém só a nota
+        body=KEEP if body is UNSET else body,  # None limpa o texto e mantém só a nota
+        has_spoilers=KEEP if spoilers is UNSET else spoilers,
     )
     return jsonify({"review": review_from_row(reviews_service.get_review(review_id, current_user()["id"]))})
 

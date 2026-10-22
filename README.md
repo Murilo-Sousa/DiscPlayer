@@ -34,11 +34,11 @@ Os dados dos jogos (nome, capa, gêneros, plataformas, datas, nota agregada) vê
 - **Início** com a atividade real da comunidade (últimos registros, reviews, jogos mais bem avaliados). Para quem está logado, abas "Comunidade" e "Quem eu sigo" e a seção "Jogando agora".
 - **Catálogo** com busca por nome, filtros de gênero, plataforma e ano, ordenação e paginação. Os filtros ficam na URL, então dá para compartilhar e recarregar.
 - **Página do jogo** com ficha técnica da RAWG e, separado e rotulado, o **resumo da comunidade DiscPlayer** (média e distribuição das notas dadas aqui). A nota agregada da RAWG aparece em outro bloco, com a origem indicada: as duas nunca se misturam.
-- **Contas**: cadastro, login, logout, sessão persistente por cookie, edição de perfil (nome de exibição, bio e foto por endereço https).
-- **Diário pessoal** com cinco status — *Quero jogar*, *Jogando*, *Zerado*, *Abandonado*, *Pausado* —, datas de início e término, favoritos e histórico de mudanças.
-- **Reviews e notas** de 0 a 10 em passos de 0,5, com texto opcional. Só a pessoa autora edita ou apaga; qualquer pessoa logada pode curtir (uma vez por review).
+- **Contas**: cadastro, login, logout, sessão persistente por cookie, edição de perfil (nome de exibição, bio e **foto enviada como imagem**, que o servidor valida, recorta e reduz) e **exclusão da conta** com confirmação por senha.
+- **Diário pessoal** com cinco status — *Quero jogar*, *Jogando*, *Zerado*, *Abandonado*, *Pausado* —, datas de início e término, favoritos e histórico de mudanças. **Jogar de novo**: a jogada atual vai para o histórico do jogo e outra começa, sem perder a anterior.
+- **Reviews e notas** de 0 a 10 em passos de 0,5, com texto opcional. Só a pessoa autora edita ou apaga; qualquer pessoa logada pode curtir (uma vez por review). Quem escreve pode marcar **spoilers**: o texto fica escondido atrás de um aviso e o trecho nunca aparece no feed nem na busca.
 - **Listas** personalizadas, públicas ou privadas, com reordenação, descrição e capa composta pelos primeiros jogos.
-- **Perfis públicos** com estatísticas calculadas dos registros reais (jogos por status, nota média, distribuição das notas, jogos zerados em cada mês do ano), diário, reviews, listas, atividade, seguidores e quem a pessoa segue.
+- **Perfis públicos** com estatísticas calculadas dos registros reais (jogos por status, nota média, distribuição das notas, zeradas em cada mês do ano, contando as jogadas anteriores), diário, reviews, listas, atividade, seguidores e quem a pessoa segue.
 - **Social**: seguir e deixar de seguir (sem seguir a si mesmo), curtir reviews, feed de quem você segue.
 - **Busca global** no cabeçalho (com debounce e navegação por teclado) e página de resultados: jogos, jogadores, listas e reviews.
 - **Interface responsiva e acessível**: navegação por teclado, foco gerenciado entre páginas, rótulos ARIA, tabelas alternativas para gráficos, respeito a `prefers-reduced-motion`.
@@ -69,7 +69,7 @@ DiscPlayer/
 │   │   ├── routes/              # blueprints: auth, games, library, reviews, lists, users, feed, search, health, spa
 │   │   ├── services/            # regras de negócio e SQL; rawg.py é o cliente da RAWG (com cache)
 │   │   └── utils/               # validação, cache TTL, escape de LIKE
-│   ├── migrations/0001_initial.sql
+│   ├── migrations/              # 0001_initial.sql, 0002_jogadas_spoilers_foto_conta.sql
 │   ├── tests/                   # pytest (RAWG simulada)
 │   ├── wsgi.py
 │   ├── requirements.txt
@@ -252,7 +252,7 @@ source .venv/bin/activate        # Windows: .venv\Scripts\Activate.ps1
 pytest
 ```
 
-Os testes usam um banco temporário por teste e **uma RAWG simulada** (`tests/fake_rawg.py`): não gastam cota da API, não precisam de internet nem de chave. Cobrem autenticação e sessão, CSRF, diário, reviews, listas, social, busca, o cliente da RAWG (cache, falhas, dados incompletos), integridade do banco e cabeçalhos de segurança.
+Os testes usam um banco temporário por teste e **uma RAWG simulada** (`tests/fake_rawg.py`): não gastam cota da API, não precisam de internet nem de chave. Cobrem autenticação e sessão, CSRF, diário, jogar de novo, reviews e spoilers, listas, social, busca, envio e reprocessamento de fotos (arquivos falsos, bombas de descompressão, metadados), exclusão de conta (remoção completa e cookies de contas apagadas), o cliente da RAWG (cache, falhas, dados incompletos), integridade e migração do banco e cabeçalhos de segurança.
 
 ### Front-end
 
@@ -328,20 +328,22 @@ Antes de abrir o site ao público, leia os [Termos da RAWG](https://rawg.io/apid
 
 ## Banco de dados
 
-SQLite com `PRAGMA foreign_keys=ON`, modo WAL e `busy_timeout`. As migrações ficam em `backend/migrations/NNNN_nome.sql` e são aplicadas em ordem, cada uma numa transação, registradas na tabela `schema_migrations`. Para evoluir o esquema, crie `0002_algo.sql`; nunca edite uma migração já aplicada.
+SQLite com `PRAGMA foreign_keys=ON`, modo WAL e `busy_timeout`. As migrações ficam em `backend/migrations/NNNN_nome.sql` e são aplicadas em ordem, cada uma numa transação, registradas na tabela `schema_migrations`. Para evoluir o esquema, crie `0003_algo.sql`; nunca edite uma migração já aplicada. A `0002` não perde dados de quem já usava o app, com uma exceção deliberada: **fotos de perfil que eram links deixam de existir** (agora a foto é um arquivo enviado), e cada pessoa volta às iniciais até enviar a sua.
 
 | Tabela | Conteúdo |
 | --- | --- |
-| `users` | Contas. `username` e `email` únicos (sem diferenciar maiúsculas), senha só como hash |
+| `users` | Contas. `username` e `email` únicos (sem diferenciar maiúsculas), senha só como hash; `session_key` é uma chave por conta, copiada para o cookie de sessão (veja Segurança) |
+| `user_avatars` | A foto de perfil já reprocessada (WebP quadrado, no máximo 256 KB, em geral uns 15 KB), guardada no próprio SQLite. `users.avatar_url` aponta para ela |
 | `games` | Cópia local mínima de cada jogo usado pela comunidade (id da RAWG, nome, capa...), para que o diário continue funcionando se a RAWG falhar |
-| `library_entries` | Diário: um registro por pessoa e jogo, com status, datas e favorito |
-| `reviews` | A nota e o texto. **A nota mora só aqui**: o diário não guarda nota própria, então nunca há duas notas diferentes para o mesmo jogo |
+| `library_entries` | Diário: um registro por pessoa e jogo (a jogada **atual**), com status, datas e favorito |
+| `playthroughs` | Jogadas **anteriores** do mesmo jogo (status e datas de cada uma). "Jogar de novo" copia a jogada atual para cá e recomeça a entrada |
+| `reviews` | A nota, o texto e o aviso de spoilers (`has_spoilers`). **A nota mora só aqui**: o diário não guarda nota própria, então nunca há duas notas diferentes para o mesmo jogo, mesmo jogando várias vezes |
 | `review_likes` | Curtidas (única por pessoa e review) |
 | `lists`, `list_games` | Listas e seus jogos, com posição |
 | `follows` | Quem segue quem (sem auto-seguir, sem duplicata) |
-| `activities` | Histórico do diário (mudanças de status, reviews, listas) que alimenta perfis e feeds |
+| `activities` | Histórico do diário (mudanças de status, recomeços, reviews, listas) que alimenta perfis e feeds |
 
-Chaves estrangeiras com `ON DELETE CASCADE` onde faz sentido e índices nas colunas de filtro e ordenação. Apagar uma entrada do diário **não** apaga a review do jogo.
+Chaves estrangeiras com `ON DELETE CASCADE` onde faz sentido e índices nas colunas de filtro e ordenação. Apagar uma entrada do diário **não** apaga a review do jogo (mas apaga as jogadas anteriores dela). Excluir uma conta apaga tudo o que aponta para ela, em cascata, numa única transação.
 
 ## API
 
@@ -349,10 +351,10 @@ Respostas em JSON. Erros sempre no formato `{"error": {"code": "...", "message":
 
 | Grupo | Rotas |
 | --- | --- |
-| Conta | `GET /api/auth/me`, `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/logout`, `PATCH /api/auth/me` (nome, bio, foto) |
+| Conta | `GET /api/auth/me`, `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/logout`, `PATCH /api/auth/me` (nome e bio), `POST`/`DELETE /api/auth/me/avatar` (foto: envio `multipart/form-data` com o campo `file`, ou remoção), `DELETE /api/auth/me` (exclui a conta; exige a senha no corpo), `GET /api/avatars/<código>` (entrega a foto) |
 | Jogos (RAWG) | `GET /api/games` (busca, filtros, ordem, página), `/api/games/featured`, `/api/games/top-rated`, `/api/games/<id>`, `/api/genres`, `/api/platforms` |
-| Reviews | `GET /api/reviews` (recentes), `GET /api/games/<id>/reviews`, `POST /api/games/<id>/reviews`, `GET`/`PATCH`/`DELETE /api/reviews/<id>`, `PUT`/`DELETE /api/reviews/<id>/like` |
-| Diário | `GET /api/library`, `PUT`/`DELETE /api/library/<id_do_jogo>` (o `PUT` aceita `today`, a data local de quem usa o site, usada ao preencher início e término automaticamente) |
+| Reviews | `GET /api/reviews` (recentes), `GET /api/games/<id>/reviews`, `POST /api/games/<id>/reviews` (aceita `has_spoilers`), `GET`/`PATCH`/`DELETE /api/reviews/<id>`, `PUT`/`DELETE /api/reviews/<id>/like` |
+| Diário | `GET /api/library`, `PUT`/`DELETE /api/library/<id_do_jogo>` (o `PUT` aceita `today`, a data local de quem usa o site, usada ao preencher início e término automaticamente), `POST /api/library/<id_do_jogo>/replay` (jogar de novo), `DELETE /api/library/<id_do_jogo>/playthroughs/<id>` (exclui uma jogada anterior) |
 | Listas | `GET`/`POST /api/lists`, `GET /api/me/lists`, `GET`/`PATCH`/`DELETE /api/lists/<id>`, `POST /api/lists/<id>/games`, `DELETE /api/lists/<id>/games/<jogo>`, `PUT /api/lists/<id>/order` |
 | Pessoas | `GET /api/users/<usuario>` e `/library`, `/reviews`, `/lists`, `/activity`, `/followers`, `/following`; `PUT`/`DELETE /api/users/<usuario>/follow` |
 | Feed e busca | `GET /api/activity`, `GET /api/feed`, `GET /api/search?q=` |
@@ -365,10 +367,13 @@ Respostas em JSON. Erros sempre no formato `{"error": {"code": "...", "message":
 - **CSRF**: token por sessão enviado em `X-CSRF-Token` e comparado em tempo constante; além disso, o cabeçalho `Origin` é validado.
 - **CORS** só para origens listadas; sem `*`.
 - **SQL injection**: todas as consultas usam parâmetros (`?`). Os curingas de `LIKE` são escapados.
-- **XSS**: o React escapa texto por padrão; nunca usamos `dangerouslySetInnerHTML`. A página é servida com Content-Security-Policy restritiva (`script-src 'self'`), `X-Content-Type-Options`, `Referrer-Policy`, `frame-ancestors 'none'`.
+- **XSS**: o React escapa texto por padrão; nunca usamos `dangerouslySetInnerHTML`. A página é servida com Content-Security-Policy restritiva (`script-src 'self'`; imagens só do próprio site, da RAWG em https e `blob:`, que é a prévia da foto escolhida, criada pelo próprio navegador), `X-Content-Type-Options`, `Referrer-Policy`, `frame-ancestors 'none'`.
 - **Autorização**: cada rota de escrita confere se o recurso é da pessoa logada. Listas privadas respondem como "não encontrada" para outras pessoas.
-- **Validação** sempre no servidor (e repetida no navegador só para dar feedback rápido): tamanho de textos, faixa e passo da nota, status permitidos, nomes de usuário, URLs de avatar (apenas https).
-- **Limite de requisições** por IP em login, cadastro, busca, catálogo e escritas.
+- **Validação** sempre no servidor (e repetida no navegador só para dar feedback rápido): tamanho de textos, faixa e passo da nota, status permitidos, nomes de usuário e o envio da foto (abaixo).
+- **Foto enviada**: o arquivo nunca é guardado nem servido como veio. O servidor identifica o formato pelo **conteúdo** (JPG, PNG ou WebP; o nome e o tipo declarados pelo navegador são ignorados), recusa imagens com mais de 25 megapixels antes de decodificá-las (bombas de descompressão) e com menos de 64 px, aplica a rotação do EXIF, recorta um quadrado central e **grava uma imagem nova em WebP**: localização, modelo da câmera e qualquer dado escondido no arquivo original não sobrevivem. O limite de 5 MB vale só nessa rota; todas as outras continuam com 64 KB. A foto é entregue com um código aleatório que muda a cada troca (cache eterno seguro), `nosniff` e uma política que impede qualquer execução se alguém abrir o endereço direto.
+- **Exclusão de conta**: exige a senha de novo (um cookie roubado não basta), tem limite de tentativas e apaga tudo numa transação. Como o SQLite reaproveita o maior id depois de uma exclusão, cada conta tem uma `session_key` aleatória copiada para o cookie: o cookie de uma conta excluída **nunca** passa a valer para a próxima conta criada com o mesmo id (há teste para isso).
+- **Spoilers**: texto de review marcada com spoilers não entra em trechos de feed nem na busca (a busca nem o considera), e o navegador só coloca o texto na página depois do clique.
+- **Limite de requisições** por IP em login, cadastro, busca, catálogo, escritas, envio de foto e exclusão de conta.
 - **Chave da RAWG** só existe no servidor. O navegador nunca a vê, e erros da RAWG são traduzidos antes de chegar à tela (a exceção de rede não é registrada em log porque costuma conter a URL com a chave).
 - **Segredos fora do Git**: `.env`, `instance/` e bancos estão no `.gitignore`.
 
@@ -384,12 +389,14 @@ Respostas em JSON. Erros sempre no formato `{"error": {"code": "...", "message":
 
 - **Flask com `sqlite3` e SQL puro, sem ORM.** As consultas são explícitas e parametrizadas, fáceis de auditar. As migrações são arquivos `.sql` numerados, aplicados em transação e registrados em `schema_migrations`; as escritas usam `BEGIN IMMEDIATE` para não disputar o banco.
 - **Sessão em cookie assinado e `HttpOnly` + CSRF por token sincronizado, em vez de JWT no `localStorage`.** Nada sensível fica ao alcance do JavaScript da página. O token CSRF vem de `GET /api/auth/me`, é comparado em tempo constante e o cabeçalho `Origin` também é conferido.
+- **"Jogar de novo" arquiva, não duplica.** A entrada do diário continua sendo a jogada atual (uma por pessoa e jogo, então status, favoritos, listas e telas existentes seguem iguais); recomeçar copia status e datas para `playthroughs` e reinicia a entrada em "Jogando". Só vale para jogos zerados, abandonados ou pausados, e a estatística "zeradas no ano" soma as jogadas atuais e as anteriores, então recomeçar um jogo não apaga a conclusão que já aconteceu. A nota continua única por jogo.
+- **Foto no SQLite, não em arquivos.** A imagem reprocessada (uns 15 KB) fica numa tabela própria: não há pasta de uploads para configurar, perder ou deixar sem backup, e um backup do banco leva as fotos junto. Em hospedagens de disco efêmero isso também funciona, porque o banco é o único estado.
 - **A nota mora só em `reviews.rating`.** O diário não guarda nota, então nunca existem duas notas divergentes para o mesmo jogo.
 - **Cópia local mínima dos jogos, criada sob demanda.** Diário, listas e perfis continuam funcionando se a RAWG cair. A RAWG só é acessada pelo back-end (a chave nunca chega ao navegador), com cache com validade e cópia expirada servida em caso de falha.
 - **Datas de calendário no fuso de quem joga.** O servidor trabalha em UTC, mas quem marca "Jogando" às 22h no Brasil já está no "amanhã" de UTC. O navegador envia o seu "hoje" (`today`) e o servidor só o aceita se estiver a no máximo um dia de UTC, o que cobre todos os fusos e impede forjar datas distantes.
 - **Roteador próprio sobre a History API**, em vez de uma biblioteca: o app tem poucas rotas e o roteador cobre o que ele precisa (parâmetros de rota e de busca, links ativos, redirecionamento) sem dependência extra, e o foco e o título ao trocar de página ficam no layout.
 - **CSS próprio com variáveis (tokens) e fontes hospedadas junto do site.** Sem framework de UI e sem scripts, estilos ou fontes de terceiros (só as capas vêm da CDN da RAWG): a política de segurança do servidor (`script-src 'self'`) vale para a página inteira.
-- **Testes que não dependem de rede.** O back-end usa uma RAWG simulada, e o teste de navegador sobe o Flask real com um servidor RAWG fictício. Os testes de mutação feitos durante o desenvolvimento (quebrar o CSRF, a privacidade de listas, o passo da nota, a regra do avatar e a data local de propósito) confirmaram que a suíte pega essas regressões.
+- **Testes que não dependem de rede.** O back-end usa uma RAWG simulada, e o teste de navegador sobe o Flask real com um servidor RAWG fictício. Os testes de mutação feitos durante o desenvolvimento (quebrar o CSRF, a privacidade de listas, o passo da nota, a data local, a validação das fotos, o vazamento de spoilers, a regra de jogar de novo e a chave de sessão de propósito) confirmaram que a suíte pega essas regressões.
 
 ## Solução de problemas
 
@@ -417,6 +424,8 @@ Respostas em JSON. Erros sempre no formato `{"error": {"code": "...", "message":
 
 **Em produção, o login "não pega"** — confira se o site é acessado por HTTPS (cookie `Secure`), se `TRUSTED_PROXY_COUNT` corresponde ao número de proxies e se o proxy repassa os cabeçalhos `X-Forwarded-Proto` e `X-Forwarded-Host`.
 
+**Enviar a foto responde "falta instalar o Pillow"** (ou `No module named 'PIL'`) — com o ambiente virtual ativo, rode `pip install -r requirements.txt` dentro de `backend/` e reinicie o back-end.
+
 **`SECRET_KEY` ... pelo menos 32 caracteres** — em `APP_ENV=production` a chave é obrigatória. Gere uma com `python -c "import secrets; print(secrets.token_hex(32))"`.
 
 ## Limitações conhecidas
@@ -426,21 +435,23 @@ Estas são limitações reais do projeto como entregue, não promessas futuras.
 - **Verificação parcial.** O código foi escrito num ambiente sem acesso à internet aberta. Por isso, **nunca foi testado contra a RAWG de verdade** (apenas contra simulações fiéis ao formato documentado: confira os formatos de campos como `results`, `rating`, `released` com sua chave antes de publicar) e o **waitress** não foi iniciado. O que já foi confirmado fora desse ambiente: o CI do GitHub executa `npm ci`, `npm test`, o build de produção do Vite e os testes de navegador sobre esse build (Ubuntu, Node 22), e o back-end passa em Python 3.11 e 3.13.
 - **Cache da RAWG e limite de requisições ficam na memória do processo.** Reiniciar o app os esvazia, e **mais de um processo** (vários workers) teria contagens e caches separados. Para escalar além de um processo, troque por Redis ou similar.
 - **SQLite** atende bem uma instância única; não é pensado para várias máquinas escrevendo no mesmo arquivo.
-- **Avatar** é uma URL https informada pela pessoa (sem upload de imagem). O navegador a carrega diretamente.
-- **Sem troca nem recuperação de senha, sem verificação de e-mail e sem notificações**: o projeto não envia e-mails e a tela de configurações só edita nome, bio e foto.
+- **Fotos de perfil** ficam no próprio banco (pequenas, mas cada troca é uma gravação). O recorte é sempre um quadrado central: a pessoa não escolhe o enquadramento. O Pillow precisa estar instalado (vem no `requirements.txt`); sem ele, o envio responde que está indisponível e o resto do site funciona.
+- **Sem troca nem recuperação de senha, sem verificação de e-mail e sem notificações**: o projeto não envia e-mails e a tela de configurações só edita nome, bio e foto, além de excluir a conta.
 - **Sem moderação** (denunciar, bloquear, ocultar reviews). Antes de abrir o cadastro ao público, planeje isso.
-- **Sem exclusão de conta** pela interface.
+- **A exclusão de conta é imediata e definitiva**: não há prazo para desistir, nem exportação dos dados antes, nem e-mail de confirmação. Cópias de segurança do banco feitas antes continuam com os dados.
+- **Jogadas anteriores só podem ser excluídas**, não editadas, e não têm plataforma nem horas jogadas; a jogada atual continua sendo editada nas datas do diário.
+- **O aviso de spoilers é uma marcação de quem escreve**: o servidor devolve o texto na resposta da API (quem quiser lê-lo por lá pode), e só o feed e a busca o omitem.
 - **Capas e imagens** são carregadas da CDN da RAWG, que impõe a própria política de uso; o site não as copia nem as redimensiona.
 - **Sem internacionalização**: a interface está só em português do Brasil.
 - **Sem testes automatizados de acessibilidade completos**: a auditoria feita foi manual (teclado, leitor de tela em estrutura, contraste) e por inspeção do DOM. Faça uma revisão com tecnologias assistivas reais antes de publicar.
 
 ## Próximos passos
 
-Ideias priorizadas para as próximas versões (nenhuma está implementada):
+Ideias priorizadas para as próximas versões (nenhuma está implementada; as jogadas, o aviso de spoilers, a foto enviada e a exclusão de conta já fazem parte da versão atual):
 
-1. **Conta completa:** troca e recuperação de senha por e-mail, verificação de e-mail, exclusão de conta e exportação dos próprios dados.
+1. **Conta completa:** troca e recuperação de senha por e-mail, verificação de e-mail e exportação dos próprios dados antes de excluir a conta.
 2. **Moderação:** denunciar e ocultar reviews, bloquear usuários.
-3. **Diário mais fiel ao hábito de jogar:** várias jogadas do mesmo jogo (com data, plataforma e horas) e aviso de spoiler nas reviews.
+3. **Diário mais fiel ao hábito de jogar:** editar jogadas anteriores, plataforma e horas por jogada e uma review por jogada.
 4. **Compartilhamento:** prévia (título e capa) ao colar links de jogos, perfis e listas, e uma retrospectiva do ano para compartilhar.
 5. **Comunidade:** notificações, comentários em reviews e listas, importação da biblioteca da Steam.
 6. **Escala:** cache e limite de requisições compartilhados entre processos, busca de texto nas reviews e, se necessário, outro banco no lugar do SQLite.

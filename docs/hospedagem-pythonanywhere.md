@@ -14,7 +14,7 @@ Este guia leva o projeto do seu computador até um endereço público do tipo `h
 | --- | --- |
 | Endereço | `seunome.pythonanywhere.com` (com HTTPS) |
 | Aplicações web | 1, com 1 processo (worker) |
-| Disco | 512 MiB (o banco SQLite fica nele e **não se perde** entre atualizações) |
+| Disco | 512 MiB (o banco SQLite fica nele e **não se perde** entre atualizações). As fotos de perfil também ficam no banco (uns 15 KB cada, 256 KB no máximo), então não há pasta de uploads para configurar |
 | Validade | O web app **expira em 1 mês** se você não o estender: é preciso clicar em um botão no painel todo mês |
 | Suporte | Sem suporte direto para contas gratuitas (só fóruns e documentação) |
 | Acesso à internet de dentro do app | Só a sites de uma lista. `api.rawg.io` **está** na lista |
@@ -232,6 +232,8 @@ Se algo falhar, veja a seção **Problemas comuns** abaixo.
 5. Aba **Web** > **Reload**.
 
 O banco (`backend/instance/discplayer.db`) e o `.env` não são afetados pelo `git pull`, porque não estão no GitHub.
+
+Depois de atualizar, **reinicie o app** na aba **Web** (botão **Reload**): o back-end aplica sozinho as migrações novas na inicialização. A atualização que trouxe jogar de novo, spoilers, foto enviada e exclusão de conta acrescenta o **Pillow** ao `requirements.txt` (a PythonAnywhere já o tem instalado, mas rode o `pip install -r requirements.txt` do passo 4 de qualquer forma) e faz quem estava logado entrar de novo uma vez, por causa da nova chave de sessão.
 
 ## Renovar todo mês
 

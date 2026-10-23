@@ -7,7 +7,7 @@ não existem. O formato das respostas segue o da API real (campos `results`, `ne
 percorre os mesmos caminhos.
 
 Uso nos testes:   monkeypatch.setattr(rawg, "fetch_json", fake_rawg.fetch_json)
-Uso por HTTP:     python -m tests.fake_rawg_server   (veja o README)
+Uso por HTTP:     python -m tests.fake_rawg_server   (veja docs/desenvolvimento.md)
 """
 from __future__ import annotations
 

@@ -89,8 +89,9 @@ def test_ana_pode_editar_e_tirar_o_aviso(stack, client):
     expect(page.get_by_label("Esta review contém spoilers")).to_be_checked()
     page.get_by_label("Esta review contém spoilers").uncheck()
     page.get_by_role("button", name="Salvar alterações").click()
-    page.wait_for_selector(".review-own")
-    assert "Contém spoilers" not in page.locator(".review-own").inner_text()
+    # Espera o resultado (o cartão antigo ainda está na tela até o servidor responder), sem checar cedo demais.
+    expect(page.locator(".review-own")).not_to_contain_text("Contém spoilers")
+    expect(page.locator(".review-own")).to_contain_text(SEGREDO)  # o texto continua lá, agora sem aviso
     assert client.errors == []
 
 

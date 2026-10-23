@@ -89,4 +89,12 @@ jobs:
         run: playwright install --with-deps chromium
       - name: Testes de navegador
         working-directory: e2e
-        run: pytest
+        run: pytest -rf 2>&1 | tee pytest-output.txt
+      - name: Mostrar as falhas nas anotações
+        if: failure()
+        working-directory: e2e
+        run: |
+          # Facilita ler o motivo da falha sem baixar o log inteiro.
+          grep -E '^(FAILED|ERROR) |^E  ' pytest-output.txt | head -25 | cut -c1-400 | while IFS= read -r line; do
+            echo "::error title=Teste de navegador::${line}"
+          done

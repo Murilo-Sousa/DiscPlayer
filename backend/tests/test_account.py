@@ -228,6 +228,22 @@ def test_a_forged_or_missing_session_key_is_not_accepted(ana, app):
     assert ana.get("/api/auth/me").get_json()["user"] is None  # o cookie guarda a chave antiga
 
 
+@pytest.mark.parametrize("empty", ["NULL", "''"])
+def test_login_creates_a_missing_session_key_instead_of_logging_straight_out(ana, app, empty):
+    connection = raw(app)
+    connection.execute(f"UPDATE users SET session_key = {empty} WHERE id = ?", (ana.user["id"],))
+    connection.close()
+    phone = Api(app)
+    assert phone.login("ana").status_code == 200
+    assert phone.get("/api/auth/me").get_json()["user"]["username"] == "ana"
+    connection = raw(app)
+    try:
+        stored = connection.execute("SELECT session_key FROM users WHERE id = ?", (ana.user["id"],)).fetchone()[0]
+    finally:
+        connection.close()
+    assert stored and len(stored) == 32
+
+
 def test_logging_in_again_still_works_on_several_devices(ana, app):
     phone = Api(app)
     assert phone.login("ana").status_code == 200

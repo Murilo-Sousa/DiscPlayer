@@ -34,6 +34,8 @@ OUTPUT_SIDE = 256
 MAX_STORED_BYTES = 256 * 1024  # a mesma conta do CHECK da tabela
 _QUALITIES = (85, 70, 50)
 TOKEN_BYTES = 16
+_TOO_BIG = f"A imagem é grande demais. Use uma foto de até {MAX_PIXELS // 1_000_000} megapixels."
+_HIGH_BIT_GRAY = ("I", "I;16", "I;16L", "I;16B", "I;16N")
 
 
 def _invalid(message: str, status: int = 422) -> ApiError:
@@ -61,7 +63,7 @@ def process_image(raw: bytes) -> bytes:
             image = Image.open(io.BytesIO(raw), formats=ALLOWED_FORMATS)
             width, height = image.size  # só lê o cabeçalho
             if width * height > MAX_PIXELS:
-                raise _invalid("A imagem é grande demais. Use uma foto de até 25 megapixels.")
+                raise _invalid(_TOO_BIG)
             if min(width, height) < MIN_SIDE:
                 raise _invalid(f"A imagem é pequena demais. Use uma foto de pelo menos {MIN_SIDE} x {MIN_SIDE} pixels.")
             if image.format == "JPEG":
@@ -69,13 +71,19 @@ def process_image(raw: bytes) -> bytes:
                 image.draft("RGB", (OUTPUT_SIDE * 2, OUTPUT_SIDE * 2))
             image.load()  # decodifica tudo agora (arquivo truncado ou corrompido falha aqui)
             has_alpha = "A" in image.getbands() or "transparency" in image.info
-            image = ImageOps.exif_transpose(image)
+            try:
+                image = ImageOps.exif_transpose(image)
+            except Exception:  # noqa: BLE001 - EXIF corrompido (TypeError, struct.error...): segue sem girar
+                pass
+            if image.mode in _HIGH_BIT_GRAY:
+                # Cinza de 16 bits: converter direto cortaria tudo acima de 255 (a foto ficaria branca).
+                image = image.point(lambda value: value * (1 / 256))
             image = image.convert("RGBA" if has_alpha else "RGB")
     except ApiError:
         raise
-    except (Image.DecompressionBombError, Image.DecompressionBombWarning):
-        raise _invalid("A imagem é grande demais. Use uma foto de até 25 megapixels.") from None
-    except (Image.UnidentifiedImageError, OSError, SyntaxError, ValueError, EOFError):
+    except (MemoryError, Image.DecompressionBombError, Image.DecompressionBombWarning):
+        raise _invalid(_TOO_BIG) from None
+    except Exception:  # noqa: BLE001 - o Pillow lança tipos variados diante de arquivos corrompidos
         raise _invalid("Não foi possível ler este arquivo. Envie uma imagem JPG, PNG ou WebP.") from None
 
     side = min(image.size)

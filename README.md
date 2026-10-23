@@ -328,7 +328,7 @@ Antes de abrir o site ao público, leia os [Termos da RAWG](https://rawg.io/apid
 
 ## Banco de dados
 
-SQLite com `PRAGMA foreign_keys=ON`, modo WAL e `busy_timeout`. As migrações ficam em `backend/migrations/NNNN_nome.sql` e são aplicadas em ordem, cada uma numa transação, registradas na tabela `schema_migrations`. Para evoluir o esquema, crie `0003_algo.sql`; nunca edite uma migração já aplicada. A `0002` não perde dados de quem já usava o app, com uma exceção deliberada: **fotos de perfil que eram links deixam de existir** (agora a foto é um arquivo enviado), e cada pessoa volta às iniciais até enviar a sua.
+SQLite com `PRAGMA foreign_keys=ON`, modo WAL e `busy_timeout`. As migrações ficam em `backend/migrations/NNNN_nome.sql` e são aplicadas em ordem, cada uma numa transação, registradas na tabela `schema_migrations`. Para evoluir o esquema, crie `0003_algo.sql`; nunca edite uma migração já aplicada. A `0002` não perde dados de quem já usava o app, com uma exceção deliberada: **fotos de perfil que eram links deixam de existir** (agora a foto é um arquivo enviado), e cada pessoa volta às iniciais até enviar a sua. A mesma migração cria a `session_key` de cada conta, e por isso **quem estava logado antes da atualização precisa entrar de novo uma vez** (os cookies antigos não têm a chave).
 
 | Tabela | Conteúdo |
 | --- | --- |
@@ -435,6 +435,7 @@ Estas são limitações reais do projeto como entregue, não promessas futuras.
 - **Verificação parcial.** O código foi escrito num ambiente sem acesso à internet aberta. Por isso, **nunca foi testado contra a RAWG de verdade** (apenas contra simulações fiéis ao formato documentado: confira os formatos de campos como `results`, `rating`, `released` com sua chave antes de publicar) e o **waitress** não foi iniciado. O que já foi confirmado fora desse ambiente: o CI do GitHub executa `npm ci`, `npm test`, o build de produção do Vite e os testes de navegador sobre esse build (Ubuntu, Node 22), e o back-end passa em Python 3.11 e 3.13.
 - **Cache da RAWG e limite de requisições ficam na memória do processo.** Reiniciar o app os esvazia, e **mais de um processo** (vários workers) teria contagens e caches separados. Para escalar além de um processo, troque por Redis ou similar.
 - **SQLite** atende bem uma instância única; não é pensado para várias máquinas escrevendo no mesmo arquivo.
+- **Enviar uma foto grande usa bastante memória por alguns instantes.** Um PNG de 25 megapixels pesa poucos KB, mas ocupa uns 170 MB ao ser decodificado. O limite de requisições por IP reduz o risco; numa hospedagem com pouca memória, diminua `MAX_PIXELS` em `backend/app/services/avatars.py` (fotos de celular de 12 megapixels cabem com folga em 16 milhões).
 - **Fotos de perfil** ficam no próprio banco (pequenas, mas cada troca é uma gravação). O recorte é sempre um quadrado central: a pessoa não escolhe o enquadramento. O Pillow precisa estar instalado (vem no `requirements.txt`); sem ele, o envio responde que está indisponível e o resto do site funciona.
 - **Sem troca nem recuperação de senha, sem verificação de e-mail e sem notificações**: o projeto não envia e-mails e a tela de configurações só edita nome, bio e foto, além de excluir a conta.
 - **Sem moderação** (denunciar, bloquear, ocultar reviews). Antes de abrir o cadastro ao público, planeje isso.

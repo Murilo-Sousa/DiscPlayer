@@ -3,9 +3,10 @@ from __future__ import annotations
 
 import io
 import sys
+import warnings
 
 import pytest
-from PIL import Image
+from PIL import Image, ImageOps
 
 from app import create_app
 from app import db as database
@@ -99,6 +100,32 @@ def test_exif_orientation_is_applied(ana, api):
     assert image.size == (200, 200)
     assert images.close(image.getpixel((100, 10)), images.RED)
     assert images.close(image.getpixel((100, 190)), images.BLUE)
+
+
+@pytest.mark.parametrize("offset, value", [(11, 0), (13, 5), (56, 1)])
+def test_corrupted_exif_is_never_a_server_error(ana, api, offset, value):
+    raw = images.jpeg_with_corrupted_exif(offset, value)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        try:
+            probe = Image.open(io.BytesIO(raw))
+            probe.load()
+            ImageOps.exif_transpose(probe)
+        except Exception:  # é o defeito coberto aqui: o Pillow falha de um jeito inesperado
+            pass
+        else:
+            pytest.skip("Este Pillow lê o EXIF adulterado sem erro; nada a provar aqui.")
+    response = ana.upload(UPLOAD, raw)
+    assert response.status_code in (200, 422), response.get_data()[:200]
+    if response.status_code == 200:  # sem girar, mas a foto é aceita
+        assert webp(api.get(response.get_json()["user"]["avatar_url"]).data).size == (200, 200)
+
+
+def test_16_bit_grayscale_is_scaled_not_clipped_to_white(ana, api):
+    user = upload_ok(ana, images.gray16_ramp())
+    image = webp(api.get(user["avatar_url"]).data).convert("L")
+    left, middle, right = image.getpixel((4, 64)), image.getpixel((64, 64)), image.getpixel((123, 64))
+    assert left < 40 and 100 < middle < 160 and right > 215, (left, middle, right)
 
 
 def test_metadata_does_not_survive(ana, api):

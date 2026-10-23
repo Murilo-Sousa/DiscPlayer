@@ -12,11 +12,12 @@ conta exata que o emitiu.
 from __future__ import annotations
 
 import hmac
+import secrets
 from functools import wraps
 
 from flask import g, session
 
-from ..db import fetch_one
+from ..db import execute, fetch_one, transaction
 from ..errors import ApiError
 from ..security import csrf_token
 
@@ -66,13 +67,28 @@ def start_session(user_id: int) -> str:
 
     Devolve o novo token de CSRF, que o front-end deve usar daqui em diante.
     """
-    row = fetch_one("SELECT session_key FROM users WHERE id = ?", (user_id,))
+    session_key = _ensure_session_key(user_id)
     session.clear()
     session["user_id"] = user_id
-    session["user_key"] = row["session_key"]
+    session["user_key"] = session_key
     session.permanent = True
     g.pop("current_user", None)
     return csrf_token()
+
+
+def _ensure_session_key(user_id: int) -> str:
+    """Chave de sessão da conta. O cadastro e a migração 0002 sempre a preenchem; a criação aqui é só
+    uma rede de segurança para uma linha inserida por fora (sem ela, o login "funcionaria" e a requisição
+    seguinte já voltaria deslogada)."""
+    row = fetch_one("SELECT session_key FROM users WHERE id = ?", (user_id,))
+    if row is not None and not row["session_key"]:
+        with transaction():
+            execute(
+                "UPDATE users SET session_key = ? WHERE id = ? AND (session_key IS NULL OR session_key = '')",
+                (secrets.token_hex(16), user_id),
+            )
+        row = fetch_one("SELECT session_key FROM users WHERE id = ?", (user_id,))
+    return row["session_key"] if row is not None else ""
 
 
 def end_session() -> str:

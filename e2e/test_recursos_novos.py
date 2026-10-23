@@ -58,6 +58,7 @@ def test_review_com_spoiler_fica_escondida_ate_o_clique(stack, make_client):
     expect(cartao.locator(".review-body")).to_be_focused()  # o foco acompanha o texto revelado
     cartao.get_by_role("button", name="Esconder o texto de novo").click()
     expect(cartao.locator(".review-body")).to_have_count(0)
+    expect(cartao.get_by_role("button", name="Mostrar texto")).to_be_focused()  # o foco não se perde ao esconder
     assert SEGREDO not in page.content()
 
     # Perfil da Ana e atividade: aviso em vez do trecho.
@@ -285,3 +286,39 @@ def test_excluir_conta_pede_a_senha_e_apaga_tudo(stack, make_client):
     # Só os "falhou ao carregar" esperados (senha errada = 403, conta apagada = 404/401); nenhum erro de script.
     assert [e for e in ana.errors if not e.startswith("console.error: Failed to load resource")] == []
     assert bruno.errors == []
+
+
+def test_esc_fecha_a_janela_mas_nao_enquanto_a_exclusao_esta_em_andamento(stack, client):
+    register(client, "Ana Souza", "ana")
+    page = client.page
+    client.open("/configuracoes")
+    botao = page.get_by_role("button", name="Excluir minha conta…")
+
+    # Parada, o Esc fecha a janela e ela pode ser aberta de novo.
+    botao.click()
+    expect(page.locator("dialog[open]")).to_have_count(1)
+    page.keyboard.press("Escape")
+    expect(page.locator("dialog[open]")).to_have_count(0)
+    botao.click()
+    dialogo = page.locator("dialog[open]")
+    expect(dialogo).to_have_count(1)
+
+    # Com o pedido em andamento (seguramos a resposta), o Esc não pode deixar a tela num estado quebrado.
+    seguradas = []
+    page.route("**/api/auth/me", lambda rota: seguradas.append(rota) if rota.request.method == "DELETE" else rota.fallback())
+    dialogo.get_by_label("Digite a sua senha para confirmar").fill("senha-errada-999")
+    dialogo.get_by_role("button", name="Excluir definitivamente").click()
+    for _ in range(50):
+        if seguradas:
+            break
+        page.wait_for_timeout(100)
+    assert seguradas, "o pedido de exclusão não saiu"
+    page.keyboard.press("Escape")
+    page.wait_for_timeout(300)
+    seguradas[0].continue_()  # o servidor responde "senha incorreta"
+
+    expect(page.locator("dialog[open] .field-error")).to_contain_text("Senha incorreta")
+    page.get_by_role("button", name="Cancelar").click()
+    expect(page.locator("dialog[open]")).to_have_count(0)
+    botao.click()  # e a janela continua abrindo normalmente depois
+    expect(page.locator("dialog[open]")).to_have_count(1)

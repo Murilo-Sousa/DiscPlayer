@@ -18,10 +18,16 @@ export function ReviewCard({ review, showGame = false, showAuthor = true, canLik
   const edited = review.updated_at && review.updated_at !== review.created_at;
   const [revealed, setRevealed] = useState(false);
   const bodyRef = useRef(null);
+  const showRef = useRef(null);
+  const refocusShow = useRef(false);
   const spoiler = Boolean(review.has_spoilers) && body.length > 0;
   const hidden = spoiler && !revealed && !alwaysShow;
   useEffect(() => {
     if (revealed) bodyRef.current?.focus(); // o botão some ao revelar: o foco vai para o texto
+    else if (refocusShow.current) {
+      refocusShow.current = false;
+      showRef.current?.focus(); // e ao esconder de novo, volta para o botão "Mostrar texto"
+    }
   }, [revealed]);
   return (
     <article className={cx("review", className)}>
@@ -55,7 +61,7 @@ export function ReviewCard({ review, showGame = false, showAuthor = true, canLik
         {hidden ? (
           <div className="spoiler-warning">
             <p>Esta review conta partes da história.</p>
-            <button type="button" className="btn" aria-expanded="false" onClick={() => setRevealed(true)}>
+            <button type="button" className="btn" aria-expanded="false" ref={showRef} onClick={() => setRevealed(true)}>
               Mostrar texto
             </button>
           </div>
@@ -69,7 +75,14 @@ export function ReviewCard({ review, showGame = false, showAuthor = true, canLik
           )
         )}
         {spoiler && revealed && !alwaysShow && (
-          <button type="button" className="link-btn spoiler-hide" onClick={() => setRevealed(false)}>
+          <button
+            type="button"
+            className="link-btn spoiler-hide"
+            onClick={() => {
+              refocusShow.current = true;
+              setRevealed(false);
+            }}
+          >
             Esconder o texto de novo
           </button>
         )}

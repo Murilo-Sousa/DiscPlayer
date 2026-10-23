@@ -38,5 +38,30 @@ def jpeg_with_exif(width: int = 300, height: int = 300, *, orientation: int | No
     return encode(image, "JPEG", exif=exif.tobytes(), quality=90)
 
 
+def jpeg_with_corrupted_exif(offset: int, value: int) -> bytes:
+    """JPEG válido cujo EXIF (orientação + GPS) tem UM byte adulterado.
+
+    Alguns desses bytes fazem o `ImageOps.exif_transpose` do Pillow lançar TypeError, struct.error ou
+    AttributeError em vez de ValueError/OSError; foram achados por fuzzing. `offset` conta a partir do
+    cabeçalho TIFF do EXIF.
+    """
+    exif = Image.Exif()
+    exif[0x0112] = 6
+    exif[0x010F] = "Make"
+    gps = exif.get_ifd(0x8825)
+    gps[1] = "N"
+    gps[2] = (1.0, 2.0, 3.0)
+    data = bytearray(encode(two_halves(300, 200), "JPEG", exif=exif.tobytes(), quality=90))
+    data[data.index(b"Exif\x00\x00") + 6 + offset] = value
+    return bytes(data)
+
+
+def gray16_ramp(side: int = 128) -> bytes:
+    """PNG de 16 bits em tons de cinza: preto à esquerda, branco à direita."""
+    image = Image.new("I;16", (side, side))
+    image.putdata([round(x * 65535 / (side - 1)) for _ in range(side) for x in range(side)])
+    return encode(image, "PNG")
+
+
 def close(pixel, target, tolerance: int = 60) -> bool:
     return all(abs(a - b) <= tolerance for a, b in zip(pixel[:3], target))

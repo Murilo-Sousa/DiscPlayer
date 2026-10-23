@@ -726,6 +726,12 @@ input[type="search"]::-webkit-search-cancel-button {
   font-size: var(--step-2);
 }
 
+.dialog-note {
+  margin-top: var(--space-2);
+  color: var(--text-3);
+  font-size: 0.9375rem;
+}
+
 .dialog-actions {
   display: flex;
   justify-content: flex-end;
@@ -953,6 +959,40 @@ input[type="search"]::-webkit-search-cancel-button {
   font-size: 0.875rem;
 }
 
+.spoiler-tag {
+  padding: 0.1rem 0.55rem;
+  border: 1px solid var(--danger);
+  border-radius: 999px;
+  color: var(--danger);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.spoiler-warning {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-2);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius);
+  color: var(--text-2);
+}
+
+.spoiler-hide {
+  display: block;
+  margin-top: var(--space-2);
+  font-size: 0.875rem;
+}
+
+.review-body:focus-visible {
+  outline: 1px solid var(--focus);
+  outline-offset: 4px;
+}
+
 .like-btn {
   display: inline-flex;
   align-items: center;
@@ -1049,6 +1089,12 @@ input[type="search"]::-webkit-search-cancel-button {
   font-family: var(--font-read);
   font-style: italic;
   overflow-wrap: anywhere;
+}
+
+.activity-spoiler {
+  flex-basis: 100%;
+  color: var(--text-3);
+  font-size: 0.9375rem;
 }
 
 .activity-time {

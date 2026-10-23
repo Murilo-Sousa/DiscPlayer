@@ -74,8 +74,8 @@ def create_app(test_config: dict | None = None) -> Flask:
 
 
 def _register_blueprints(app: Flask) -> None:
-    from .routes import auth, feed, games, health, library, lists, reviews, search, spa, users
+    from .routes import auth, avatars, feed, games, health, library, lists, reviews, search, spa, users
 
-    for module in (health, auth, games, library, reviews, lists, users, feed, search):
+    for module in (health, auth, avatars, games, library, reviews, lists, users, feed, search):
         app.register_blueprint(module.bp)
     app.register_blueprint(spa.bp)  # por último: captura o que não for /api

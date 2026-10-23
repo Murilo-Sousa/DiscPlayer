@@ -4,6 +4,8 @@
 // - O token de CSRF vem do servidor (GET /api/auth/me) e fica só em memória; ele é
 //   enviado no cabeçalho X-CSRF-Token em toda requisição que altera dados.
 // - Falhas viram ApiError, com mensagem pronta para mostrar ao usuário.
+// - O corpo é JSON, exceto quando é um FormData (envio de arquivo): aí o navegador define o
+//   Content-Type com o "boundary" do multipart, e nós não devemos mexer nele.
 
 const API_ORIGIN = (import.meta.env?.VITE_API_URL ?? "").replace(/\/$/, "");
 const BASE_URL = `${API_ORIGIN}/api`;
@@ -26,6 +28,7 @@ const FALLBACK_MESSAGES = {
   401: "Entre na sua conta para continuar.",
   403: "Você não tem permissão para fazer isso.",
   404: "Não encontramos o que você procurou.",
+  413: "O arquivo enviado é grande demais.",
   429: "Muitas tentativas em pouco tempo. Aguarde um instante e tente de novo.",
   500: "Algo deu errado do nosso lado. Tente novamente.",
   502: "O servidor está indisponível no momento. Tente novamente em instantes.",
@@ -43,6 +46,11 @@ export function setCsrfToken(token) {
 export function resetHttpState() {
   csrfToken = null;
   csrfRequest = null;
+}
+
+/** Endereço completo de um arquivo servido pela API (como a foto de perfil), que vem como "/api/...". */
+export function assetUrl(path) {
+  return `${API_ORIGIN}${path}`;
 }
 
 function buildUrl(path, params) {
@@ -99,14 +107,15 @@ export async function ensureCsrf(force = false) {
 export async function request(method, path, { body, params, signal, retried = false } = {}) {
   const headers = { Accept: "application/json" };
   if (method !== "GET") headers["X-CSRF-Token"] = await ensureCsrf();
-  if (body !== undefined) headers["Content-Type"] = "application/json";
+  const isForm = typeof FormData !== "undefined" && body instanceof FormData;
+  if (body !== undefined && !isForm) headers["Content-Type"] = "application/json";
 
   let response;
   try {
     response = await fetch(buildUrl(path, params), {
       method,
       headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
       credentials: CREDENTIALS,
       signal,
     });

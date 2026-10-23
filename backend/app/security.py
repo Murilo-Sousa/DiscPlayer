@@ -112,6 +112,9 @@ def init_security(app: Flask) -> None:
     def guard_api():
         if not request.path.startswith("/api/"):
             return None
+        if request.endpoint == "auth.upload_avatar":
+            # Única rota que recebe arquivo: o limite global (64 KB) é só para JSON.
+            request.max_content_length = current_app.config["AVATAR_MAX_UPLOAD_BYTES"] + 16 * 1024
         if request.method == "OPTIONS":  # pré-voo do CORS; os cabeçalhos entram no after_request
             return Response(status=204)
         if request.method in SAFE_METHODS:
@@ -124,7 +127,7 @@ def init_security(app: Flask) -> None:
     def add_headers(response: Response):
         origin = request.headers.get("Origin")
         if request.path.startswith("/api/"):
-            response.headers["Cache-Control"] = "no-store"
+            response.headers.setdefault("Cache-Control", "no-store")  # uma rota pode definir o seu (fotos)
             response.headers.add("Vary", "Origin")
             if origin and origin in current_app.config["CORS_ORIGINS"]:
                 response.headers["Access-Control-Allow-Origin"] = origin

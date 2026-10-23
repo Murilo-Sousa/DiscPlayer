@@ -1,5 +1,5 @@
 import { Link } from "../router/index.jsx";
-import { STATUS_VERBS, formatRating, gamePath, listPath, timeAgo, userPath } from "../utils/format.js";
+import { REPLAY_VERB, STATUS_VERBS, formatRating, gamePath, listPath, timeAgo, userPath } from "../utils/format.js";
 import { Avatar } from "./Avatar.jsx";
 import { Cover } from "./Cover.jsx";
 import { RatingDiscs, StatusDisc } from "./Disc.jsx";
@@ -23,7 +23,7 @@ export function ActivityItem({ activity, showUser = true }) {
           {who ? " " : ""}
           {type === "logged" && (
             <>
-              {who ? STATUS_VERBS[activity.status] : capitalize(STATUS_VERBS[activity.status])}{" "}
+              {who ? verbFor(activity) : capitalize(verbFor(activity))}{" "}
               <Link to={gamePath(game)} className="activity-target">
                 {game.name}
               </Link>
@@ -50,7 +50,11 @@ export function ActivityItem({ activity, showUser = true }) {
           <p className="activity-review">
             <RatingDiscs value={review.rating} size={13} />
             <span className="activity-rating">{formatRating(review.rating)}</span>
-            {review.excerpt && <span className="activity-excerpt">{review.excerpt}</span>}
+            {review.has_spoilers ? (
+              <span className="activity-spoiler">Contém spoilers. Abra a página do jogo para ler.</span>
+            ) : (
+              review.excerpt && <span className="activity-excerpt">{review.excerpt}</span>
+            )}
           </p>
         )}
         <time className="activity-time" dateTime={activity.created_at}>
@@ -66,4 +70,5 @@ export function ActivityItem({ activity, showUser = true }) {
   );
 }
 
+const verbFor = (activity) => (activity.replay ? REPLAY_VERB : STATUS_VERBS[activity.status]);
 const capitalize = (text) => text.charAt(0).toUpperCase() + text.slice(1);

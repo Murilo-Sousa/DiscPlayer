@@ -78,26 +78,20 @@ def test_catalogo_filtros_e_paginacao_na_url(stack, client):
     assert client.errors == []
 
 
-def test_configuracoes_editam_perfil_e_exigem_https_na_foto(stack, client):
+def test_configuracoes_editam_nome_e_bio(stack, client):
     page = client.page
     register(client, "Ana Souza", "ana")
     client.open("/configuracoes")
     page.wait_for_selector(".settings-form")
+    assert page.get_by_label("Endereço da foto").count() == 0  # a foto agora é enviada como arquivo
 
     page.get_by_label("Bio").fill("Jogo de tudo. Principalmente RPG.")
-    page.get_by_label("Endereço da foto").fill("http://media.rawg.io/avatar.png")
-    page.get_by_role("button", name="Salvar").click()
-    page.wait_for_selector(".field-error")
-    assert "https://" in page.locator(".field-error").inner_text()
-
-    page.get_by_label("Endereço da foto").fill("https://media.rawg.io/avatar.png")
-    page.get_by_role("button", name="Salvar").click()
+    page.get_by_role("button", name="Salvar alterações").click()
     page.wait_for_selector(".toast")
 
     client.open("/u/ana")
     page.wait_for_selector(".profile-name")
     assert "Principalmente RPG" in page.locator("main").inner_text()
-    assert page.locator("main img[src='https://media.rawg.io/avatar.png']").count() >= 1
     assert client.errors == []
 
 

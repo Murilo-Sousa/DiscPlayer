@@ -27,6 +27,6 @@ def reviews(term: str, viewer_id: int | None, limit: int = 5) -> list[sqlite3.Ro
     pattern = f"%{escape_like(term)}%"
     return fetch_all(
         f"SELECT {reviews_service.REVIEW_COLUMNS} {reviews_service.REVIEW_FROM}"
-        " WHERE r.body LIKE :p ESCAPE '\\' ORDER BY r.created_at DESC, r.id DESC LIMIT :limit",
+        " WHERE r.body LIKE :p ESCAPE '\\' AND r.has_spoilers = 0 ORDER BY r.created_at DESC, r.id DESC LIMIT :limit",
         {"p": pattern, "viewer": viewer_id, "limit": limit},
     )

@@ -17,6 +17,7 @@ export function ReviewPanel({ rawgId, review, onChanged }) {
   const [editing, setEditing] = useState(false);
   const [rating, setRating] = useState(review?.rating ?? null);
   const [body, setBody] = useState(review?.body ?? "");
+  const [spoilers, setSpoilers] = useState(review?.has_spoilers ?? false);
   const [errors, setErrors] = useState({});
   const [pending, setPending] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -35,6 +36,7 @@ export function ReviewPanel({ rawgId, review, onChanged }) {
   const startEditing = () => {
     setRating(review.rating);
     setBody(review.body ?? "");
+    setSpoilers(review.has_spoilers ?? false);
     setErrors({});
     setEditing(true);
   };
@@ -51,7 +53,8 @@ export function ReviewPanel({ rawgId, review, onChanged }) {
     }
     setPending(true);
     setErrors({});
-    const payload = { rating, body: body.trim() || null };
+    const text = body.trim();
+    const payload = { rating, body: text || null, has_spoilers: Boolean(text) && spoilers };
     try {
       if (review) {
         await reviewsApi.update(review.id, payload);
@@ -77,6 +80,7 @@ export function ReviewPanel({ rawgId, review, onChanged }) {
       setConfirmDelete(false);
       setRating(null);
       setBody("");
+      setSpoilers(false);
       toast.success("Review excluída.");
       onChanged();
     } catch (error) {
@@ -112,6 +116,21 @@ export function ReviewPanel({ rawgId, review, onChanged }) {
             error={errors.body}
             hint="Só texto. Quebras de linha viram parágrafos."
           />
+          <div className="field">
+            <label className="check-inline">
+              <input
+                type="checkbox"
+                checked={spoilers && body.trim() !== ""}
+                disabled={pending || body.trim() === ""}
+                aria-describedby="spoiler-hint"
+                onChange={(event) => setSpoilers(event.target.checked)}
+              />
+              <span>Esta review contém spoilers</span>
+            </label>
+            <p id="spoiler-hint" className="field-hint">
+              O texto fica escondido atrás de um aviso, e o trecho não aparece no feed nem na busca.
+            </p>
+          </div>
           <div className="form-actions">
             <button type="submit" className="btn btn-primary" disabled={pending}>
               {pending ? "Salvando…" : review ? "Salvar alterações" : "Publicar"}
@@ -125,7 +144,7 @@ export function ReviewPanel({ rawgId, review, onChanged }) {
         </form>
       ) : (
         <>
-          <ReviewCard review={review} showAuthor={false} className="review-own" />
+          <ReviewCard review={review} showAuthor={false} alwaysShow className="review-own" />
           <div className="form-actions">
             <button type="button" className="btn" onClick={startEditing}>
               Editar

@@ -7,7 +7,8 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
 import { Link, useLocation } from "../../router/index.jsx";
 import { libraryApi } from "../../services/api.js";
-import { STATUS_LABELS, daysBetween, formatDate, plural } from "../../utils/format.js";
+import { REPLAYABLE, STATUS_LABELS, daysBetween, formatDate, playSpan, plural } from "../../utils/format.js";
+import { Playthroughs } from "./Playthroughs.jsx";
 
 export function LoginPrompt({ children }) {
   const { pathname, search } = useLocation();
@@ -27,13 +28,17 @@ export function LoginPrompt({ children }) {
   );
 }
 
-/** Registro do jogo no diário de quem está logado: status, favorito, datas e remoção. */
-export function DiaryPanel({ rawgId, entry, onSaved, onRemoved }) {
+/**
+ * Registro do jogo no diário de quem está logado: status, favorito, datas, "jogar de novo" (com o
+ * histórico das jogadas anteriores) e remoção.
+ */
+export function DiaryPanel({ rawgId, entry, playthroughs = [], onSaved, onReplayed, onPlaythroughsChanged, onRemoved }) {
   const { user } = useAuth();
   const toast = useToast();
   const [pending, setPending] = useState(false);
   const [errors, setErrors] = useState({});
   const [confirmRemove, setConfirmRemove] = useState(false);
+  const [confirmReplay, setConfirmReplay] = useState(false);
   const [dates, setDates] = useState({ started_at: entry?.started_at ?? "", completed_at: entry?.completed_at ?? "" });
 
   useEffect(() => {
@@ -61,6 +66,21 @@ export function DiaryPanel({ rawgId, entry, onSaved, onRemoved }) {
     } catch (error) {
       setErrors(error.fields ?? {});
       if (!error.fields) toast.error(error.message);
+    } finally {
+      setPending(false);
+    }
+  };
+
+  const replay = async () => {
+    setPending(true);
+    try {
+      const result = await libraryApi.replay(rawgId);
+      setConfirmReplay(false);
+      onReplayed(result);
+      toast.success("Nova jogada começada. A anterior ficou no histórico.");
+    } catch (error) {
+      setConfirmReplay(false);
+      toast.error(error.message);
     } finally {
       setPending(false);
     }
@@ -114,6 +134,15 @@ export function DiaryPanel({ rawgId, entry, onSaved, onRemoved }) {
       />
       {errors.status && <p className="field-error">{errors.status}</p>}
 
+      {entry && REPLAYABLE.includes(entry.status) && (
+        <div className="replay-row">
+          <button type="button" className="btn" disabled={pending} onClick={() => setConfirmReplay(true)}>
+            Jogar de novo
+          </button>
+          <p className="field-hint">Guarda esta jogada no histórico e começa outra, hoje.</p>
+        </div>
+      )}
+
       {entry && (
         <>
           <form
@@ -148,6 +177,7 @@ export function DiaryPanel({ rawgId, entry, onSaved, onRemoved }) {
               {span === 0 ? "Começou e terminou no mesmo dia." : `${plural(span, "dia", "dias")} entre começar e terminar.`}
             </p>
           )}
+          <Playthroughs rawgId={rawgId} entry={entry} playthroughs={playthroughs} onChanged={onPlaythroughsChanged} />
           <p className="panel-foot">
             Registrado em {formatDate(entry.created_at)}.{" "}
             <button type="button" className="link-btn link-danger" onClick={() => setConfirmRemove(true)}>
@@ -157,10 +187,30 @@ export function DiaryPanel({ rawgId, entry, onSaved, onRemoved }) {
         </>
       )}
 
+      <Dialog open={confirmReplay} onClose={() => !pending && setConfirmReplay(false)} title="Jogar de novo?">
+        {entry && (
+          <>
+            <p>
+              A jogada atual ({STATUS_LABELS[entry.status]}, {playSpan(entry).toLowerCase()}) fica guardada no histórico deste
+              jogo, e você começa uma nova hoje.
+            </p>
+            <p className="dialog-note">A sua nota, a sua review e o favorito continuam como estão.</p>
+          </>
+        )}
+        <div className="dialog-actions">
+          <button type="button" className="btn" onClick={() => setConfirmReplay(false)} disabled={pending}>
+            Cancelar
+          </button>
+          <button type="button" className="btn btn-primary" onClick={replay} disabled={pending}>
+            Jogar de novo
+          </button>
+        </div>
+      </Dialog>
+
       <Dialog open={confirmRemove} onClose={() => !pending && setConfirmRemove(false)} title="Remover do diário?">
         <p>
-          O jogo sai do seu diário, junto com as datas e o favorito. A sua nota e a sua review, se existirem, continuam
-          publicadas.
+          O jogo sai do seu diário, junto com as datas, o favorito e o histórico de jogadas. A sua nota e a sua review, se
+          existirem, continuam publicadas.
         </p>
         <div className="dialog-actions">
           <button type="button" className="btn" onClick={() => setConfirmRemove(false)} disabled={pending}>

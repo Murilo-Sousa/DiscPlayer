@@ -43,9 +43,39 @@ export function AuthProvider({ children }) {
     [],
   );
 
+  const adoptUser = useCallback(
+    (data) => {
+      setState((previous) => ({ ...previous, user: data.user }));
+      return data.user;
+    },
+    [],
+  );
+  const uploadAvatar = useCallback((file) => authApi.uploadAvatar(file).then(adoptUser), [adoptUser]);
+  const removeAvatar = useCallback(() => authApi.removeAvatar().then(adoptUser), [adoptUser]);
+  // `onDeleted` roda no mesmo instante em que a sessão some, para quem chamou levar a pessoa a outra
+  // página sem passar pelo redirecionamento "entre para continuar" das páginas protegidas.
+  const deleteAccount = useCallback(
+    (password, { onDeleted } = {}) =>
+      authApi.deleteAccount(password).then((data) => {
+        onDeleted?.();
+        return adopt(data);
+      }),
+    [adopt],
+  );
+
   const value = useMemo(
-    () => ({ user: state.user, ready: state.ready, login, register, logout, updateProfile }),
-    [state, login, register, logout, updateProfile],
+    () => ({
+      user: state.user,
+      ready: state.ready,
+      login,
+      register,
+      logout,
+      updateProfile,
+      uploadAvatar,
+      removeAvatar,
+      deleteAccount,
+    }),
+    [state, login, register, logout, updateProfile, uploadAvatar, removeAvatar, deleteAccount],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

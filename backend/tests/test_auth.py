@@ -214,7 +214,7 @@ def test_update_profile(ana):
     user = response.get_json()["user"]
     assert user["display_name"] == "Ana S."
     assert user["bio"].startswith("Jogo de tudo.")
-    assert user["avatar_url"] == "https://exemplo.com/a.png"
+    assert user["avatar_url"] is None  # a foto não se muda por aqui: só por envio de imagem
     assert ana.get("/api/auth/me").get_json()["user"]["bio"] == user["bio"]
 
 
@@ -224,10 +224,6 @@ def test_profile_clears_fields_with_null_and_rejects_bad_values(ana):
     assert cleared["bio"] is None
 
     for payload, field in [
-        ({"avatar_url": "javascript:alert(1)"}, "avatar_url"),
-        ({"avatar_url": "data:text/html,<script>1</script>"}, "avatar_url"),
-        ({"avatar_url": "ftp://exemplo.com/a.png"}, "avatar_url"),
-        ({"avatar_url": "http://exemplo.com/a.png"}, "avatar_url"),  # só https: a CSP bloqueia imagens http
         ({"bio": "x" * 281}, "bio"),
         ({"display_name": ""}, "display_name"),
         ({"display_name": "x" * 51}, "display_name"),

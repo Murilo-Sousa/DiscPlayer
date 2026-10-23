@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { Link } from "../router/index.jsx";
 import { cx } from "../utils/cx.js";
 import { formatDate, formatRating, gamePath, paragraphs, userPath } from "../utils/format.js";
@@ -9,10 +10,25 @@ import { Icon } from "./Icon.jsx";
 /**
  * Uma review. O texto é renderizado como texto (React escapa tudo), nunca como HTML.
  * `onLike(review)` é opcional; sem ele, as curtidas aparecem só como contagem.
+ * Reviews com `has_spoilers` escondem o texto atrás de um aviso: o texto só entra na página depois do
+ * clique (`alwaysShow` dispensa o aviso, para o autor ver o que escreveu).
  */
-export function ReviewCard({ review, showGame = false, showAuthor = true, canLike = false, onLike, pending = false, className }) {
+export function ReviewCard({ review, showGame = false, showAuthor = true, canLike = false, onLike, pending = false, alwaysShow = false, className }) {
   const body = paragraphs(review.body);
   const edited = review.updated_at && review.updated_at !== review.created_at;
+  const [revealed, setRevealed] = useState(false);
+  const bodyRef = useRef(null);
+  const showRef = useRef(null);
+  const refocusShow = useRef(false);
+  const spoiler = Boolean(review.has_spoilers) && body.length > 0;
+  const hidden = spoiler && !revealed && !alwaysShow;
+  useEffect(() => {
+    if (revealed) bodyRef.current?.focus(); // o botão some ao revelar: o foco vai para o texto
+    else if (refocusShow.current) {
+      refocusShow.current = false;
+      showRef.current?.focus(); // e ao esconder de novo, volta para o botão "Mostrar texto"
+    }
+  }, [revealed]);
   return (
     <article className={cx("review", className)}>
       {showGame && review.game && (
@@ -40,13 +56,35 @@ export function ReviewCard({ review, showGame = false, showAuthor = true, canLik
             <RatingDiscs value={review.rating} size={13} />
             <span className="review-rating-number">{formatRating(review.rating)}</span>
           </span>
+          {spoiler && <span className="spoiler-tag">Contém spoilers</span>}
         </header>
-        {body.length > 0 && (
-          <div className="review-body prose">
-            {body.map((paragraph, index) => (
-              <p key={index}>{paragraph}</p>
-            ))}
+        {hidden ? (
+          <div className="spoiler-warning">
+            <p>Esta review conta partes da história.</p>
+            <button type="button" className="btn" aria-expanded="false" ref={showRef} onClick={() => setRevealed(true)}>
+              Mostrar texto
+            </button>
           </div>
+        ) : (
+          body.length > 0 && (
+            <div className="review-body prose" ref={bodyRef} tabIndex={revealed ? -1 : undefined}>
+              {body.map((paragraph, index) => (
+                <p key={index}>{paragraph}</p>
+              ))}
+            </div>
+          )
+        )}
+        {spoiler && revealed && !alwaysShow && (
+          <button
+            type="button"
+            className="link-btn spoiler-hide"
+            onClick={() => {
+              refocusShow.current = true;
+              setRevealed(false);
+            }}
+          >
+            Esconder o texto de novo
+          </button>
         )}
         <footer className="review-footer">
           <time dateTime={review.created_at}>{formatDate(review.created_at)}</time>

@@ -10,7 +10,7 @@ from flask import Blueprint, jsonify, request
 from ..auth import viewer_id
 from ..errors import ApiError
 from ..security import rate_limit
-from ..serializers import EXCERPT_LENGTH, review_from_row, user_public
+from ..serializers import excerpt, review_from_row, user_public
 from ..services import rawg
 from ..services import search as search_service
 from .lists import summaries
@@ -23,8 +23,7 @@ MAX_LENGTH = 100
 
 def _review_hit(row) -> dict:
     data = review_from_row(row)
-    body = data.pop("body") or ""
-    data["excerpt"] = body[:EXCERPT_LENGTH].rstrip() + ("…" if len(body) > EXCERPT_LENGTH else "")
+    data["excerpt"] = excerpt(data.pop("body") or "")
     return data
 
 

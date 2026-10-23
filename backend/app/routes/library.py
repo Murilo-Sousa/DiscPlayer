@@ -6,7 +6,8 @@ from flask import Blueprint, jsonify, request
 from ..auth import current_user, login_required
 from ..db import fetch_one
 from ..errors import ApiError
-from ..serializers import entry_from_row, game_from_local, game_from_row
+from ..security import rate_limit
+from ..serializers import entry_from_row, game_from_local, game_from_row, playthrough_from_row
 from ..services import games as games_service
 from ..services import library as library_service
 from ..services.library import STATUSES
@@ -98,6 +99,45 @@ def save_entry(rawg_id: int):
     response = jsonify({"game": game_from_local(game), "entry": entry_from_row(entry), "rating": entry["rating"]})
     response.status_code = 201 if created else 200
     return response
+
+
+def _entry_with_history(user_id: int, game: dict, entry) -> dict:
+    return {
+        "game": game_from_local(game),
+        "entry": entry_from_row(entry),
+        "rating": entry["rating"],
+        "playthroughs": [playthrough_from_row(r) for r in library_service.list_playthroughs(user_id, game["id"])],
+    }
+
+
+@bp.post("/<int:rawg_id>/replay")
+@login_required
+@rate_limit("library-write", 60, 60)
+def replay(rawg_id: int):
+    """"Jogar de novo": guarda a jogada atual no histórico do jogo e começa outra."""
+    data = json_body()
+    errors = FieldErrors()
+    today = read_client_today(data, errors)
+    errors.raise_if_any()
+    user_id = current_user()["id"]
+    game = games_service.get_local_game(rawg_id)
+    if game is None:
+        raise ApiError(404, "not_found", "Este jogo não está no seu diário.")
+    entry = library_service.replay_entry(user_id, game["id"], today=today)
+    response = jsonify(_entry_with_history(user_id, game, entry))
+    response.status_code = 201
+    return response
+
+
+@bp.delete("/<int:rawg_id>/playthroughs/<int:playthrough_id>")
+@login_required
+def remove_playthrough(rawg_id: int, playthrough_id: int):
+    user_id = current_user()["id"]
+    game = games_service.get_local_game(rawg_id)
+    if game is None or not library_service.delete_playthrough(user_id, game["id"], playthrough_id):
+        raise ApiError(404, "not_found", "Jogada não encontrada.")
+    entry = library_service.get_entry(user_id, game["id"])
+    return jsonify(_entry_with_history(user_id, game, entry))
 
 
 @bp.delete("/<int:rawg_id>")

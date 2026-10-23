@@ -398,6 +398,74 @@
   gap: var(--space-2);
 }
 
+.replay-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.replay-row .field-hint {
+  flex: 1 1 14rem;
+}
+
+.playthroughs {
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--line);
+}
+
+.playthroughs-title {
+  font-size: 1rem;
+}
+
+.playthrough-list {
+  display: flex;
+  flex-direction: column;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.playthrough {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  padding-block: var(--space-2);
+  border-top: 1px solid var(--line);
+  font-size: 0.9375rem;
+}
+
+.playthrough:first-child {
+  border-top: 0;
+}
+
+.playthrough-number {
+  min-width: 5.5rem;
+  font-weight: 700;
+}
+
+.playthrough-dates {
+  flex: 1 1 8rem;
+  color: var(--text-2);
+}
+
+.playthrough-remove,
+.playthrough-now {
+  font-size: 0.875rem;
+}
+
+.playthrough-now {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.playthrough[data-current="true"] .playthrough-number {
+  color: var(--accent);
+}
+
 .date-form {
   display: grid;
   grid-template-columns: 1fr 1fr auto;
@@ -618,6 +686,70 @@
 }
 
 /* ---------- Configurações ---------- */
+.settings-section-title {
+  font-size: var(--step-1);
+}
+
+.settings-photo {
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-5);
+  border-bottom: 1px solid var(--line);
+}
+
+.settings-photo-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-5);
+  margin-top: var(--space-4);
+}
+
+.settings-photo-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.settings-photo-file {
+  overflow-wrap: anywhere;
+  color: var(--text-2);
+  font-size: 0.9375rem;
+}
+
+.danger-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin-top: var(--space-7);
+  padding: var(--space-5);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-lg);
+  color: var(--text-2);
+}
+
+.danger-zone .settings-section-title {
+  color: var(--danger);
+}
+
+.danger-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  list-style: disc;
+  color: var(--text-2);
+}
+
+.danger-list li + li {
+  margin-top: var(--space-1);
+}
+
+@media (max-width: 30rem) {
+  .settings-photo-row {
+    flex-direction: column;
+  }
+}
+
 .settings-preview {
   display: flex;
   align-items: center;

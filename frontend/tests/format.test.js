@@ -11,10 +11,11 @@ import {
   gamePath,
   hueFrom,
   initials,
-  isImageUrl,
+  isAvatarPath,
   localToday,
   paragraphs,
   parseGameParam,
+  playSpan,
   plural,
   statusLabel,
   timeAgo,
@@ -109,12 +110,39 @@ test("cleanParams remove vazios mas mantém zero", () => {
   assert.deepEqual(cleanParams({ a: "x", b: "", c: null, d: undefined, e: 0, f: false }), { a: "x", e: 0 });
 });
 
-test("isImageUrl aceita só endereços https completos", () => {
-  assert.equal(isImageUrl("https://media.rawg.io/a.png"), true);
-  assert.equal(isImageUrl("  https://exemplo.com/foto.jpg  "), true);
-  for (const bad of ["http://exemplo.com/a.png", "javascript:alert(1)", "data:image/png;base64,AAAA", "//exemplo.com/a.png", "https://", "https://localhost", "exemplo.com/a.png", "", null, undefined, 42]) {
-    assert.equal(isImageUrl(bad), false, String(bad));
+test("isAvatarPath aceita só o endereço interno da foto enviada", () => {
+  assert.equal(isAvatarPath("/api/avatars/Zm9vYmFyYmF6cXV4"), true);
+  assert.equal(isAvatarPath("/api/avatars/abc_DEF-123456"), true);
+  for (const bad of [
+    "https://media.rawg.io/a.png",
+    "http://exemplo.com/a.png",
+    "javascript:alert(1)",
+    "data:image/png;base64,AAAA",
+    "//exemplo.com/api/avatars/Zm9vYmFyYmF6",
+    "/api/avatars/",
+    "/api/avatars/curto",
+    "/api/avatars/../../etc/passwd",
+    "/api/avatars/Zm9vYmFyYmF6/extra",
+    "/api/avatars/Zm9vYmFy?x=1",
+    "/outro/Zm9vYmFyYmF6cXV4",
+    "",
+    null,
+    undefined,
+    42,
+  ]) {
+    assert.equal(isAvatarPath(bad), false, String(bad));
   }
+});
+
+test("playSpan resume as datas de uma jogada", () => {
+  const start = formatDate("2025-03-01");
+  const end = formatDate("2025-03-20");
+  assert.ok(start && end && start !== end);
+  assert.equal(playSpan({ started_at: "2025-03-01", completed_at: "2025-03-20" }), `${start} → ${end}`);
+  assert.equal(playSpan({ started_at: "2025-03-01", completed_at: null }), `Desde ${start}`);
+  assert.equal(playSpan({ started_at: null, completed_at: "2025-03-20" }), `Até ${end}`);
+  assert.equal(playSpan({ started_at: null, completed_at: null }), "Sem datas");
+  assert.equal(playSpan(null), "Sem datas");
 });
 
 test("localToday usa a data do fuso local, não a de UTC", () => {

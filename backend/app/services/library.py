@@ -1,4 +1,8 @@
-"""Diário pessoal: uma entrada por usuário e jogo, com histórico em `activities`."""
+"""Diário pessoal: uma entrada por usuário e jogo (a jogada atual), com histórico em `activities`.
+
+Jogadas anteriores do mesmo jogo ficam em `playthroughs`: "jogar de novo" guarda o
+status e as datas da entrada ali e recomeça a entrada. A nota continua única por jogo.
+"""
 from __future__ import annotations
 
 import sqlite3
@@ -9,10 +13,14 @@ from ..utils.dates import today_utc, utcnow_iso
 from ..utils.validation import UNSET
 
 STATUSES = ("quero_jogar", "jogando", "zerado", "abandonado", "pausado")
+# Só dá para recomeçar um jogo cuja jogada atual já terminou ou foi interrompida.
+REPLAYABLE = ("zerado", "abandonado", "pausado")
 
 ENTRY_COLUMNS = """
     e.status, e.is_favorite, e.started_at, e.completed_at,
     e.created_at AS entry_created_at, e.updated_at AS entry_updated_at,
+    1 + (SELECT COUNT(*) FROM playthroughs p
+          WHERE p.user_id = e.user_id AND p.game_id = e.game_id) AS plays,
     g.rawg_id, g.name AS game_name, g.slug AS game_slug, g.cover_url, g.release_date,
     (SELECT rv.rating FROM reviews rv
       WHERE rv.user_id = e.user_id AND rv.game_id = e.game_id) AS rating
@@ -146,15 +154,74 @@ def upsert_entry(
 
 
 def delete_entry(user_id: int, game_id: int) -> bool:
-    """Remove a entrada e o rastro dela no histórico. A review (se houver) permanece."""
+    """Remove a entrada, as jogadas anteriores e o rastro delas no histórico. A review (se houver) permanece."""
     with transaction():
         cursor = execute(
             "DELETE FROM library_entries WHERE user_id = ? AND game_id = ?", (user_id, game_id)
         )
         if cursor.rowcount == 0:
             return False
+        execute("DELETE FROM playthroughs WHERE user_id = ? AND game_id = ?", (user_id, game_id))
         execute(
             "DELETE FROM activities WHERE user_id = ? AND game_id = ? AND type = 'logged'",
             (user_id, game_id),
         )
     return True
+
+
+def list_playthroughs(user_id: int, game_id: int) -> list[sqlite3.Row]:
+    """Jogadas anteriores do jogo, da mais antiga para a mais recente."""
+    return fetch_all(
+        "SELECT id, status, started_at, completed_at, created_at FROM playthroughs"
+        " WHERE user_id = ? AND game_id = ? ORDER BY id ASC",
+        (user_id, game_id),
+    )
+
+
+def replay_entry(user_id: int, game_id: int, *, today: str | None = None) -> sqlite3.Row:
+    """Guarda a jogada atual no histórico e começa outra ("jogar de novo").
+
+    A entrada volta a "jogando", com início em hoje e sem data de término; o favorito
+    continua. Só vale para jogos zerados, abandonados ou pausados: clicar duas vezes
+    seguidas não cria uma jogada fantasma, porque depois do primeiro clique o status já
+    é "jogando".
+    """
+    with transaction():
+        current = fetch_one(
+            "SELECT * FROM library_entries WHERE user_id = ? AND game_id = ?", (user_id, game_id)
+        )
+        if current is None:
+            raise ApiError(404, "not_found", "Este jogo não está no seu diário.")
+        if current["status"] not in REPLAYABLE:
+            raise ApiError(
+                409,
+                "cannot_replay",
+                "Só dá para jogar de novo um jogo que você já zerou, abandonou ou pausou.",
+            )
+        now = utcnow_iso()
+        execute(
+            "INSERT INTO playthroughs (user_id, game_id, status, started_at, completed_at, created_at)"
+            " VALUES (?, ?, ?, ?, ?, ?)",
+            (user_id, game_id, current["status"], current["started_at"], current["completed_at"], now),
+        )
+        execute(
+            "UPDATE library_entries SET status = 'jogando', started_at = ?, completed_at = NULL,"
+            " updated_at = ? WHERE id = ?",
+            (today or today_utc().isoformat(), now, current["id"]),
+        )
+        execute(
+            "INSERT INTO activities (user_id, type, game_id, status, is_replay, created_at)"
+            " VALUES (?, 'logged', ?, 'jogando', 1, ?)",
+            (user_id, game_id, now),
+        )
+    return get_entry(user_id, game_id)  # type: ignore[return-value]
+
+
+def delete_playthrough(user_id: int, game_id: int, playthrough_id: int) -> bool:
+    """Exclui uma jogada anterior (só se for do próprio usuário e do jogo informado)."""
+    with transaction():
+        cursor = execute(
+            "DELETE FROM playthroughs WHERE id = ? AND user_id = ? AND game_id = ?",
+            (playthrough_id, user_id, game_id),
+        )
+    return cursor.rowcount > 0

@@ -43,7 +43,7 @@ function Summary({ profile, isSelf }) {
     <div className="profile-summary">
       <dl className="stats-strip">
         <Stat value={stats.games} label="Jogos no diário" />
-        <Stat value={stats.completed_this_year} label={`Zerados em ${year}`} />
+        <Stat value={stats.completed_this_year} label={`Zeradas em ${year}`} />
         <Stat value={stats.ratings} label="Notas dadas" hint={stats.reviews_with_text ? `${stats.reviews_with_text} com texto` : undefined} />
         <Stat value={formatAverage(stats.average_rating)} label="Média das notas" />
       </dl>
@@ -84,8 +84,8 @@ function Summary({ profile, isSelf }) {
             values={stats.completions_by_month}
             labels={MONTHS}
             srLabels={MONTH_NAMES}
-            caption={`Jogos zerados em cada mês de ${year}`}
-            emptyText={`Nenhum jogo zerado em ${year} até agora.`}
+            caption={`Jogadas zeradas em cada mês de ${year}`}
+            emptyText={`Nenhuma jogada zerada em ${year} até agora.`}
           />
         </Section>
         {stats.ratings > 0 && (

@@ -57,6 +57,8 @@ def build_config() -> dict:
         # Os corpos JSON são pequenos; 64 KB cobre uma review de 5.000 caracteres
         # com folga e barra uploads indevidos.
         "MAX_CONTENT_LENGTH": 64 * 1024,
+        # Exceção: o envio da foto do perfil (multipart) aceita arquivos maiores, só nessa rota.
+        "AVATAR_MAX_UPLOAD_BYTES": 5 * 1024 * 1024,
         # CORS / proxy
         "CORS_ORIGINS": _list(
             "CORS_ORIGINS", ["http://localhost:5173", "http://127.0.0.1:5173"]

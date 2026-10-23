@@ -39,7 +39,7 @@ def test_expected_tables_exist(conn):
     tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
     assert {
         "users", "games", "library_entries", "reviews", "review_likes", "lists", "list_games", "follows",
-        "activities", "schema_migrations",
+        "activities", "schema_migrations", "playthroughs", "user_avatars",
     } <= tables
 
 
@@ -47,7 +47,7 @@ def test_frequent_queries_have_indexes(conn):
     indexes = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type = 'index'")}
     assert {
         "ix_library_user_status", "ix_reviews_game_created", "ix_review_likes_review", "ix_list_games_order",
-        "ix_follows_followed", "ix_activities_user",
+        "ix_follows_followed", "ix_activities_user", "ix_playthroughs_user_game",
     } <= indexes
 
 
@@ -55,7 +55,57 @@ def test_migrations_are_applied_once(app):
     assert database.migrate(app.config["DATABASE"]) == []  # já aplicadas na criação da app
     with sqlite3.connect(app.config["DATABASE"]) as raw:
         versions = [r[0] for r in raw.execute("SELECT version FROM schema_migrations ORDER BY version")]
-    assert versions == ["0001_initial"]
+    assert versions == ["0001_initial", "0002_jogadas_spoilers_foto_conta"]
+
+
+def test_migration_0002_keeps_existing_data_and_prepares_new_columns(tmp_path, monkeypatch):
+    """Um banco criado só com a 0001 (o de quem já usava o app) sobe para a 0002 sem perder dados."""
+    old = tmp_path / "old-migrations"
+    old.mkdir()
+    first = database.MIGRATIONS_DIR / "0001_initial.sql"
+    (old / first.name).write_text(first.read_text(encoding="utf-8"), encoding="utf-8")
+    monkeypatch.setattr(database, "MIGRATIONS_DIR", old)
+    path = tmp_path / "upgrade.db"
+    assert database.migrate(path) == ["0001_initial"]
+
+    raw = database.connect(path)
+    ana = raw.execute(
+        "INSERT INTO users (username, display_name, email, password_hash, avatar_url, created_at)"
+        " VALUES ('ana', 'Ana', 'ana@x.co', 'h', 'https://exemplo.com/a.png', ?)",
+        (utcnow_iso(),),
+    ).lastrowid
+    bia = raw.execute(
+        "INSERT INTO users (username, display_name, email, password_hash, created_at)"
+        " VALUES ('bia', 'Bia', 'bia@x.co', 'h', ?)",
+        (utcnow_iso(),),
+    ).lastrowid
+    game = add_game(raw)
+    raw.execute(
+        "INSERT INTO reviews (user_id, game_id, rating, body, created_at) VALUES (?, ?, 8, 'Boa', ?)",
+        (ana, game, utcnow_iso()),
+    )
+    raw.execute(
+        "INSERT INTO activities (user_id, type, game_id, status, created_at) VALUES (?, 'logged', ?, 'zerado', ?)",
+        (ana, game, utcnow_iso()),
+    )
+    raw.close()
+
+    monkeypatch.undo()  # volta a usar a pasta real de migrações
+    assert database.migrate(path) == ["0002_jogadas_spoilers_foto_conta"]
+
+    raw = database.connect(path)
+    try:
+        review = raw.execute("SELECT body, has_spoilers FROM reviews").fetchone()
+        assert (review["body"], review["has_spoilers"]) == ("Boa", 0)  # review antiga: sem aviso
+        assert raw.execute("SELECT is_replay FROM activities").fetchone()["is_replay"] == 0
+        users = raw.execute("SELECT username, avatar_url, session_key FROM users ORDER BY id").fetchall()
+        assert [u["username"] for u in users] == ["ana", "bia"]
+        assert all(u["avatar_url"] is None for u in users)  # fotos por link deixam de existir
+        keys = [u["session_key"] for u in users]
+        assert all(keys) and len(set(keys)) == 2  # cada conta antiga ganhou uma chave própria
+        assert raw.execute("SELECT COUNT(*) FROM playthroughs").fetchone()[0] == 0
+    finally:
+        raw.close()
 
 
 def test_failed_migration_rolls_back_completely(tmp_path, monkeypatch):

@@ -62,7 +62,7 @@ export default function DiaryPage() {
         <dl className="stats-strip">
           <Stat value={stats.games} label="Jogos no diário" />
           <Stat value={stats.by_status.jogando} label="Jogando agora" />
-          <Stat value={stats.completed_this_year} label={`Zerados em ${new Date().getFullYear()}`} />
+          <Stat value={stats.completed_this_year} label={`Zeradas em ${new Date().getFullYear()}`} />
           <Stat value={formatAverage(stats.average_rating)} label="Média das suas notas" hint={stats.ratings ? plural(stats.ratings, "nota", "notas") : undefined} />
         </dl>
       )}

@@ -158,6 +158,30 @@ export function parseGameParam(param) {
 export const userPath = (username) => `/u/${encodeURIComponent(username)}`;
 export const listPath = (id) => `/listas/${id}`;
 
+/** Retrospectiva de uma pessoa. Sem o ano, o servidor escolhe o último ano em que ela tem registros. */
+export const retrospectivePath = (username, year) =>
+  `${userPath(username)}/retrospectiva${year === undefined || year === null ? "" : `/${year}`}`;
+
+/** A imagem de compartilhamento (PNG 1200 x 630) da retrospectiva, desenhada pelo servidor. */
+export const retrospectiveImagePath = (username, year) =>
+  `/api/share/retrospective/${encodeURIComponent(username)}/${year}.png`;
+
+/** O ano na URL precisa ter quatro dígitos; o servidor decide quais anos têm retrospectiva. */
+export const isYearParam = (value) => typeof value === "string" && /^\d{4}$/.test(value);
+
+/** "no mesmo dia", "1 dia", "19 dias". */
+export function daysText(days) {
+  if (days === null || days === undefined) return "";
+  if (days === 0) return "no mesmo dia";
+  return plural(days, "dia", "dias");
+}
+
+// Meses e notas usados nos gráficos (perfil e retrospectiva).
+export const MONTH_LETTERS = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
+export const MONTH_NAMES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+export const RATING_LABELS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+export const RATING_SR = RATING_LABELS.map((n) => `Notas de ${n} a ${Number(n) + 1}`);
+
 /** Remove chaves vazias de um objeto de parâmetros de busca. */
 export function cleanParams(params) {
   return Object.fromEntries(

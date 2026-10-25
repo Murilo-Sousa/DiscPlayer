@@ -29,10 +29,12 @@ export function ErrorState({ error, title = "Não foi possível carregar", onRet
   );
 }
 
-export function EmptyState({ title, children, action, compact = false }) {
+/** `level` é o nível do título (h3 por padrão); use 2 quando o estado vem logo depois do h1 da página. */
+export function EmptyState({ title, children, action, compact = false, level = 3 }) {
+  const Heading = `h${level}`;
   return (
     <div className={cx("state", compact && "state-compact")}>
-      <h3 className="state-title">{title}</h3>
+      <Heading className="state-title">{title}</Heading>
       {children && <div className="state-text">{children}</div>}
       {action && <div className="state-action">{action}</div>}
     </div>

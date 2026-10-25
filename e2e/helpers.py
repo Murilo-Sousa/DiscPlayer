@@ -46,3 +46,13 @@ def set_rating(client, steps_right: int) -> None:
 def toast_text(client) -> str:
     client.page.wait_for_selector(".toast")
     return client.page.locator(".toast").last.inner_text()
+
+
+def api(client, method: str, path: str, body: dict | None = None):
+    """Chama a API com a sessão do navegador (e o token de CSRF), para preparar dados que a interface não alcança,
+    como datas de anos passados. O que o teste verifica continua sendo visto pela interface."""
+    request = client.context.request
+    token = request.get(f"{client.base}/api/auth/me").json()["csrf_token"]
+    response = request.fetch(f"{client.base}{path}", method=method, data=body, headers={"X-CSRF-Token": token})
+    assert response.ok, f"{method} {path}: {response.status} {response.text()}"
+    return response.json() if response.body() else None

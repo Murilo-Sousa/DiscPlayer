@@ -299,6 +299,11 @@ def get_game(rawg_id: int) -> dict:
     return _cached(("game", rawg_id), "RAWG_TTL_DETAIL", load)
 
 
+def cached_game(rawg_id: int) -> dict | None:
+    """O detalhe do jogo se ele já está no cache (mesmo expirado, dentro da tolerância). Nunca chama a RAWG."""
+    return _cache.get_stale(("game", rawg_id))
+
+
 def get_screenshots(rawg_id: int, limit: int = 6) -> list[str]:
     """Imagens extras do jogo. Falhas aqui nunca derrubam a página do jogo."""
 

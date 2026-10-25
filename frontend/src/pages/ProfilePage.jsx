@@ -14,13 +14,20 @@ import { useAsync } from "../hooks/useAsync.js";
 import { useDocumentTitle } from "../hooks/useDocumentTitle.js";
 import { Link, useParams, useSearchParams } from "../router/index.jsx";
 import { usersApi } from "../services/api.js";
-import { STATUS_LABELS, STATUS_PROGRESS, formatAverage, formatMonthYear, plural, userPath } from "../utils/format.js";
+import {
+  MONTH_LETTERS,
+  MONTH_NAMES,
+  RATING_LABELS,
+  RATING_SR,
+  STATUS_LABELS,
+  STATUS_PROGRESS,
+  formatAverage,
+  formatMonthYear,
+  plural,
+  retrospectivePath,
+  userPath,
+} from "../utils/format.js";
 import NotFoundPage from "./NotFoundPage.jsx";
-
-const MONTHS = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
-const MONTH_NAMES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
-const RATING_LABELS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
-const RATING_SR = RATING_LABELS.map((n) => `Notas de ${n} a ${Number(n) + 1}`);
 
 function Summary({ profile, isSelf }) {
   const { stats, favorites, recent, user } = profile;
@@ -82,7 +89,7 @@ function Summary({ profile, isSelf }) {
         <Section title={`Zerados por mês em ${year}`}>
           <Histogram
             values={stats.completions_by_month}
-            labels={MONTHS}
+            labels={MONTH_LETTERS}
             srLabels={MONTH_NAMES}
             caption={`Jogadas zeradas em cada mês de ${year}`}
             emptyText={`Nenhuma jogada zerada em ${year} até agora.`}
@@ -148,7 +155,7 @@ function People({ users }) {
 
 export default function ProfilePage() {
   const { username } = useParams();
-    const [params, setParams] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const tab = params.get("aba") ?? "resumo";
   const state = useAsync((signal) => usersApi.profile(username, { signal }), [username]);
   const profile = state.data;
@@ -274,6 +281,11 @@ export default function ProfilePage() {
             </Link>
           ) : (
             <FollowButton username={user.username} following={profile.viewer.is_following} onChange={patchFollow} />
+          )}
+          {(stats.games > 0 || stats.ratings > 0) && (
+            <Link to={retrospectivePath(user.username)} className="btn btn-quiet">
+              Retrospectiva
+            </Link>
           )}
         </div>
       </header>

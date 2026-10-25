@@ -303,3 +303,12 @@ def test_the_photo_address_shows_up_for_everyone_without_leaking_anything_else(a
         assert user["username"] == "ana", where
         assert user["avatar_url"] == url, where
         assert "email" not in user, where
+
+
+def test_public_cached_photo_never_carries_a_session_cookie(ana, api):
+    """Um cache compartilhado (proxy/CDN) poderia guardar o Set-Cookie e entregá-lo a outras pessoas."""
+    user = upload_ok(ana, images.encode(images.two_halves(300, 300), "PNG"))
+    response = ana.get(user["avatar_url"])  # com a sessão da Ana
+    assert response.status_code == 200 and "public" in response.headers["Cache-Control"]
+    assert "Set-Cookie" not in response.headers
+    assert ana.get("/api/auth/me").status_code == 200  # a sessão em si continua valendo

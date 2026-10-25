@@ -73,6 +73,12 @@ export const usersApi = {
     http.get(`/users/${encodeURIComponent(username)}/followers`, { ...options, params }),
   following: (username, params, options) =>
     http.get(`/users/${encodeURIComponent(username)}/following`, { ...options, params }),
+  // Sem `year`, o servidor responde com o último ano em que a pessoa tem registros.
+  retrospective: (username, year, options) =>
+    http.get(
+      `/users/${encodeURIComponent(username)}/retrospective${year === undefined || year === null ? "" : `/${year}`}`,
+      options,
+    ),
   follow: (username) => http.put(`/users/${encodeURIComponent(username)}/follow`),
   unfollow: (username) => http.delete(`/users/${encodeURIComponent(username)}/follow`),
 };

@@ -125,6 +125,10 @@ No PowerShell: `$env:RAWG_BASE_URL="http://127.0.0.1:8765/api"; $env:RAWG_API_KE
 
 As capas apontam para `media.rawg.io`; sem acesso a essa URL, o site mostra o espaço reservado da capa, sem quebrar o layout.
 
+## Ver a prévia de links
+
+A prévia (título, descrição e imagem de jogos, perfis, listas e retrospectivas) é escrita pelo Flask no HTML, então **só aparece quando o Flask serve o site**, e não no `npm run dev`. Para ver o resultado, gere o build (`npm run build` em `frontend/`), rode o back-end e abra `http://127.0.0.1:5000`; o código-fonte da página (Ctrl+U) mostra as tags `og:` do endereço. A prévia de um jogo usa só o que o servidor já guarda: abra a página do jogo uma vez (isso enche o cache) antes de olhar o código-fonte. As imagens ficam em `/api/share/...png` e podem ser abertas direto no navegador. Aplicativos como o WhatsApp só leem endereços públicos da internet: para vê-las de verdade é preciso publicar o site (e guardam a prévia por um tempo, então uma mudança pode demorar a aparecer).
+
 ## Variáveis de ambiente
 
 Todas são lidas de `backend/.env` (modelo em `backend/.env.example`) ou do ambiente do sistema. O front-end só tem uma, usada apenas pelo `npm run dev`.
@@ -139,6 +143,7 @@ Todas são lidas de `backend/.env` (modelo em `backend/.env.example`) ou do ambi
 | `CORS_ORIGINS` | `http://localhost:5173,http://127.0.0.1:5173` | Origens extras autorizadas a chamar a API |
 | `COOKIE_SECURE` | `true` em produção | Cookie só por HTTPS. Use `false` para testar o build em `http://localhost` |
 | `TRUSTED_PROXY_COUNT` | `0` | Quantos proxies reversos existem à frente do app (para ver o IP real) |
+| `PUBLIC_URL` | vazio | Endereço público do site (por exemplo, `https://seu-site.exemplo`), usado nos links absolutos das prévias de links. Vazio usa o endereço da própria requisição. Só aceita `http` ou `https`, com domínio e sem caminho; qualquer outro valor é ignorado |
 | `RATELIMIT_ENABLED` | `true` | Liga o limite de requisições por IP |
 | `RAWG_BASE_URL` | `https://api.rawg.io/api` | Troque só para usar o servidor fictício |
 | `VITE_BACKEND_URL` (front-end) | `http://127.0.0.1:5000` | Destino do proxy `/api` no `npm run dev` |

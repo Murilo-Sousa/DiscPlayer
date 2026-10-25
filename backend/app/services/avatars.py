@@ -126,3 +126,9 @@ def remove_avatar(user_id: int) -> None:
 
 def get_by_token(token: str) -> sqlite3.Row | None:
     return fetch_one("SELECT data FROM user_avatars WHERE token = ?", (token,))
+
+
+def data_for_user(user_id: int) -> bytes | None:
+    """Os bytes da foto já reprocessada (WebP), ou None se a pessoa não tem foto."""
+    row = fetch_one("SELECT data FROM user_avatars WHERE user_id = ?", (user_id,))
+    return bytes(row["data"]) if row else None

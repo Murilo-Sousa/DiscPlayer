@@ -4,6 +4,7 @@ from __future__ import annotations
 import os
 from datetime import timedelta
 from pathlib import Path
+from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 
@@ -32,6 +33,13 @@ def _list(name: str, default: list[str]) -> list[str]:
     if raw is None or not raw.strip():
         return default
     return [item.strip().rstrip("/") for item in raw.split(",") if item.strip()]
+
+
+def _public_url() -> str:
+    """Endereço público do site (para as prévias de links). Só aceita http(s) com domínio."""
+    raw = os.environ.get("PUBLIC_URL", "").strip().rstrip("/")
+    parsed = urlparse(raw)
+    return raw if parsed.scheme in {"http", "https"} and parsed.netloc and not parsed.path.strip("/") else ""
 
 
 def build_config() -> dict:
@@ -64,6 +72,9 @@ def build_config() -> dict:
             "CORS_ORIGINS", ["http://localhost:5173", "http://127.0.0.1:5173"]
         ),
         "TRUSTED_PROXY_COUNT": _int("TRUSTED_PROXY_COUNT", 0),
+        # Endereço do site nas prévias de links (ex.: https://discplayer.pythonanywhere.com).
+        # Vazio: usa o endereço da própria requisição.
+        "PUBLIC_URL": _public_url(),
         "RATELIMIT_ENABLED": _bool("RATELIMIT_ENABLED", True),
         # RAWG
         "RAWG_API_KEY": os.environ.get("RAWG_API_KEY", "").strip(),

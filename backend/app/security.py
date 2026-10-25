@@ -20,6 +20,7 @@ from functools import wraps
 from urllib.parse import urlparse
 
 from flask import Flask, Response, current_app, request, session
+from flask.sessions import SecureCookieSessionInterface
 
 from .errors import ApiError
 
@@ -70,6 +71,28 @@ def reset_rate_limits() -> None:
         _hits.clear()
 
 
+def check_rate(bucket: str, limit: int, per_seconds: int) -> int | None:
+    """Conta uma chamada deste IP. Devolve None se passou, ou quantos segundos faltam para poder tentar de novo.
+
+    Janela deslizante em memória (veja `rate_limit`).
+    """
+    if not current_app.config.get("RATELIMIT_ENABLED", True):
+        return None
+    key = (bucket, request.remote_addr or "desconhecido")
+    now = time.monotonic()
+    with _hits_lock:
+        window = _hits.setdefault(key, deque())
+        while window and now - window[0] > per_seconds:
+            window.popleft()
+        if len(window) >= limit:
+            return int(per_seconds - (now - window[0])) + 1
+        window.append(now)
+        if len(_hits) > 5000:  # limpeza ocasional de IPs inativos
+            for stale in [k for k, v in _hits.items() if not v or now - v[-1] > per_seconds]:
+                _hits.pop(stale, None)
+    return None
+
+
 def rate_limit(bucket: str, limit: int, per_seconds: int):
     """Limita `limit` chamadas a cada `per_seconds` por IP (janela deslizante).
 
@@ -80,25 +103,14 @@ def rate_limit(bucket: str, limit: int, per_seconds: int):
     def decorator(view):
         @wraps(view)
         def wrapper(*args, **kwargs):
-            if current_app.config.get("RATELIMIT_ENABLED", True):
-                key = (bucket, request.remote_addr or "desconhecido")
-                now = time.monotonic()
-                with _hits_lock:
-                    window = _hits.setdefault(key, deque())
-                    while window and now - window[0] > per_seconds:
-                        window.popleft()
-                    if len(window) >= limit:
-                        wait = int(per_seconds - (now - window[0])) + 1
-                        raise ApiError(
-                            429,
-                            "rate_limited",
-                            "Muitas tentativas em pouco tempo. Aguarde um instante e tente de novo.",
-                            headers={"Retry-After": str(wait)},
-                        )
-                    window.append(now)
-                    if len(_hits) > 5000:  # limpeza ocasional de IPs inativos
-                        for stale in [k for k, v in _hits.items() if not v or now - v[-1] > per_seconds]:
-                            _hits.pop(stale, None)
+            wait = check_rate(bucket, limit, per_seconds)
+            if wait is not None:
+                raise ApiError(
+                    429,
+                    "rate_limited",
+                    "Muitas tentativas em pouco tempo. Aguarde um instante e tente de novo.",
+                    headers={"Retry-After": str(wait)},
+                )
             return view(*args, **kwargs)
 
         return wrapper
@@ -106,8 +118,25 @@ def rate_limit(bucket: str, limit: int, per_seconds: int):
     return decorator
 
 
+# --------------------------------------------------------------------------- cookie de sessão
+class _SessionInterface(SecureCookieSessionInterface):
+    """Igual ao padrão do Flask, mas sem renovar o cookie em respostas públicas.
+
+    A sessão é permanente, então o Flask reenvia o cookie (`Set-Cookie`) em TODA resposta de quem está
+    logado. Numa resposta `Cache-Control: public` (foto de perfil, imagens de compartilhamento), um cache
+    compartilhado (proxy, CDN) poderia guardar esse `Set-Cookie` e entregá-lo a outras pessoas.
+    """
+
+    def save_session(self, app, session, response):
+        if not session.modified and response.cache_control.public:
+            return
+        super().save_session(app, session, response)
+
+
 # --------------------------------------------------------------------------- init
 def init_security(app: Flask) -> None:
+    app.session_interface = _SessionInterface()
+
     @app.before_request
     def guard_api():
         if not request.path.startswith("/api/"):

@@ -9,7 +9,7 @@ import { useAsync } from "../hooks/useAsync.js";
 import { useDocumentTitle } from "../hooks/useDocumentTitle.js";
 import { Link } from "../router/index.jsx";
 import { libraryApi, usersApi } from "../services/api.js";
-import { formatAverage, plural, userPath } from "../utils/format.js";
+import { formatAverage, plural, retrospectivePath, userPath } from "../utils/format.js";
 
 function History({ username }) {
   const [page, setPage] = useState(1);
@@ -54,6 +54,9 @@ export default function DiaryPage() {
             </Link>
             <Link to={userPath(user.username)} className="btn">
               Ver perfil público
+            </Link>
+            <Link to={retrospectivePath(user.username)} className="btn">
+              Minha retrospectiva
             </Link>
           </>
         }

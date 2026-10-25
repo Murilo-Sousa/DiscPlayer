@@ -18,17 +18,20 @@ Estas são limitações reais do projeto como entregue, não promessas futuras.
 - **A exclusão de conta é imediata e definitiva**: não há prazo para desistir, nem exportação dos dados antes, nem e-mail de confirmação. Cópias de segurança do banco feitas antes continuam com os dados.
 - **Jogadas anteriores só podem ser excluídas**, não editadas, e não têm plataforma nem horas jogadas; a jogada atual continua sendo editada nas datas do diário.
 - **O aviso de spoilers é uma marcação de quem escreve**: o servidor devolve o texto na resposta da API (quem quiser lê-lo por lá pode), e só o feed e a busca o omitem.
+- **A prévia de links só existe quando o Flask serve o site** (o build). No `npm run dev`, o Vite entrega o HTML e não há prévia. Os aplicativos que mostram a prévia (WhatsApp, Discord, LinkedIn) só leem endereços públicos e guardam o resultado por um tempo, então uma mudança no perfil ou na lista pode demorar a aparecer lá, mesmo com a imagem já atualizada no servidor. A prévia de um jogo só tem título e capa se o servidor já conhece o jogo (alguém o registrou ou a página dele foi aberta há pouco); do contrário, mostra a prévia padrão, porque a prévia nunca chama a RAWG. Nunca foi conferido como cada um desses aplicativos desenha a prévia.
+- **Nas imagens de compartilhamento, nomes e bios com emoji ou outros alfabetos** (japonês, árabe, russo, algumas letras latinas raras...) **não são desenhados**: as fontes embutidas só cobrem o alfabeto latino. O cartão do perfil mostra o `@usuario`, e a bio é omitida. O texto da página e a prévia em texto continuam normais.
+- **A retrospectiva não tem gêneros nem horas jogadas**, porque o app não guarda esses dados. As datas de início e término são as do fuso de quem joga; notas, curtidas, seguidores e o histórico do diário têm hora em UTC, então algo feito bem na virada do ano pode cair no ano vizinho. A lista de zerados mostra até 12 jogos, dos de maior nota para os sem nota, e o ritmo só aparece com pelo menos dois zerados que tenham as duas datas.
 - **Capas e imagens** são carregadas da CDN da RAWG, que impõe a própria política de uso; o site não as copia nem as redimensiona.
 - **Sem internacionalização**: a interface está só em português do Brasil.
 - **Sem testes automatizados de acessibilidade completos**: a auditoria feita foi manual (teclado, leitor de tela em estrutura, contraste) e por inspeção do DOM. Faça uma revisão com tecnologias assistivas reais antes de publicar.
 
 ## Próximos passos
 
-Ideias priorizadas para as próximas versões (nenhuma está implementada; as jogadas, o aviso de spoilers, a foto enviada e a exclusão de conta já fazem parte da versão atual):
+Ideias priorizadas para as próximas versões (nenhuma está implementada; as jogadas, o aviso de spoilers, a foto enviada, a exclusão de conta, a prévia de links e a retrospectiva do ano já fazem parte da versão atual):
 
 1. **Conta completa:** troca e recuperação de senha por e-mail, verificação de e-mail e exportação dos próprios dados antes de excluir a conta.
 2. **Moderação:** denunciar e ocultar reviews, bloquear usuários.
 3. **Diário mais fiel ao hábito de jogar:** editar jogadas anteriores, plataforma e horas por jogada e uma review por jogada.
-4. **Compartilhamento:** prévia (título e capa) ao colar links de jogos, perfis e listas, e uma retrospectiva do ano para compartilhar.
+4. **Retrospectiva e compartilhamento mais ricos:** gêneros e horas jogadas (exigem guardar esses dados por jogada), comparação com o ano anterior, imagens com mais conteúdo e suporte a nomes em outros alfabetos (fontes extras).
 5. **Comunidade:** notificações, comentários em reviews e listas, importação da biblioteca da Steam.
 6. **Escala:** cache e limite de requisições compartilhados entre processos, busca de texto nas reviews e, se necessário, outro banco no lugar do SQLite.

@@ -817,6 +817,12 @@
   gap: var(--space-2);
 }
 
+.profile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
 .profile-summary {
   display: flex;
   flex-direction: column;
@@ -1077,5 +1083,193 @@
   }
   .review-game {
     flex-basis: 2.75rem;
+  }
+}
+
+/* ---------- Retrospectiva do ano ---------- */
+.retro-head {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.retro-owner {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-2);
+}
+
+.retro-owner:hover {
+  color: var(--text);
+}
+
+.retro-handle {
+  color: var(--text-3);
+  font-size: 0.9375rem;
+}
+
+.retro-title {
+  font-size: var(--step-5);
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+
+.retro-year {
+  color: var(--accent);
+}
+
+.retro-note {
+  max-width: 62ch;
+  margin-top: var(--space-2);
+  color: var(--text-3);
+  font-size: 0.9375rem;
+}
+
+.retro-head .retro-note {
+  margin-top: 0;
+}
+
+.retro-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.year-nav ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-6);
+}
+
+.year-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.25rem;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  color: var(--text-2);
+}
+
+.year-link:hover {
+  color: var(--text);
+  border-color: var(--text-3);
+}
+
+.year-link[aria-current="page"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+.retro-hero {
+  margin-bottom: var(--space-2);
+}
+
+.retro-big {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-4);
+}
+
+.retro-big-number {
+  color: var(--accent);
+  font-size: clamp(4rem, 3rem + 8vw, 8rem);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 0.95;
+}
+
+.retro-big-label {
+  font-size: var(--step-3);
+}
+
+.retro-none {
+  color: var(--text-2);
+  font-size: var(--step-2);
+}
+
+.retro-hero .stats-strip {
+  margin-top: var(--space-5);
+}
+
+.retro-goty {
+  display: grid;
+  grid-template-columns: minmax(7rem, 11rem) minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.retro-goty-cover {
+  display: block;
+}
+
+.retro-goty-name {
+  font-size: var(--step-3);
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.retro-goty-rating {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  font-size: var(--step-1);
+}
+
+.retro-cap {
+  display: block;
+}
+
+.retro-card {
+  max-width: 40rem;
+}
+
+.retro-card img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  aspect-ratio: 1200 / 630;
+}
+
+.retro-card figcaption {
+  margin-top: var(--space-2);
+  color: var(--text-3);
+  font-size: 0.875rem;
+}
+
+.retro-how {
+  margin-top: var(--space-7);
+  color: var(--text-2);
+  font-size: 0.9375rem;
+}
+
+.retro-how summary {
+  cursor: pointer;
+  color: var(--text-2);
+}
+
+.retro-how ul {
+  margin: var(--space-3) 0 0;
+  padding-left: 1.25rem;
+  list-style: disc;
+}
+
+.retro-how li + li {
+  margin-top: var(--space-2);
+}
+
+@media (max-width: 30rem) {
+  .retro-goty {
+    grid-template-columns: minmax(6rem, 8rem) minmax(0, 1fr);
+    gap: var(--space-4);
   }
 }

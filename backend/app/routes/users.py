@@ -15,6 +15,7 @@ from ..services import feed as feed_service
 from ..services import library as library_service
 from ..services import lists as lists_service
 from ..services import profiles as profiles_service
+from ..services import retrospective as retrospective_service
 from ..services import reviews as reviews_service
 from ..utils.pagination import page_args, page_envelope
 from .library import entry_item, library_page
@@ -46,6 +47,22 @@ def profile(username: str):
             "recent": [entry_item(r) for r in recent],
         }
     )
+
+
+@bp.get("/<username>/retrospective")
+@rate_limit("retrospective", 60, 60)
+def retrospective_latest(username: str):
+    """A retrospectiva do ano mais recente com dados (sem nenhum, o ano atual)."""
+    user = _target(username)
+    return jsonify(retrospective_service.build(user, retrospective_service.default_year(user["id"])))
+
+
+@bp.get("/<username>/retrospective/<int:year>")
+@rate_limit("retrospective", 60, 60)
+def retrospective(username: str, year: int):
+    user = _target(username)
+    retrospective_service.require_valid_year(year)
+    return jsonify(retrospective_service.build(user, year))
 
 
 @bp.get("/<username>/library")

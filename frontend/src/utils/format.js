@@ -111,6 +111,13 @@ export function daysBetween(from, to) {
   return Math.round((b.getTime() - a.getTime()) / 86400000);
 }
 
+/** Há quanto tempo a pessoa joga: "Começou hoje", "1 dia jogando", "46 dias jogando". `null` sem data de início ou com data no futuro. */
+export function playingFor(startedAt, today = localToday()) {
+  const days = daysBetween(startedAt, today); // `null` sem data de início
+  if (days === null || days < 0) return null;
+  return days === 0 ? "Começou hoje" : `${plural(days, "dia", "dias")} jogando`;
+}
+
 export function plural(count, one, many) {
   return `${count} ${count === 1 ? one : many}`;
 }

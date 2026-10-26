@@ -352,9 +352,22 @@ def test_game_page_screenshot_failure_does_not_break_the_page(api, monkeypatch):
     assert body["game"]["screenshots"] == []
 
 
-def test_top_rated_uses_only_community_reviews(ana, bruno):
+def test_top_rated_uses_only_community_reviews(ana, bruno, make_user):
     assert ana.get("/api/games/top-rated").get_json()["items"] == []
     ana.post(f"/api/games/{HADES}/reviews", {"rating": 9})
     bruno.post(f"/api/games/{HADES}/reviews", {"rating": 8})
+    make_user("carla").post(f"/api/games/{HADES}/reviews", {"rating": 8.5})
+    body = ana.get("/api/games/top-rated").get_json()
+    assert [(i["game"]["name"], i["average"], i["count"]) for i in body["items"]] == [("Hades", 8.5, 3)]
+    assert body["min_notes"] == 3
+
+
+def test_top_rated_needs_notes_from_three_different_people(ana, bruno, make_user):
+    """Um 10 dado por uma ou duas pessoas não faz de um jogo o mais bem avaliado."""
+    ana.post(f"/api/games/{HADES}/reviews", {"rating": 10})
+    assert ana.get("/api/games/top-rated").get_json()["items"] == []
+    bruno.post(f"/api/games/{HADES}/reviews", {"rating": 10})
+    assert ana.get("/api/games/top-rated").get_json()["items"] == []
+    make_user("carla").post(f"/api/games/{HADES}/reviews", {"rating": 10})
     items = ana.get("/api/games/top-rated").get_json()["items"]
-    assert [(i["game"]["name"], i["average"], i["count"]) for i in items] == [("Hades", 8.5, 2)]
+    assert [(i["game"]["name"], i["count"]) for i in items] == [("Hades", 3)]

@@ -55,15 +55,27 @@ function Summary({ profile, isSelf }) {
         <Stat value={formatAverage(stats.average_rating)} label="Média das notas" />
       </dl>
 
-      {favorites.length > 0 && (
-        <Section title="Favoritos">
-          <GameGrid dense>
-            {favorites.map((item) => (
-              <GameCard key={item.game.rawg_id} game={item.game} entry={item.entry} rating={item.rating} />
-            ))}
-          </GameGrid>
-        </Section>
-      )}
+      <div className="profile-feature" data-solo={stats.reviews_with_text > 0 ? undefined : true}>
+        {favorites.length > 0 ? (
+          <Section title="Favoritos">
+            <GameGrid dense>
+              {favorites.map((item) => (
+                <GameCard key={item.game.rawg_id} game={item.game} entry={item.entry} rating={item.rating} />
+              ))}
+            </GameGrid>
+          </Section>
+        ) : (
+          isSelf && (
+            <Section title="Favoritos">
+              <EmptyState title="Nenhum favorito ainda" compact>
+                Toque em “Favoritar” na página de um jogo do seu diário e ele ganha destaque aqui, no topo do seu perfil.
+              </EmptyState>
+            </Section>
+          )
+        )}
+
+        {stats.reviews_with_text > 0 && <LatestReview username={user.username} />}
+      </div>
 
       <div className="profile-charts">
         <Section title="Por status" headingLevel={2}>
@@ -110,13 +122,27 @@ function Summary({ profile, isSelf }) {
       {recent.length > 0 && (
         <Section title="Atualizados recentemente">
           <GameGrid dense>
-            {recent.map((item) => (
+            {recent.slice(0, 6).map((item) => (
               <GameCard key={item.game.rawg_id} game={item.game} entry={item.entry} rating={item.rating} />
             ))}
           </GameGrid>
         </Section>
       )}
     </div>
+  );
+}
+
+/** A review mais recente que tem texto: dá voz ao perfil, em vez de só números. */
+function LatestReview({ username }) {
+  const state = useAsync((signal) => usersApi.reviews(username, { page: 1, per_page: 10 }, { signal }), [username]);
+  const review = state.data?.items.find((item) => item.body);
+  if (!review) return null; // enquanto carrega, ou se a lista não tiver texto, a seção não aparece
+  return (
+    <Section title="Review mais recente">
+      <div className="review-list">
+        <ReviewCard review={review} showGame showAuthor={false} />
+      </div>
+    </Section>
   );
 }
 

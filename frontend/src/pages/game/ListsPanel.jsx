@@ -80,19 +80,19 @@ export function ListsPanel({ rawgId, memberIds, onChange }) {
   const lists = state.data?.items ?? [];
 
   return (
-    <section className="panel" aria-labelledby="lists-title">
-      <div className="panel-head">
+    <section className="panel panel-row" aria-labelledby="lists-title">
+      <div className="panel-row-text">
         <h2 id="lists-title" className="panel-title">
           Listas
         </h2>
-        <button type="button" className="btn" onClick={() => setOpen(true)}>
-          <Icon name="plus" size={18} />
-          Guardar em lista
-        </button>
+        <p className="panel-hint">
+          {memberIds.length === 0 ? "Este jogo ainda não está em nenhuma lista sua." : `Está em ${plural(memberIds.length, "lista sua", "listas suas")}.`}
+        </p>
       </div>
-      <p className="panel-hint">
-        {memberIds.length === 0 ? "Este jogo ainda não está em nenhuma lista sua." : `Está em ${plural(memberIds.length, "lista sua", "listas suas")}.`}
-      </p>
+      <button type="button" className="btn" onClick={() => setOpen(true)}>
+        <Icon name="plus" size={18} />
+        Guardar em lista
+      </button>
 
       <Dialog open={open} onClose={() => setOpen(false)} title="Guardar em lista">
         {state.error && !state.data ? (

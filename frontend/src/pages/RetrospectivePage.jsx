@@ -350,14 +350,22 @@ export function RetrospectiveView({ data, isSelf, shareUrl }) {
         </EmptyState>
       ) : (
         <>
-          <Hero totals={totals} year={year} />
-          {totals.completed > 0 && <MonthsSection data={data} />}
-          {data.game_of_the_year && <GameOfTheYear item={data.game_of_the_year} year={year} />}
-          <CompletedSection data={data} />
-          <PaceSection pace={data.pace} />
-          <RatingsSection ratings={data.ratings} user={user} />
-          <CommunitySection social={data.social} />
-          <ShareImage data={data} />
+          <div className="retro-top" data-solo={data.game_of_the_year ? undefined : true}>
+            <Hero totals={totals} year={year} />
+            {data.game_of_the_year && <GameOfTheYear item={data.game_of_the_year} year={year} />}
+          </div>
+          <div className="retro-grid">
+            <div className="retro-col">
+              {totals.completed > 0 && <MonthsSection data={data} />}
+              <CompletedSection data={data} />
+              <PaceSection pace={data.pace} />
+            </div>
+            <div className="retro-col">
+              <RatingsSection ratings={data.ratings} user={user} />
+              <CommunitySection social={data.social} />
+              <ShareImage data={data} />
+            </div>
+          </div>
           <HowItWorks year={year} />
         </>
       )}

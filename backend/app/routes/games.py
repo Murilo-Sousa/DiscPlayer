@@ -89,18 +89,26 @@ def featured():
     return jsonify(out)
 
 
+# Um 10 dado por uma só pessoa não faz de um jogo "o mais bem avaliado": só entra no ranking quem tem notas
+# de pelo menos três pessoas diferentes (há uma nota por pessoa e jogo).
+TOP_RATED_MIN_NOTES = 3
+
+
 @bp.get("/games/top-rated")
 def top_rated():
-    """Jogos mais bem avaliados pela comunidade DiscPlayer (média das reviews reais)."""
+    """Jogos mais bem avaliados pela comunidade DiscPlayer (média das reviews reais, com um mínimo de notas)."""
     _, per_page = page_args(default_per_page=8, max_per_page=20)
     rows = fetch_all(
         "SELECT g.rawg_id, g.name AS game_name, g.slug AS game_slug, g.cover_url, g.release_date,"
         " AVG(r.rating) AS average, COUNT(*) AS count FROM reviews r JOIN games g ON g.id = r.game_id"
-        " GROUP BY g.id ORDER BY average DESC, count DESC, g.name LIMIT ?",
-        (per_page,),
+        " GROUP BY g.id HAVING COUNT(*) >= ? ORDER BY average DESC, count DESC, g.name LIMIT ?",
+        (TOP_RATED_MIN_NOTES, per_page),
     )
     return jsonify(
-        {"items": [{"game": game_from_row(r), "average": round(r["average"], 2), "count": r["count"]} for r in rows]}
+        {
+            "items": [{"game": game_from_row(r), "average": round(r["average"], 2), "count": r["count"]} for r in rows],
+            "min_notes": TOP_RATED_MIN_NOTES,
+        }
     )
 
 

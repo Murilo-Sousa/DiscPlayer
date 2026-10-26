@@ -75,12 +75,70 @@
 /* ---------- Início ---------- */
 .hero {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
-  gap: var(--space-7);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-6) var(--space-7);
   align-items: center;
   padding-block: var(--space-5) var(--space-7);
-  border-bottom: 1px solid var(--line);
   margin-bottom: var(--space-7);
+}
+
+.hero[data-solo] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.home-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-7);
+}
+
+.home-lists {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr));
+  gap: var(--space-4);
+}
+
+/* Prateleira de jogos em alta ao lado da apresentação. */
+.hero-shelf-title {
+  margin-bottom: var(--space-3);
+  color: var(--text-3);
+  font-size: 0.9375rem;
+}
+
+.hero-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.hero-tile-link {
+  position: relative;
+  display: block;
+  text-decoration: none;
+}
+
+.hero-tile .cover[data-ratio="wide"],
+.hero-tile .skeleton-cover {
+  aspect-ratio: 4 / 3;
+}
+
+.hero-tile-name {
+  position: absolute;
+  inset: auto 0 0 0;
+  padding: 0.3rem 0.45rem;
+  overflow: hidden;
+  background: rgb(19 19 22 / 0.86);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-radius: 0 0 var(--radius-xs) var(--radius-xs);
+}
+
+.hero-tile-link:hover .cover,
+.hero-tile-link:focus-visible .cover {
+  outline: 2px solid var(--text-3);
 }
 
 .hero-title {
@@ -99,10 +157,25 @@
 }
 
 .hero-legend {
-  padding: var(--space-5);
+  grid-column: 1 / -1;
+  padding: var(--space-4) var(--space-5);
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
+}
+
+/* Com a legenda embaixo, os cinco discos ficam lado a lado. */
+.hero-legend .legend-list {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.hero-legend .legend-item {
+  grid-template-columns: 2.1rem minmax(0, 1fr);
+  gap: var(--space-3);
+  padding-block: var(--space-2) 0;
+  border-top: 0;
 }
 
 .hero-legend-title {
@@ -161,8 +234,80 @@
 }
 
 .home > .section:first-child,
-.home > .hero + .home-columns {
+.home > .hero + .home-columns,
+.home > .hero + .section,
+.home > .sr-only + .home-top {
   margin-top: 0;
+}
+
+/* ---- Jogando agora e fila ---- */
+.playing-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: var(--space-3);
+}
+
+.playing-card {
+  display: grid;
+  grid-template-columns: 5rem minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: center;
+  padding: var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.playing-card:hover {
+  border-color: var(--line-strong);
+}
+
+.playing-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.playing-name {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: var(--step-1);
+  font-weight: 700;
+  line-height: 1.25;
+  text-decoration: none;
+}
+
+.playing-name:hover {
+  text-decoration: underline;
+}
+
+.playing-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text-2);
+  font-size: 0.875rem;
+}
+
+.playing-span {
+  color: var(--text-3);
+  font-size: 0.875rem;
+}
+
+.queue-item {
+  display: grid;
+  grid-template-columns: 2.75rem minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-3);
+  padding-block: var(--space-3);
+  border-top: 1px solid var(--line);
+}
+
+.queue li:last-child {
+  border-bottom: 1px solid var(--line);
 }
 
 .ranking-item {
@@ -255,6 +400,26 @@
 }
 
 /* ---------- Página do jogo ---------- */
+.game-wrap {
+  position: relative;
+  isolation: isolate;
+  overflow-x: clip;
+}
+
+.game-backdrop {
+  position: absolute;
+  z-index: -1;
+  inset: 0 0 auto 0;
+  width: 100%;
+  height: 30rem;
+  object-fit: cover;
+  object-position: center 30%;
+  opacity: 0.2;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 30%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 30%, transparent 100%);
+}
+
 .game-head {
   display: grid;
   grid-template-columns: 15rem minmax(0, 1fr);
@@ -354,6 +519,20 @@
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
+}
+
+/* Painel de uma linha só: texto à esquerda, ação à direita. */
+.panel-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-5);
+  padding-block: var(--space-4);
+}
+
+.panel-row .panel-hint {
+  margin-block: 0.15rem 0;
 }
 
 .panel-head {
@@ -602,6 +781,11 @@
   margin-top: var(--space-3);
 }
 
+/* Quantidade ímpar de imagens: a última ocupa a linha inteira, sem deixar buraco. */
+.shots-grid li:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
 .shots-grid img {
   width: 100%;
   aspect-ratio: 16 / 9;
@@ -832,6 +1016,29 @@
   margin-top: var(--space-6);
 }
 
+/* Favoritos e a última review lado a lado, para o perfil ter voz além dos números. */
+.profile-feature {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: var(--space-7);
+  align-items: start;
+  margin-top: var(--space-7);
+}
+
+.profile-feature[data-solo] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.profile-feature > .section {
+  margin-top: 0;
+}
+
+@media (max-width: 63.99rem) {
+  .profile-feature {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .profile-charts {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
@@ -1029,6 +1236,14 @@
     grid-template-columns: 1fr;
     gap: var(--space-6);
   }
+  .hero-legend .legend-list {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .hero-legend .legend-item {
+    padding-block: 0.8rem;
+    border-top: 1px solid var(--line);
+  }
   .game-head {
     grid-template-columns: 1fr;
     gap: var(--space-5);
@@ -1167,6 +1382,53 @@
 
 .retro-hero {
   margin-bottom: var(--space-2);
+}
+
+/* Número do ano e jogo do ano lado a lado; o resto, em duas colunas (uma só no celular). */
+.retro-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: var(--space-6) var(--space-7);
+  align-items: start;
+  margin-top: var(--space-6);
+}
+
+.retro-top[data-solo] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.retro-top .section {
+  margin-top: 0;
+  padding: var(--space-5);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+
+.retro-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: var(--space-7);
+  align-items: start;
+  margin-top: var(--space-7);
+}
+
+.retro-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-7);
+  min-width: 0;
+}
+
+.retro-col .section {
+  margin-top: 0;
+}
+
+@media (max-width: 63.99rem) {
+  .retro-top,
+  .retro-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .retro-big {

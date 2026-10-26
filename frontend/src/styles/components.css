@@ -893,6 +893,17 @@ input[type="search"]::-webkit-search-cancel-button {
   border-bottom: 1px solid var(--line);
 }
 
+/* Na página inicial, as reviews ocupam duas colunas quando há espaço. */
+.review-list[data-grid] {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 24rem), 1fr));
+  column-gap: var(--space-7);
+}
+
+.review-list[data-grid] .review:last-child {
+  border-bottom: 0;
+}
+
 .review-own {
   padding-top: 0;
   border-top: 0;
@@ -1161,26 +1172,46 @@ input[type="search"]::-webkit-search-cancel-button {
   position: relative;
   display: flex;
   align-items: center;
+  justify-content: center;
   aspect-ratio: 16 / 10;
   padding: var(--space-3) var(--space-4);
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
+  overflow: hidden; /* nada passa da borda, mesmo com capas de proporções estranhas */
 }
 
 .list-card-link:hover .cover-stack {
   border-color: var(--text-3);
 }
 
+/*
+ * Cada capa mostra 70% da própria largura e esconde 30% sob a vizinha; a conta fecha em 100% da área
+ * útil para qualquer quantidade (1 a 4), sem a pilha estourar a caixa.
+ */
+.cover-stack {
+  --n: 4;
+  --item: calc(100% / (1 + 0.7 * (var(--n) - 1)));
+}
+.cover-stack[data-count="1"] {
+  --n: 1;
+}
+.cover-stack[data-count="2"] {
+  --n: 2;
+}
+.cover-stack[data-count="3"] {
+  --n: 3;
+}
+
 .cover-stack-item {
-  width: 34%;
+  width: min(var(--item), 34%);
   flex-shrink: 0;
   border: 2px solid var(--surface);
   border-radius: var(--radius-xs);
 }
 
 .cover-stack-item + .cover-stack-item {
-  margin-left: -9%;
+  margin-left: calc(min(var(--item), 34%) * -0.3);
 }
 
 .cover-stack-item:nth-child(1) {

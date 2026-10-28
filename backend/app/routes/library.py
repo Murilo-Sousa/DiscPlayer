@@ -144,6 +144,7 @@ def remove_playthrough(rawg_id: int, playthrough_id: int):
 @login_required
 def remove_entry(rawg_id: int):
     game = games_service.get_local_game(rawg_id)
-    if game is None or not library_service.delete_entry(current_user()["id"], game["id"]):
+    result = library_service.delete_entry(current_user()["id"], game["id"]) if game else None
+    if result is None:
         raise ApiError(404, "not_found", "Este jogo não está na sua biblioteca.")
-    return jsonify({"ok": True})
+    return jsonify({"ok": True, **result})

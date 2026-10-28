@@ -86,7 +86,14 @@ export function ReviewsList({ rawgId, refreshKey }) {
         <div aria-busy={state.loading || undefined}>
           <div className="review-list">
             {data.items.map((review) => (
-              <ReviewCard key={review.id} review={review} canLike={!!user} onLike={like} pending={pendingId === review.id} />
+              // Ninguém curte a própria review: o servidor recusa, então o botão nem aparece (só a contagem).
+              <ReviewCard
+                key={review.id}
+                review={review}
+                canLike={!!user}
+                onLike={user && review.user?.username === user.username ? undefined : like}
+                pending={pendingId === review.id}
+              />
             ))}
           </div>
           <Pagination

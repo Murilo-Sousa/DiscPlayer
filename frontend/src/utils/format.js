@@ -29,9 +29,6 @@ export const STATUS_VERBS = {
 /** "Começou a jogar" de quem recomeçou um jogo que já tinha terminado, largado ou pausado. */
 export const REPLAY_VERB = "voltou a jogar";
 
-/** Status em que "Jogar de novo" faz sentido: a jogada atual já terminou ou foi interrompida. */
-export const REPLAYABLE = ["zerado", "abandonado", "pausado"];
-
 /** Resumo das datas de uma jogada: "12 mar 2025 → 20 mar 2025", "Desde …", "Até …" ou "Sem datas". */
 export function playSpan(play) {
   const start = play?.started_at ? formatDate(play.started_at) : "";

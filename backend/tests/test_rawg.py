@@ -319,6 +319,7 @@ def test_game_page_for_a_missing_game_is_404(api):
 
 def test_game_page_falls_back_to_local_data_when_rawg_is_down(ana, monkeypatch):
     ana.put(f"/api/library/{HADES}", {"status": "zerado"})
+    ana.play(HADES)
     ana.post(f"/api/games/{HADES}/reviews", {"rating": 9, "body": "Ótimo"})
 
     def down(*_a, **_k):
@@ -354,9 +355,13 @@ def test_game_page_screenshot_failure_does_not_break_the_page(api, monkeypatch):
 
 def test_top_rated_uses_only_community_reviews(ana, bruno, make_user):
     assert ana.get("/api/games/top-rated").get_json()["items"] == []
+    ana.play(HADES)
     ana.post(f"/api/games/{HADES}/reviews", {"rating": 9})
+    bruno.play(HADES)
     bruno.post(f"/api/games/{HADES}/reviews", {"rating": 8})
-    make_user("carla").post(f"/api/games/{HADES}/reviews", {"rating": 8.5})
+    carla = make_user("carla")
+    carla.play(HADES)
+    carla.post(f"/api/games/{HADES}/reviews", {"rating": 8.5})
     body = ana.get("/api/games/top-rated").get_json()
     assert [(i["game"]["name"], i["average"], i["count"]) for i in body["items"]] == [("Hades", 8.5, 3)]
     assert body["min_notes"] == 3
@@ -364,10 +369,14 @@ def test_top_rated_uses_only_community_reviews(ana, bruno, make_user):
 
 def test_top_rated_needs_notes_from_three_different_people(ana, bruno, make_user):
     """Um 10 dado por uma ou duas pessoas não faz de um jogo o mais bem avaliado."""
+    ana.play(HADES)
     ana.post(f"/api/games/{HADES}/reviews", {"rating": 10})
     assert ana.get("/api/games/top-rated").get_json()["items"] == []
+    bruno.play(HADES)
     bruno.post(f"/api/games/{HADES}/reviews", {"rating": 10})
     assert ana.get("/api/games/top-rated").get_json()["items"] == []
-    make_user("carla").post(f"/api/games/{HADES}/reviews", {"rating": 10})
+    carla = make_user("carla")
+    carla.play(HADES)
+    carla.post(f"/api/games/{HADES}/reviews", {"rating": 10})
     items = ana.get("/api/games/top-rated").get_json()["items"]
     assert [(i["game"]["name"], i["count"]) for i in items] == [("Hades", 3)]

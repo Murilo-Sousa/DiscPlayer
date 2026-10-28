@@ -7,7 +7,7 @@ que estas funções esperam:
   jogo      rawg_id, game_name, game_slug, cover_url      (+ release_date)
   review    review_id, rating, body, has_spoilers, review_created_at,
             review_updated_at, like_count, liked
-  registro  status, is_favorite, started_at, completed_at,
+  registro  status, is_favorite, started_at, completed_at, status_changed_at,
             entry_created_at, entry_updated_at, plays       (+ rating)
   atividade activity_id, type, activity_status, activity_is_replay,
             activity_created_at, review_*, list_id, list_title
@@ -87,6 +87,8 @@ def entry_from_row(row: sqlite3.Row) -> dict:
         "is_favorite": bool(row["is_favorite"]),
         "started_at": row["started_at"],
         "completed_at": row["completed_at"],
+        # Quando o status mudou pela última vez ("Largado em ..."); `updated_at` muda também ao favoritar.
+        "status_changed_at": row["status_changed_at"] or row["entry_updated_at"],
         "created_at": row["entry_created_at"],
         "updated_at": row["entry_updated_at"],
         "plays": row["plays"],

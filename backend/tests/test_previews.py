@@ -272,6 +272,7 @@ def test_game_preview_shows_the_community_average_only_with_real_reviews(site):
     assert "Nota média" not in head_of(site.get(f"/jogos/{HADES}")).one("description")
 
     for client, rating in ((ana, 9), (bruno, 8)):
+        client.play(HADES)
         assert client.post(f"/api/games/{HADES}/reviews", {"rating": rating}).status_code == 201
     description = head_of(site.get(f"/jogos/{HADES}")).one("description")
     assert "Nota média da comunidade DiscPlayer: 8,5 em 2 avaliações." in description
@@ -280,6 +281,7 @@ def test_game_preview_shows_the_community_average_only_with_real_reviews(site):
 def test_game_preview_never_includes_review_text(site):
     ana = register(site)
     finish(ana, HADES)
+    ana.play(HADES)
     ana.post(f"/api/games/{HADES}/reviews", {"rating": 9, "body": "SEGREDO-DO-FINAL-DO-JOGO"})
     text = site.get(f"/jogos/{HADES}").get_data(as_text=True)
     assert "SEGREDO-DO-FINAL-DO-JOGO" not in text
@@ -373,6 +375,7 @@ def test_profile_preview_has_name_numbers_and_bio(site):
     ana.patch("/api/auth/me", {"bio": "Jogo de tudo.\nPrincipalmente RPG."})
     finish(ana, HADES)
     finish(ana, CELESTE)
+    ana.play(HADES)
     ana.post(f"/api/games/{HADES}/reviews", {"rating": 9})
     head = head_of(site.get("/u/ana"))
     assert head.title == "Ana Souza (@ana) · DiscPlayer"
@@ -493,6 +496,7 @@ def test_retrospective_preview_summarizes_the_year(site):
     ana = register(site, display_name="Ana Souza")
     finish(ana, HADES, "2025-03-01", "2025-03-20")
     finish(ana, CELESTE, "2025-05-01", "2025-05-04")
+    ana.play(HADES)
     ana.post(f"/api/games/{HADES}/reviews", {"rating": 9})
     sql(site, "UPDATE reviews SET created_at = '2025-03-21T10:00:00+00:00'")
     head = head_of(site.get("/u/ana/retrospectiva/2025"))
@@ -599,6 +603,7 @@ def test_the_preview_does_not_depend_on_who_is_logged_in(site):
     ana, bruno = register(site, "ana"), register(site, "bruno")
     lst = make_list(ana, "Privada da Ana", is_public=False)
     finish(ana, HADES)
+    ana.play(HADES)
     ana.post(f"/api/games/{HADES}/reviews", {"rating": 7, "body": "texto particular"})
     seen = {client_name: head_of(client.get(f"/listas/{lst['id']}")).title for client_name, client in
             (("ana", ana), ("bruno", bruno), ("visitante", site))}
@@ -711,12 +716,16 @@ def test_the_average_in_the_preview_is_the_one_the_page_shows(site):
     ana, bruno = register(site, "ana"), register(site, "bruno")
     finish(ana, HADES, "2025-03-01", "2025-03-20")
     finish(ana, CELESTE, "2025-04-01", "2025-04-02")
+    ana.play(HADES)
     ana.post(f"/api/games/{HADES}/reviews", {"rating": 8})
+    ana.play(CELESTE)
     ana.post(f"/api/games/{CELESTE}/reviews", {"rating": 8.5})
     assert ana.get("/api/users/ana").get_json()["stats"]["average_rating"] == 8.25  # a página mostra "8,25"
     assert "nota média 8,25" in head_of(site.get("/u/ana")).one("description")
     finish(bruno, HADES, "2025-03-01", "2025-03-20")
+    bruno.play(HADES)
     bruno.post(f"/api/games/{HADES}/reviews", {"rating": 9})
+    bruno.play(CELESTE)
     bruno.post(f"/api/games/{CELESTE}/reviews", {"rating": 8})
     assert "Nota média da comunidade DiscPlayer: 8,5 em 2 avaliações." in head_of(site.get(f"/jogos/{HADES}")).one("description")
 
@@ -724,6 +733,7 @@ def test_the_average_in_the_preview_is_the_one_the_page_shows(site):
 def test_a_zero_rated_year_has_no_game_of_the_year_in_the_preview(site):
     ana = register(site)
     finish(ana, HADES, "2025-03-01", "2025-03-20")
+    ana.play(HADES)
     ana.post(f"/api/games/{HADES}/reviews", {"rating": 0})
     sql(site, "UPDATE reviews SET created_at = '2025-03-21T10:00:00+00:00'")
     assert "jogo do ano" not in head_of(site.get("/u/ana/retrospectiva/2025")).one("description")

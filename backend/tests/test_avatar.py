@@ -286,6 +286,7 @@ def test_the_photo_address_shows_up_for_everyone_without_leaking_anything_else(a
     url = upload_ok(ana, jpeg_bytes())["avatar_url"]
     bruno.put("/api/users/ana/follow")
     ana.put("/api/users/bruno/follow")
+    ana.play(HADES)
     ana.post(f"/api/games/{HADES}/reviews", {"rating": 8, "body": "Bom."})
     list_id = ana.post("/api/lists", {"title": "Favoritos"}).get_json()["list"]["id"]
     ana.post(f"/api/lists/{list_id}/games", {"rawg_id": HADES})

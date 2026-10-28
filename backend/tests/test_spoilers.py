@@ -7,6 +7,7 @@ SECRET = "No final o protagonista descobre que o mentor era o vilão."
 
 
 def review(client, rawg_id=HADES, **body):
+    client.play(rawg_id)  # só avalia quem já jogou
     return client.post(f"/api/games/{rawg_id}/reviews", body)
 
 

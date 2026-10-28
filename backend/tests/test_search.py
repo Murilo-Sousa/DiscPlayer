@@ -10,6 +10,7 @@ from .conftest import CELESTE, HADES
 
 def test_search_returns_every_category(ana, bruno):
     bruno.put(f"/api/library/{HADES}", {"status": "zerado"})
+    bruno.play(HADES)
     bruno.post(f"/api/games/{HADES}/reviews", {"rating": 9, "body": "Hades é viciante."})
     lst = bruno.post("/api/lists", {"title": "Favoritos do Hades"}).get_json()["list"]
     bruno.post(f"/api/lists/{lst['id']}/games", {"rawg_id": HADES})
@@ -61,6 +62,7 @@ def test_search_survives_sql_injection_attempts(ana):
 
 def test_search_degrades_gracefully_when_rawg_is_down(ana, bruno, monkeypatch):
     bruno.put(f"/api/library/{HADES}", {"status": "zerado"})
+    bruno.play(HADES)
     bruno.post(f"/api/games/{HADES}/reviews", {"rating": 9, "body": "Hades é viciante."})
 
     def down(*_a, **_k):

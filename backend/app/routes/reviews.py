@@ -1,4 +1,6 @@
-"""Reviews: criar, editar, excluir e curtir. A nota (0 a 10, passos de 0,5) é obrigatória; o texto e o aviso de spoilers, não."""
+"""Reviews: criar, editar, excluir e curtir. A nota (0 a 10, passos de 0,5) é obrigatória; o texto e o aviso de spoilers, não.
+
+Só avalia quem já começou o jogo (jogando, pausado, abandonado ou zerado): veja `services/library.py`."""
 from __future__ import annotations
 
 from flask import Blueprint, jsonify
@@ -61,7 +63,7 @@ def create_review(rawg_id: int):
     game = games_service.ensure_game(rawg_id)  # metadados vêm da RAWG, nunca do cliente
     review_id = reviews_service.create_review(
         user["id"],
-        game["id"],
+        game,
         rating,
         None if body is UNSET else body,
         False if spoilers is UNSET else spoilers,

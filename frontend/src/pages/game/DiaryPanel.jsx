@@ -7,7 +7,8 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
 import { Link, useLocation } from "../../router/index.jsx";
 import { libraryApi } from "../../services/api.js";
-import { REPLAYABLE, STATUS_LABELS, daysBetween, formatDate, playSpan, plural } from "../../utils/format.js";
+import { canReplay, hasCompletionDate, hasStarted, isReleased, statusBlockedReason } from "../../utils/diary.js";
+import { STATUS_LABELS, daysBetween, formatDate, playSpan, plural } from "../../utils/format.js";
 import { Playthroughs } from "./Playthroughs.jsx";
 
 export function LoginPrompt({ children }) {
@@ -31,8 +32,11 @@ export function LoginPrompt({ children }) {
 /**
  * Registro do jogo no diário de quem está logado: status, favorito, datas, "jogar de novo" (com o
  * histórico das jogadas anteriores) e remoção.
+ *
+ * O que aparece depende do status (regras em utils/diary.js): "Quero jogar" é um jogo que ainda não começou, então não
+ * tem datas nem favorito; só um jogo zerado tem data de término; e um jogo que ainda não saiu só vai para a fila.
  */
-export function DiaryPanel({ rawgId, entry, playthroughs = [], onSaved, onReplayed, onPlaythroughsChanged, onRemoved }) {
+export function DiaryPanel({ rawgId, game, entry, hasRating = false, playthroughs = [], onSaved, onReplayed, onPlaythroughsChanged, onRemoved }) {
   const { user } = useAuth();
   const toast = useToast();
   const [pending, setPending] = useState(false);
@@ -89,10 +93,10 @@ export function DiaryPanel({ rawgId, entry, playthroughs = [], onSaved, onReplay
   const remove = async () => {
     setPending(true);
     try {
-      await libraryApi.remove(rawgId);
+      const result = await libraryApi.remove(rawgId);
       setConfirmRemove(false);
-      onRemoved();
-      toast.success("Jogo removido do seu diário.");
+      onRemoved(result);
+      toast.success(result?.review_removed ? "Jogo e nota removidos do seu diário." : "Jogo removido do seu diário.");
     } catch (error) {
       toast.error(error.message);
     } finally {
@@ -100,9 +104,22 @@ export function DiaryPanel({ rawgId, entry, playthroughs = [], onSaved, onReplay
     }
   };
 
+  const started = entry ? hasStarted(entry.status) : false;
+  const completable = entry ? hasCompletionDate(entry.status) : false;
   const datesChanged =
-    entry && (dates.started_at !== (entry.started_at ?? "") || dates.completed_at !== (entry.completed_at ?? ""));
-  const span = entry?.started_at && entry?.completed_at ? daysBetween(entry.started_at, entry.completed_at) : null;
+    entry &&
+    (dates.started_at !== (entry.started_at ?? "") || (completable && dates.completed_at !== (entry.completed_at ?? "")));
+  const span = completable && entry?.started_at && entry?.completed_at ? daysBetween(entry.started_at, entry.completed_at) : null;
+
+  // Status que não dá para escolher agora, com o motivo por escrito (e não só um botão apagado).
+  const blocked = {};
+  for (const status of Object.keys(STATUS_LABELS)) {
+    const reason = statusBlockedReason(status, { game, hasRating, playthroughs: playthroughs.length });
+    if (reason && status !== entry?.status) blocked[status] = reason;
+  }
+  const unreleased = !isReleased(game?.released);
+  // Jogo que ainda não saiu já é explicado logo acima do seletor; os outros motivos aparecem abaixo dele.
+  const reasons = unreleased ? [] : [...new Set(Object.values(blocked))];
 
   return (
     <section className="panel" aria-labelledby="diary-title">
@@ -110,7 +127,7 @@ export function DiaryPanel({ rawgId, entry, playthroughs = [], onSaved, onReplay
         <h2 id="diary-title" className="panel-title">
           Seu diário
         </h2>
-        {entry && (
+        {entry && started && (
           <button
             type="button"
             className="like-btn"
@@ -126,15 +143,28 @@ export function DiaryPanel({ rawgId, entry, playthroughs = [], onSaved, onReplay
         )}
       </div>
 
-      <p className="panel-hint">{entry ? "Mude o status quando o seu jogo avançar." : "Como esse jogo está para você?"}</p>
+      <p className="panel-hint">
+        {unreleased
+          ? `Lança em ${formatDate(game.released)}. Até lá, só dá para guardá-lo em “Quero jogar”.`
+          : entry
+            ? "Mude o status quando o seu jogo avançar."
+            : "Como esse jogo está para você?"}
+      </p>
       <StatusPicker
         value={entry?.status ?? null}
         disabled={pending}
+        blocked={blocked}
+        describedBy={reasons.length ? "status-blocked" : undefined}
         onChange={(status) => status !== entry?.status && save({ status }, `${STATUS_LABELS[status]}: salvo no seu diário.`)}
       />
+      {reasons.length > 0 && (
+        <p id="status-blocked" className="field-hint status-blocked">
+          {reasons.join(" ")}
+        </p>
+      )}
       {errors.status && <p className="field-error">{errors.status}</p>}
 
-      {entry && REPLAYABLE.includes(entry.status) && (
+      {entry && canReplay(entry.status) && (
         <div className="replay-row">
           <button type="button" className="btn" disabled={pending} onClick={() => setConfirmReplay(true)}>
             Jogar de novo
@@ -145,33 +175,48 @@ export function DiaryPanel({ rawgId, entry, playthroughs = [], onSaved, onReplay
 
       {entry && (
         <>
-          <form
-            className="date-form"
-            onSubmit={(event) => {
-              event.preventDefault();
-              save({ started_at: dates.started_at || null, completed_at: dates.completed_at || null }, "Datas salvas.");
-            }}
-          >
-            <Field
-              label="Comecei em"
-              type="date"
-              value={dates.started_at}
-              max={dates.completed_at || undefined}
-              onChange={(event) => setDates((current) => ({ ...current, started_at: event.target.value }))}
-              error={errors.started_at}
-            />
-            <Field
-              label="Terminei em"
-              type="date"
-              value={dates.completed_at}
-              min={dates.started_at || undefined}
-              onChange={(event) => setDates((current) => ({ ...current, completed_at: event.target.value }))}
-              error={errors.completed_at}
-            />
-            <button type="submit" className="btn" disabled={pending || !datesChanged}>
-              Salvar datas
-            </button>
-          </form>
+          {started ? (
+            <form
+              className="date-form"
+              data-fields={completable ? "2" : "1"}
+              onSubmit={(event) => {
+                event.preventDefault();
+                save(
+                  completable
+                    ? { started_at: dates.started_at || null, completed_at: dates.completed_at || null }
+                    : { started_at: dates.started_at || null },
+                  "Datas salvas.",
+                );
+              }}
+            >
+              <Field
+                label="Comecei em"
+                type="date"
+                value={dates.started_at}
+                max={(completable && dates.completed_at) || undefined}
+                onChange={(event) => setDates((current) => ({ ...current, started_at: event.target.value }))}
+                error={errors.started_at}
+              />
+              {completable && (
+                <Field
+                  label="Terminei em"
+                  type="date"
+                  value={dates.completed_at}
+                  min={dates.started_at || undefined}
+                  onChange={(event) => setDates((current) => ({ ...current, completed_at: event.target.value }))}
+                  error={errors.completed_at}
+                />
+              )}
+              <button type="submit" className="btn" disabled={pending || !datesChanged}>
+                Salvar datas
+              </button>
+            </form>
+          ) : (
+            <p className="panel-hint queue-hint">
+              Na fila. Quando você começar, mude o status para “Jogando”: a data de início, o favorito e a nota ficam
+              disponíveis.
+            </p>
+          )}
           {span !== null && span >= 0 && (
             <p className="panel-hint">
               {span === 0 ? "Começou e terminou no mesmo dia." : `${plural(span, "dia", "dias")} entre começar e terminar.`}
@@ -209,8 +254,9 @@ export function DiaryPanel({ rawgId, entry, playthroughs = [], onSaved, onReplay
 
       <Dialog open={confirmRemove} onClose={() => !pending && setConfirmRemove(false)} title="Remover do diário?">
         <p>
-          O jogo sai do seu diário, junto com as datas, o favorito e o histórico de jogadas. A sua nota e a sua review, se
-          existirem, continuam publicadas.
+          O jogo sai do seu diário, junto com as datas, o favorito e o histórico de jogadas.
+          {hasRating &&
+            " A sua nota e a sua review também saem do DiscPlayer (e da média do jogo), porque só dá para avaliar um jogo que está no seu diário."}
         </p>
         <div className="dialog-actions">
           <button type="button" className="btn" onClick={() => setConfirmRemove(false)} disabled={pending}>

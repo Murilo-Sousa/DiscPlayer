@@ -196,6 +196,7 @@ def test_another_users_library_is_public_but_has_no_private_data(ana, bruno):
 def test_library_entries_carry_the_users_rating(ana):
     put(ana, HADES, status="zerado")
     assert ana.get("/api/library").get_json()["items"][0]["rating"] is None
+    ana.play(HADES)
     ana.post(f"/api/games/{HADES}/reviews", {"rating": 9.5})
     assert ana.get("/api/library").get_json()["items"][0]["rating"] == 9.5
 

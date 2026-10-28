@@ -59,15 +59,16 @@ def test_replay_rejects_a_bad_client_date_and_changes_nothing(ana, bad):
     assert put(ana, HADES).get_json()["entry"]["plays"] == 1
 
 
-@pytest.mark.parametrize("status", ["zerado", "abandonado", "pausado"])
-def test_replay_is_allowed_after_finishing_dropping_or_pausing(ana, status):
+@pytest.mark.parametrize("status", ["zerado", "abandonado"])
+def test_replay_is_allowed_after_finishing_or_dropping(ana, status):
     put(ana, HADES, status=status)
     data = replay(ana).get_json()
     assert [p["status"] for p in data["playthroughs"]] == [status]
 
 
-@pytest.mark.parametrize("status", ["quero_jogar", "jogando"])
-def test_replay_is_refused_while_the_game_is_not_played_or_is_being_played(ana, status):
+@pytest.mark.parametrize("status", ["quero_jogar", "jogando", "pausado"])
+def test_replay_is_refused_while_the_game_is_not_played_is_being_played_or_is_paused(ana, status):
+    # Um jogo pausado não se "joga de novo": retoma-se voltando para "Jogando" (a jogada continua a mesma).
     put(ana, HADES, status=status)
     response = replay(ana)
     assert response.status_code == 409 and response.get_json()["error"]["code"] == "cannot_replay"
@@ -85,7 +86,9 @@ def test_replay_of_a_game_that_is_not_in_the_diary_is_a_404(ana):
     assert replay(ana, HADES).status_code == 404  # jogo desconhecido
     put(ana, CELESTE, status="zerado")
     assert replay(ana, HADES).status_code == 404  # jogo conhecido, mas fora do diário
-    ana.post(f"/api/games/{HADES}/reviews", {"rating": 7})  # a review cria a cópia local do jogo
+    # guardar o jogo numa lista cria a cópia local dele, sem pô-lo no diário
+    list_id = ana.post("/api/lists", {"title": "Fila"}).get_json()["list"]["id"]
+    assert ana.post(f"/api/lists/{list_id}/games", {"rawg_id": HADES}).status_code == 201
     assert replay(ana, HADES).status_code == 404
 
 
@@ -114,6 +117,7 @@ def test_several_replays_keep_the_order_and_the_count(ana):
 
 def test_the_rating_stays_single_per_game_across_plays(ana):
     finished(ana)
+    ana.play(HADES)
     ana.post(f"/api/games/{HADES}/reviews", {"rating": 9, "body": "Ótimo."})
     replay(ana)
     assert ana.get("/api/library").get_json()["items"][0]["rating"] == 9

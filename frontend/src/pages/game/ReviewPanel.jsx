@@ -6,12 +6,17 @@ import { ReviewCard } from "../../components/ReviewCard.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
 import { reviewsApi } from "../../services/api.js";
+import { ratingAccess } from "../../utils/diary.js";
 import { LoginPrompt } from "./DiaryPanel.jsx";
 
 export const REVIEW_MAX = 5000;
 
-/** Nota (0–10, de 0,5 em 0,5) e texto opcional. Cada pessoa tem uma review por jogo. */
-export function ReviewPanel({ rawgId, review, onChanged }) {
+/**
+ * Nota (0–10, de 0,5 em 0,5) e texto opcional. Cada pessoa tem uma review por jogo.
+ * Só avalia quem já começou o jogo: sem isso (fora do diário, na fila ou antes do lançamento), o painel explica o que falta
+ * em vez de mostrar um formulário que o servidor recusaria. Uma nota que já existe continua editável.
+ */
+export function ReviewPanel({ rawgId, game, entry, review, onChanged }) {
   const { user } = useAuth();
   const toast = useToast();
   const [editing, setEditing] = useState(false);
@@ -29,6 +34,18 @@ export function ReviewPanel({ rawgId, review, onChanged }) {
           Sua nota
         </h2>
         <LoginPrompt>Entre para dar uma nota de 0 a 10 e escrever o que achou.</LoginPrompt>
+      </section>
+    );
+  }
+
+  const access = ratingAccess({ entry, game });
+  if (!review && !access.allowed) {
+    return (
+      <section className="panel panel-locked" aria-labelledby="review-title">
+        <h2 id="review-title" className="panel-title">
+          Sua nota
+        </h2>
+        <p className="panel-hint">{access.reason}</p>
       </section>
     );
   }

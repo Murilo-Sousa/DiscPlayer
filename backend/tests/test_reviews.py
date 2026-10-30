@@ -8,6 +8,7 @@ from .conftest import CELESTE, HADES
 
 
 def review(client, rawg_id=HADES, **body):
+    client.play(rawg_id)  # só avalia quem já jogou
     return client.post(f"/api/games/{rawg_id}/reviews", body)
 
 
@@ -113,7 +114,8 @@ def test_delete_removes_review_likes_and_activity(ana, bruno):
     bruno.put(f"/api/reviews/{rid}/like")
     assert ana.delete(f"/api/reviews/{rid}").status_code == 200
     assert ana.get(f"/api/reviews/{rid}").status_code == 404
-    assert ana.get("/api/users/ana/activity").get_json()["items"] == []
+    kinds = [item["type"] for item in ana.get("/api/users/ana/activity").get_json()["items"]]
+    assert kinds == ["logged"]  # sobrou só o registro no diário; a atividade "avaliou" saiu com a review
     assert ana.get(f"/api/games/{HADES}").get_json()["community"]["count"] == 0
 
 
@@ -211,6 +213,6 @@ def test_cannot_like_own_review_or_missing_review(ana):
 
 
 def test_review_on_unknown_game_fails_cleanly(ana):
-    response = review(ana, 123456789, rating=5)
+    response = ana.post("/api/games/123456789/reviews", {"rating": 5})
     assert response.status_code == 404
     assert response.get_json()["error"]["code"] == "game_not_found"

@@ -35,6 +35,13 @@ def open_game(client, name_query: str) -> str:
     return page.locator(".game-title").inner_text()
 
 
+def marcar_status(client, nome: str) -> None:
+    """Escolhe o status do jogo aberto no painel "Seu diário" e espera o servidor confirmar (o botão fica pressionado)."""
+    botao = client.page.locator(".status-picker").get_by_role("button", name=nome, exact=True)
+    botao.click()
+    client.page.wait_for_selector(f'.status-picker button[aria-pressed="true"]:has-text("{nome}")')
+
+
 def set_rating(client, steps_right: int) -> None:
     """A nota começa em 5 ao tocar no controle; cada seta para a direita soma 0,5."""
     slider = client.page.locator("input[type=range]")

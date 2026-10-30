@@ -33,7 +33,9 @@ export const libraryApi = {
   mine: (params, options) => http.get("/library", { ...options, params }),
   // `today` é a data local de quem usa o site: o servidor a usa ao preencher início/término automaticamente.
   save: (rawgId, data) => http.put(`/library/${rawgId}`, { today: localToday(), ...data }),
-  remove: (rawgId) => http.delete(`/library/${rawgId}`),
+  // Se o jogo tem nota, a nota sai junto: o servidor só aceita isso com `withReview` (a pessoa já viu o aviso).
+  remove: (rawgId, { withReview = false } = {}) =>
+    http.delete(`/library/${rawgId}`, withReview ? { body: { with_review: true } } : undefined),
   // "Jogar de novo": a jogada atual vai para o histórico do jogo e começa outra (início em hoje, no fuso de quem usa).
   replay: (rawgId) => http.post(`/library/${rawgId}/replay`, { today: localToday() }),
   removePlaythrough: (rawgId, id) => http.delete(`/library/${rawgId}/playthroughs/${id}`),
@@ -41,7 +43,8 @@ export const libraryApi = {
 
 export const reviewsApi = {
   recent: (params, options) => http.get("/reviews", { ...options, params }),
-  create: (rawgId, data) => http.post(`/games/${rawgId}/reviews`, data),
+  // `today` é a data local de quem usa o site: o servidor a usa para saber se o jogo já saiu.
+  create: (rawgId, data) => http.post(`/games/${rawgId}/reviews`, { today: localToday(), ...data }),
   update: (id, data) => http.patch(`/reviews/${id}`, data),
   remove: (id) => http.delete(`/reviews/${id}`),
   like: (id) => http.put(`/reviews/${id}/like`),

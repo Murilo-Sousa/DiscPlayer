@@ -110,6 +110,7 @@ def test_the_card_paths_need_the_png_extension_and_accept_only_get(api):
 # --------------------------------------------------------------------------- perfil
 def test_profile_card_is_a_valid_png_for_an_existing_user(ana, api):
     finish(ana, HADES, "2025-01-01", "2025-01-10")
+    ana.play(HADES)
     ana.post(f"/api/games/{HADES}/reviews", {"rating": 9})
     image = png(api.get("/api/share/profile/ana.png"))
     assert has_accent(image)
@@ -221,6 +222,7 @@ def test_a_long_username_with_a_long_name_fits(make_user, api):
 def test_retrospective_card_is_a_valid_png_with_the_real_year(ana, api):
     finish(ana, HADES, "2025-03-01", "2025-03-20")
     finish(ana, CELESTE, "2025-05-01", "2025-05-04")
+    ana.play(HADES)
     ana.post(f"/api/games/{HADES}/reviews", {"rating": 9})
     image = png(api.get("/api/share/retrospective/ana/2025.png"))
     assert has_accent(image)
@@ -248,6 +250,7 @@ def test_retrospective_card_changes_with_the_data(ana, api):
     finish(ana, CELESTE, "2025-03-25", "2025-03-30")
     second = api.get("/api/share/retrospective/ana/2025.png").data
     assert first != second
+    ana.play(CELESTE)
     ana.post(f"/api/games/{CELESTE}/reviews", {"rating": 10})
     assert api.get("/api/share/retrospective/ana/2025.png").data != second
 
@@ -266,6 +269,7 @@ def test_retrospective_card_with_many_games_and_unusual_titles_still_renders(ana
     finish(ana, HADES, "2025-01-05", "2025-01-06")
     finish(ana, CELESTE, "2025-02-05", "2025-02-06")
     sql(app, "UPDATE games SET name = ?", ("ゲーム " + "Título muito longo " * 8,))
+    ana.play(HADES)
     ana.post(f"/api/games/{HADES}/reviews", {"rating": 10})
     assert png(api.get("/api/share/retrospective/ana/2025.png"))
 

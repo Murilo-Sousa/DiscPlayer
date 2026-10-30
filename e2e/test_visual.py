@@ -80,6 +80,7 @@ def test_ranking_aparece_com_notas_de_tres_pessoas(stack, make_client):
     for nome in ("ana", "bia", "caio"):
         c = make_client()
         register(c, nome.title(), nome)
+        api(c, "PUT", f"/api/library/{gid('Hades')}", {"status": "zerado"})
         api(c, "POST", f"/api/games/{gid('Hades')}/reviews", {"rating": 9})
         pessoas.append(c)
     pessoas[0].open("/")
@@ -137,6 +138,7 @@ def test_perfil_sem_favoritos_convida_a_dona_e_nao_mostra_nada_a_visitantes(stac
 
 def test_retrospectiva_usa_duas_colunas_no_computador_e_uma_no_celular(stack, make_client):
     ana = preparar_ana(make_client)
+    api(ana, "PUT", f"/api/library/{gid('Celeste')}", {"status": "zerado"})
     api(ana, "POST", f"/api/games/{gid('Celeste')}/reviews", {"rating": 8})
     for largura, duas in ((1280, True), (390, False)):
         c = make_client(width=largura, height=900)

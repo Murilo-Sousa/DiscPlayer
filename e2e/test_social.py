@@ -1,13 +1,14 @@
 """Duas pessoas: seguir, curtir review, feed."""
 from playwright.sync_api import expect
 
-from helpers import open_game, register, set_rating
+from helpers import marcar_status, open_game, register, set_rating
 
 
 def test_seguir_curtir_e_feed(stack, make_client):
     ana = make_client()
     register(ana, "Ana Souza", "ana")
     open_game(ana, "minecraft")
+    marcar_status(ana, "Zerado")  # só avalia quem já jogou
     set_rating(ana, 7)
     ana.page.get_by_label("O que você achou? (opcional)").fill("Minha review.")
     ana.page.get_by_role("button", name="Publicar").click()

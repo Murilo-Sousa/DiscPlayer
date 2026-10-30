@@ -48,8 +48,11 @@ def fill_account(ana, bruno):
     ana.post(f"/api/library/{HADES}/replay", {})
     ana.put(f"/api/library/{CELESTE}", {"status": "jogando", "is_favorite": True})
     bruno.put(f"/api/library/{HADES}", {"status": "zerado"})
+    ana.play(HADES)
     ana.post(f"/api/games/{HADES}/reviews", {"rating": 10, "body": "Obra-prima.", "has_spoilers": True})
+    bruno.play(HADES)
     bruno.post(f"/api/games/{HADES}/reviews", {"rating": 6, "body": "Ok."})
+    ana.play(CELESTE)
     ana.post(f"/api/games/{CELESTE}/reviews", {"rating": 8})
     ana_review = ana.get("/api/users/ana/reviews").get_json()["items"]
     bruno_review = bruno.get("/api/users/bruno/reviews").get_json()["items"][0]

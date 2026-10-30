@@ -59,6 +59,14 @@ class Api:
         data = {} if file is None else {name: (io.BytesIO(file), filename)}
         return getattr(self.client, method)(url, data=data, headers=merged, content_type="multipart/form-data")
 
+    def play(self, rawg_id, status="zerado"):
+        """Põe o jogo no diário como já jogado, se ainda não estiver: só quem começou o jogo pode avaliá-lo."""
+        entry = (self.get(f"/api/games/{rawg_id}").get_json().get("viewer") or {}).get("entry")
+        if entry and entry["status"] != "quero_jogar":
+            return
+        response = self.put(f"/api/library/{rawg_id}", {"status": status})
+        assert response.status_code in (200, 201), response.get_json()
+
     def register(self, username="ana", email=None, password=PASSWORD, **extra):
         body = {"username": username, "email": email or f"{username}@exemplo.com", "password": password, **extra}
         response = self.post("/api/auth/register", body)
@@ -125,3 +133,5 @@ HADES = fake_rawg.by_name("Hades")["id"]
 CELESTE = fake_rawg.by_name("Celeste")["id"]
 HOLLOW = fake_rawg.by_name("Hollow Knight")["id"]
 ZELDA = fake_rawg.by_name("The Legend of Zelda: Breath of the Wild")["id"]
+
+UPCOMING = fake_rawg.by_name("Farol do Amanhã")["id"]  # ainda não lançado

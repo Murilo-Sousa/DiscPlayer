@@ -77,6 +77,11 @@ _FICTIONAL_NEW = [  # lançamentos recentes inventados (datas relativas a hoje),
 ]
 
 
+_FICTIONAL_UPCOMING = [  # ainda não lançados (datas relativas a hoje): só para testar o que um jogo sem lançamento permite
+    ("Farol do Amanhã", 400, "adventure indie", "pc nintendo", "Estúdio Horizonte"),
+]
+
+
 def _slug(name: str) -> str:
     out = "".join(c.lower() if c.isalnum() else "-" for c in name)
     while "--" in out:
@@ -92,6 +97,9 @@ def _build() -> list[dict]:
     for index, (name, days_ago, genres, platforms, studio) in enumerate(_FICTIONAL_NEW):
         released = (today - timedelta(days=days_ago)).isoformat()
         games.append(_game(900101 + index, name, released, genres, platforms, studio, None, 900 - index * 60))
+    for index, (name, days_ahead, genres, platforms, studio) in enumerate(_FICTIONAL_UPCOMING):
+        released = (today + timedelta(days=days_ahead)).isoformat()
+        games.append(_game(900201 + index, name, released, genres, platforms, studio, None, 10))
     return games
 
 

@@ -58,13 +58,14 @@ def test_feed_has_only_activity_from_followed_users(ana, bruno, make_user):
 
 def test_feed_includes_reviews_and_public_lists_but_not_the_viewers_own_activity(ana, bruno):
     ana.put("/api/users/bruno/follow")
+    bruno.play(HADES)
     bruno.post(f"/api/games/{HADES}/reviews", {"rating": 9, "body": "Excelente " + "x" * 400})
     bruno.post("/api/lists", {"title": "Públicas"})
     bruno.post("/api/lists", {"title": "Privadas", "is_public": False})
     log(ana, CELESTE, "zerado")
     items = ana.get("/api/feed").get_json()["items"]
     kinds = sorted(i["type"] for i in items)
-    assert kinds == ["list_created", "reviewed"]
+    assert kinds == ["list_created", "logged", "reviewed"]  # bruno registrou o jogo (para poder avaliá-lo)
     review = next(i for i in items if i["type"] == "reviewed")
     assert review["review"]["rating"] == 9
     assert review["review"]["excerpt"].endswith("…") and len(review["review"]["excerpt"]) <= 281
@@ -109,7 +110,9 @@ def test_profile_stats_are_computed_from_real_records(ana):
     log(ana, CELESTE, "zerado")
     log(ana, HOLLOW, "jogando")
     ana.put(f"/api/library/{HADES}", {"is_favorite": True})
+    ana.play(HADES)
     ana.post(f"/api/games/{HADES}/reviews", {"rating": 9, "body": "ótimo"})
+    ana.play(CELESTE)
     ana.post(f"/api/games/{CELESTE}/reviews", {"rating": 8})
     stats = ana.get("/api/users/ana").get_json()["stats"]
     assert stats["games"] == 3

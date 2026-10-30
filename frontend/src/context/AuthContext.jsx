@@ -2,7 +2,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { authApi } from "../services/api.js";
 import { setCsrfToken } from "../services/http.js";
 
-const AuthContext = createContext(null);
+// Exportado só para os testes poderem fornecer uma pessoa logada sem chamar a API.
+export const AuthContext = createContext(null);
 
 /**
  * Estado de autenticação. A sessão em si é um cookie HttpOnly; aqui só guardamos

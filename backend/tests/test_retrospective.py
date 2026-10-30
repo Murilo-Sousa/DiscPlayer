@@ -39,6 +39,7 @@ def review(client, rawg_id, rating, body=None):
     payload = {"rating": rating}
     if body:
         payload["body"] = body
+    client.play(rawg_id, status="pausado")  # só avalia quem já jogou; "pausado" não cria datas nem conclusões
     response = client.post(f"/api/games/{rawg_id}/reviews", payload)
     assert response.status_code == 201, response.get_json()
     return response.get_json()["review"]["id"]
@@ -168,7 +169,7 @@ def test_completions_are_counted_by_the_end_date_with_inclusive_year_boundaries(
 
 
 def test_only_finished_games_count_as_completed(ana):
-    put(ana, HADES, status="abandonado", started_at="2025-01-10", completed_at="2025-02-10")
+    put(ana, HADES, status="abandonado", started_at="2025-01-10")
     put(ana, CELESTE, status="pausado", started_at="2025-01-10")
     put(ana, HOLLOW, status="jogando", started_at="2025-01-10")
     data = get(ana, year=2025)

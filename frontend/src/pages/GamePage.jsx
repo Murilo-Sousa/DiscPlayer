@@ -188,7 +188,9 @@ export default function GamePage() {
               <>
                 <DiaryPanel
                   rawgId={game.rawg_id}
+                  game={game}
                   entry={viewer?.entry ?? null}
+                  hasRating={Boolean(viewer?.review)}
                   playthroughs={viewer?.playthroughs ?? []}
                   onSaved={(entry) => {
                     patchViewer({ entry });
@@ -203,11 +205,19 @@ export default function GamePage() {
                     state.reload();
                   }}
                   onRemoved={() => {
-                    patchViewer({ entry: null, playthroughs: [] });
-                    state.reload();
+                    // Tirar o jogo do diário leva a nota junto (só avalia quem tem o jogo no diário).
+                    patchViewer({ entry: null, playthroughs: [], review: null });
+                    refreshAll();
                   }}
+                  onOutdated={refreshAll}
                 />
-                <ReviewPanel rawgId={game.rawg_id} review={viewer?.review ?? null} onChanged={refreshAll} />
+                <ReviewPanel
+                  rawgId={game.rawg_id}
+                  game={game}
+                  entry={viewer?.entry ?? null}
+                  review={viewer?.review ?? null}
+                  onChanged={refreshAll}
+                />
                 <ListsPanel rawgId={game.rawg_id} memberIds={viewer?.list_ids ?? []} onChange={(list_ids) => patchViewer({ list_ids })} />
               </>
             ) : (

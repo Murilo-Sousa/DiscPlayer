@@ -5,7 +5,7 @@ import re
 from PIL import Image
 from playwright.sync_api import expect
 
-from helpers import PASSWORD, login, open_game, register, set_rating, toast_text
+from helpers import PASSWORD, login, marcar_status, open_game, register, set_rating, toast_text
 
 SEGREDO = "No final o mentor era o vilão desde o começo."
 
@@ -30,6 +30,7 @@ def test_review_com_spoiler_fica_escondida_ate_o_clique(stack, make_client):
     ana = make_client()
     register(ana, "Ana Souza", "ana")
     titulo = open_game(ana, "minecraft")
+    marcar_status(ana, "Zerado")  # só avalia quem já jogou
     set_rating(ana, 9)
     texto = ana.page.get_by_label("O que você achou? (opcional)")
     caixa = ana.page.get_by_label("Esta review contém spoilers")
@@ -80,6 +81,7 @@ def test_ana_pode_editar_e_tirar_o_aviso(stack, client):
     page = client.page
     register(client, "Ana Souza", "ana")
     open_game(client, "minecraft")
+    marcar_status(client, "Zerado")  # só avalia quem já jogou
     set_rating(client, 5)
     page.get_by_label("O que você achou? (opcional)").fill(SEGREDO)
     page.get_by_label("Esta review contém spoilers").check()
@@ -233,6 +235,7 @@ def test_excluir_conta_pede_a_senha_e_apaga_tudo(stack, make_client):
     ana = make_client()
     register(ana, "Ana Souza", "ana")
     open_game(ana, "minecraft")
+    marcar_status(ana, "Zerado")  # só avalia quem já jogou
     set_rating(ana, 7)
     ana.page.get_by_label("O que você achou? (opcional)").fill("Review da Ana.")
     ana.page.get_by_role("button", name="Publicar").click()

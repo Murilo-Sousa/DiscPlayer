@@ -13,7 +13,7 @@ from ..services import games as games_service
 from ..services import reviews as reviews_service
 from ..services.reviews import KEEP
 from ..utils.pagination import page_args, page_envelope
-from ..utils.validation import UNSET, FieldErrors, json_body, read_bool, read_rating, read_text
+from ..utils.validation import UNSET, FieldErrors, json_body, read_bool, read_client_today, read_rating, read_text
 
 bp = Blueprint("reviews", __name__, url_prefix="/api")
 
@@ -58,6 +58,7 @@ def create_review(rawg_id: int):
     rating = read_rating(data, errors, required=True)
     body = read_text(data, "body", "A review", errors, max_len=REVIEW_MAX_LENGTH, multiline=True)
     spoilers = read_bool(data, "has_spoilers", "O aviso de spoilers", errors)
+    today = read_client_today(data, errors)  # o "hoje" de quem usa o site decide se o jogo já saiu
     errors.raise_if_any()
     user = current_user()
     game = games_service.ensure_game(rawg_id)  # metadados vêm da RAWG, nunca do cliente
@@ -67,6 +68,7 @@ def create_review(rawg_id: int):
         rating,
         None if body is UNSET else body,
         False if spoilers is UNSET else spoilers,
+        today=today,
     )
     row = reviews_service.get_review(review_id, user["id"])
     response = jsonify({"review": review_from_row(row)})

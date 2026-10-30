@@ -123,6 +123,25 @@ def test_tirar_do_diario_leva_a_nota_junto_e_avisa(stack, client):
     expect(client.page.locator(".game-score")).to_contain_text("Ainda sem notas")
 
 
+def test_tela_desatualizada_nao_apaga_uma_nota_que_ela_nao_mostrava(stack, client):
+    """A nota foi dada em outra aba: remover o jogo aqui não pode levá-la embora sem o aviso ter sido visto."""
+    register(client, "Ana Souza", "ana")
+    open_game(client, "minecraft")
+    marcar_status(client, "Zerado")
+    api(client, "POST", f"/api/games/{gid('Minecraft')}/reviews", {"rating": 8})  # "em outra aba"
+
+    diario(client).get_by_role("button", name="Remover do diário").click()
+    dialogo = client.page.locator("dialog[open]")
+    expect(dialogo).not_to_contain_text("sua nota")  # esta tela ainda não sabe da nota
+    dialogo.get_by_role("button", name="Remover").click()
+    expect(client.page.locator(".toast", has_text="nada foi removido")).to_be_visible()
+    assert len(api(client, "GET", "/api/library")["items"]) == 1  # o jogo continua no diário
+    # a tela se atualizou: agora a nota aparece e o aviso do diálogo fala dela
+    expect(client.page.locator(".review-own")).to_be_visible()
+    diario(client).get_by_role("button", name="Remover do diário").click()
+    expect(client.page.locator("dialog[open]")).to_contain_text("A sua nota e a sua review também saem do DiscPlayer")
+
+
 def test_tirar_do_diario_sem_nota_nao_fala_de_nota(stack, client):
     register(client, "Ana Souza", "ana")
     open_game(client, "minecraft")
@@ -168,6 +187,15 @@ def test_servidor_recusa_o_que_a_tela_nem_oferece(stack, client):
     avaliar = enviar("POST", f"/api/games/{hades}/reviews", {"rating": 8})
     assert avaliar.status == 409 and avaliar.json()["error"]["code"] == "not_played"
     assert enviar("PUT", f"/api/library/{gid('Farol do Amanhã')}", {"status": "zerado"}).status == 409
+    assert api(client, "GET", "/api/library")["items"] == []
+
+    # Tirar do diário um jogo com nota exige a confirmação; sem ela, nada é apagado.
+    assert enviar("PUT", f"/api/library/{hades}", {"status": "zerado"}).status == 201
+    assert enviar("POST", f"/api/games/{hades}/reviews", {"rating": 8}).status == 201
+    sem_aviso = enviar("DELETE", f"/api/library/{hades}", None)
+    assert sem_aviso.status == 409 and sem_aviso.json()["error"]["code"] == "review_would_be_removed"
+    assert len(api(client, "GET", "/api/library")["items"]) == 1
+    assert enviar("DELETE", f"/api/library/{hades}", {"with_review": True}).status == 200
     assert api(client, "GET", "/api/library")["items"] == []
 
 

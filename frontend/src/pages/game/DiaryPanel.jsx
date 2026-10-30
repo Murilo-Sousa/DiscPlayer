@@ -36,7 +36,7 @@ export function LoginPrompt({ children }) {
  * O que aparece depende do status (regras em utils/diary.js): "Quero jogar" é um jogo que ainda não começou, então não
  * tem datas nem favorito; só um jogo zerado tem data de término; e um jogo que ainda não saiu só vai para a fila.
  */
-export function DiaryPanel({ rawgId, game, entry, hasRating = false, playthroughs = [], onSaved, onReplayed, onPlaythroughsChanged, onRemoved }) {
+export function DiaryPanel({ rawgId, game, entry, hasRating = false, playthroughs = [], onSaved, onReplayed, onPlaythroughsChanged, onRemoved, onOutdated }) {
   const { user } = useAuth();
   const toast = useToast();
   const [pending, setPending] = useState(false);
@@ -69,7 +69,13 @@ export function DiaryPanel({ rawgId, game, entry, hasRating = false, playthrough
       if (message) toast.success(message);
     } catch (error) {
       setErrors(error.fields ?? {});
-      if (!error.fields) toast.error(error.message);
+      // Erro de um campo que não está na tela (ou sem campo): o aviso vai para o toast, para não passar em branco.
+      const shown = [
+        "status",
+        ...(entry && hasStarted(entry.status) ? ["started_at"] : []),
+        ...(entry && hasCompletionDate(entry.status) ? ["completed_at"] : []),
+      ];
+      if (!error.fields || Object.keys(error.fields).some((name) => !shown.includes(name))) toast.error(error.message);
     } finally {
       setPending(false);
     }
@@ -93,12 +99,19 @@ export function DiaryPanel({ rawgId, game, entry, hasRating = false, playthrough
   const remove = async () => {
     setPending(true);
     try {
-      const result = await libraryApi.remove(rawgId);
+      const result = await libraryApi.remove(rawgId, { withReview: hasRating });
       setConfirmRemove(false);
       onRemoved(result);
       toast.success(result?.review_removed ? "Jogo e nota removidos do seu diário." : "Jogo removido do seu diário.");
     } catch (error) {
-      toast.error(error.message);
+      setConfirmRemove(false);
+      if (error.code === "review_would_be_removed") {
+        // A tela estava desatualizada (a nota foi dada em outra aba): nada foi apagado. Recarrega para o aviso certo.
+        toast.error("Este jogo tem uma nota sua que esta tela ainda não mostrava, então nada foi removido. Confira e tente de novo.");
+        onOutdated?.();
+      } else {
+        toast.error(error.message);
+      }
     } finally {
       setPending(false);
     }
@@ -143,7 +156,7 @@ export function DiaryPanel({ rawgId, game, entry, hasRating = false, playthrough
         )}
       </div>
 
-      <p className="panel-hint">
+      <p id="diary-hint" className="panel-hint">
         {unreleased
           ? `Lança em ${formatDate(game.released)}. Até lá, só dá para guardá-lo em “Quero jogar”.`
           : entry
@@ -154,7 +167,7 @@ export function DiaryPanel({ rawgId, game, entry, hasRating = false, playthrough
         value={entry?.status ?? null}
         disabled={pending}
         blocked={blocked}
-        describedBy={reasons.length ? "status-blocked" : undefined}
+        describedBy={reasons.length ? "status-blocked" : unreleased ? "diary-hint" : undefined}
         onChange={(status) => status !== entry?.status && save({ status }, `${STATUS_LABELS[status]}: salvo no seu diário.`)}
       />
       {reasons.length > 0 && (

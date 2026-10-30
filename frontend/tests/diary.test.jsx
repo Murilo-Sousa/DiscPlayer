@@ -140,6 +140,9 @@ test("diário: jogo ainda não lançado só deixa escolher a fila", () => {
   assert.match(markup, /Lança em/);
   assert.equal(count(markup, /status-option"[^>]*disabled=""/g), 4); // jogando, pausado, abandonado e zerado
   assert.doesNotMatch(markup, /data-status="quero_jogar"[^>]*disabled=""/);
+  // o seletor aponta para a frase que explica por que quase tudo está apagado (leitores de tela leem o motivo)
+  assert.match(markup, /id="diary-hint"/);
+  assert.match(markup, /class="status-picker"[^>]*aria-describedby="diary-hint"/);
 });
 
 // ----------------------------------------------------------------------------- painel da nota
@@ -175,4 +178,28 @@ test("nota: uma review que já existe continua visível e editável mesmo sem o 
   assert.match(markup, /Sua review/);
   assert.match(markup, /Editar/);
   assert.match(markup, /Excluir/);
+});
+
+// ----------------------------------------------------------------------------- o que a tela envia ao servidor
+test("a API manda a confirmação da nota só quando há nota, e o 'hoje' de quem avalia", async () => {
+  const { libraryApi, reviewsApi } = await import("../src/services/api.js");
+  const realFetch = globalThis.fetch;
+  const sent = [];
+  globalThis.fetch = async (url, options = {}) => {
+    const body = String(url).endsWith("/auth/me") ? { csrf_token: "t" } : {};
+    if (!String(url).endsWith("/auth/me")) sent.push({ method: options.method, url: String(url), body: options.body });
+    return new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } });
+  };
+  try {
+    await libraryApi.remove(1234);
+    await libraryApi.remove(1234, { withReview: true });
+    await reviewsApi.create(1234, { rating: 8 });
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+  assert.deepEqual(sent[0], { method: "DELETE", url: "/api/library/1234", body: undefined });
+  assert.deepEqual(sent[1], { method: "DELETE", url: "/api/library/1234", body: JSON.stringify({ with_review: true }) });
+  const review = JSON.parse(sent[2].body);
+  assert.equal(review.rating, 8);
+  assert.match(review.today, /^\d{4}-\d{2}-\d{2}$/);
 });

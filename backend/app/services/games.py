@@ -11,9 +11,19 @@ def get_local_game(rawg_id: int) -> dict | None:
     return dict(row) if row else None
 
 
-def _store(detail: dict) -> None:
-    """Insere ou atualiza (nome, capa, data) a cópia local a partir da RAWG."""
+def release_of(detail: dict) -> str | None:
+    """A data de lançamento da RAWG (AAAA-MM-DD) ou None: jogo sem data (ainda "a anunciar") ou data inválida."""
     released = detail.get("released")
+    return released if parse_iso_date(released) else None
+
+
+def _store(detail: dict) -> None:
+    """Insere ou atualiza (nome, capa, data) a cópia local a partir da RAWG.
+
+    A data de lançamento acompanha a RAWG, inclusive quando ela some (jogo adiado para "a anunciar"): uma data
+    velha e futura guardada aqui continuaria a barrar quem quer jogar, enquanto a tela, que lê a RAWG, liberaria.
+    """
+    released = release_of(detail)
     with transaction():
         execute(
             """
@@ -23,14 +33,14 @@ def _store(detail: dict) -> None:
                 name = excluded.name,
                 slug = excluded.slug,
                 cover_url = COALESCE(excluded.cover_url, games.cover_url),
-                release_date = COALESCE(excluded.release_date, games.release_date)
+                release_date = excluded.release_date
             """,
             (
                 detail["rawg_id"],
                 detail["name"][:200],
                 detail["slug"][:200],
                 detail.get("cover_url"),
-                released if parse_iso_date(released) else None,
+                released,
                 utcnow_iso(),
             ),
         )

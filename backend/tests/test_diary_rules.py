@@ -13,8 +13,10 @@ from datetime import date, timedelta
 import pytest
 
 from app import db as database
+from app.services import rawg
 from app.utils.dates import utcnow_iso
 
+from . import fake_rawg
 from .conftest import CELESTE, HADES, HOLLOW, UPCOMING
 
 STARTED = ["jogando", "pausado", "abandonado", "zerado"]
@@ -233,7 +235,7 @@ def test_removing_a_game_from_the_diary_takes_its_rating_review_and_likes(ana, b
     bruno.play(HADES)
     assert bruno.put(f"/api/reviews/{review_id}/like").status_code == 200
 
-    response = ana.delete(f"/api/library/{HADES}")
+    response = ana.delete(f"/api/library/{HADES}", {"with_review": True})
     assert response.status_code == 200 and response.get_json() == {"ok": True, "review_removed": True}
     assert ana.get(f"/api/reviews/{review_id}").status_code == 404
     community = ana.get(f"/api/games/{HADES}").get_json()["community"]
@@ -242,9 +244,28 @@ def test_removing_a_game_from_the_diary_takes_its_rating_review_and_likes(ana, b
     assert ana.get("/api/users/ana").get_json()["stats"]["ratings"] == 0
 
 
+def test_removing_a_game_with_a_rating_needs_the_confirmation_and_changes_nothing_without_it(ana):
+    """Uma aba desatualizada (que não sabe da nota) não pode apagar a nota sem a pessoa ter visto o aviso."""
+    put(ana, HADES, status="zerado")
+    review_id = rate(ana, rating=9, body="Ótimo.").get_json()["review"]["id"]
+    for body in (None, {}, {"with_review": False}, {"with_review": "true"}, {"with_review": 1}):
+        response = ana.delete(f"/api/library/{HADES}", body)
+        assert response.status_code == 409 and error_of(response)["code"] == "review_would_be_removed", body
+        assert "nota" in error_of(response)["message"]
+    assert entry(ana)["status"] == "zerado"
+    assert ana.get(f"/api/reviews/{review_id}").status_code == 200
+    assert kinds(ana) != []  # o histórico também ficou como estava
+
+
 def test_removing_a_game_without_a_rating_says_there_was_none(ana):
     put(ana, HADES, status="jogando")
     assert ana.delete(f"/api/library/{HADES}").get_json() == {"ok": True, "review_removed": False}
+
+
+def test_confirming_the_removal_of_a_rating_that_is_not_there_is_harmless(ana):
+    put(ana, HADES, status="jogando")
+    response = ana.delete(f"/api/library/{HADES}", {"with_review": True})
+    assert response.status_code == 200 and response.get_json() == {"ok": True, "review_removed": False}
 
 
 def test_removing_a_game_keeps_the_rating_of_other_games_and_of_other_people(ana, bruno):
@@ -254,7 +275,7 @@ def test_removing_a_game_keeps_the_rating_of_other_games_and_of_other_people(ana
     rate(ana, CELESTE, rating=7)
     bruno.play(HADES)
     rate(bruno, HADES, rating=5)
-    ana.delete(f"/api/library/{HADES}")
+    ana.delete(f"/api/library/{HADES}", {"with_review": True})
     assert ana.get("/api/users/ana/reviews").get_json()["items"][0]["game"]["name"] == "Celeste"
     assert ana.get(f"/api/games/{HADES}").get_json()["community"]["count"] == 1  # a do bruno
 
@@ -309,6 +330,41 @@ def test_the_release_day_uses_the_clients_today(ana, app):
     assert put(ana, HADES, status="jogando", today=tomorrow).status_code == 200
 
 
+def test_rating_also_uses_the_clients_today_to_decide_if_the_game_is_out(ana, app):
+    put(ana, HADES, status="jogando")
+    tomorrow = (TODAY + timedelta(days=1)).isoformat()
+    sql(app, "UPDATE games SET release_date = ? WHERE rawg_id = ?", (tomorrow, HADES))
+    refused = rate(ana, today=TODAY.isoformat())
+    assert refused.status_code == 409 and error_of(refused)["code"] == "not_released"
+    assert rate(ana, today=tomorrow).status_code == 201  # no fuso em que o jogo já saiu, a nota vale
+
+
+def test_rating_rejects_an_impossible_today(ana):
+    put(ana, HADES, status="jogando")
+    response = rate(ana, today=(TODAY + timedelta(days=30)).isoformat())
+    assert response.status_code == 422 and "today" in error_of(response)["fields"]
+
+
+def test_a_game_the_rawg_postpones_to_no_date_loses_the_old_local_date(ana, app, monkeypatch):
+    """A RAWG pode tirar a data de um jogo (adiado, "a anunciar"): a cópia local acompanha, em vez de guardar a antiga."""
+    put(ana, UPCOMING, status="quero_jogar")
+    assert sql(app, "SELECT release_date FROM games WHERE rawg_id = ?", (UPCOMING,))[0][0] > TODAY.isoformat()
+    original = fake_rawg.fetch_json
+
+    def without_date(path, params=None):
+        data = original(path, params)
+        if path.strip("/") == f"games/{UPCOMING}":
+            data = {**data, "released": None}
+        return data
+
+    monkeypatch.setattr(rawg, "fetch_json", without_date)
+    rawg.clear_cache()
+    ana.get(f"/api/games/{UPCOMING}")
+    assert sql(app, "SELECT release_date FROM games WHERE rawg_id = ?", (UPCOMING,))[0][0] is None
+    # sem data conhecida, ninguém é barrado por falta de dado (a mesma regra de qualquer jogo sem data)
+    assert put(ana, UPCOMING, status="jogando").status_code == 200
+
+
 def test_the_games_page_refreshes_a_stale_local_release_date(ana, app):
     put(ana, HADES, status="quero_jogar")
     sql(app, "UPDATE games SET release_date = ? WHERE rawg_id = ?", ((TODAY + timedelta(days=90)).isoformat(), HADES))
@@ -326,6 +382,26 @@ def test_a_paused_game_is_resumed_not_replayed(ana):
     assert "pausado" in error_of(response)["message"]
     resumed = put(ana, HADES, status="jogando").get_json()["entry"]
     assert resumed["started_at"] == "2025-01-10" and resumed["plays"] == 1  # a mesma jogada continua
+
+
+@pytest.mark.parametrize(
+    "status, fragment",
+    [("quero_jogar", "na sua fila"), ("jogando", "já está jogando")],
+)
+def test_the_replay_refusal_explains_the_status_the_game_is_in(ana, status, fragment):
+    put(ana, HADES, status=status)
+    response = ana.post(f"/api/library/{HADES}/replay", {})
+    assert response.status_code == 409 and error_of(response)["code"] == "cannot_replay"
+    assert fragment in error_of(response)["message"]
+    assert entry(ana)["status"] == status
+
+
+def test_replaying_counts_as_a_status_change(ana, app):
+    put(ana, HADES, status="zerado")
+    sql(app, "UPDATE library_entries SET status_changed_at = '2020-01-01T10:00:00Z'")
+    assert ana.post(f"/api/library/{HADES}/replay", {}).status_code == 201
+    again = entry(ana)
+    assert again["status"] == "jogando" and again["status_changed_at"] >= TODAY.isoformat()
 
 
 # ----------------------------------------------------------------------------- "desde quando"
@@ -416,7 +492,7 @@ def test_migration_0003_cleans_old_entries_and_backfills_the_status_date(tmp_pat
         assert got["pausado"] == (None, None, 0, "2025-07-07T10:00:00Z")
         assert got["zerado"] == ("2025-01-10", "2025-03-01", 1, "2025-04-02T09:00:00Z")  # a atividade mais recente
         plays = {r["status"]: r["completed_at"] for r in raw.execute("SELECT status, completed_at FROM playthroughs")}
-        assert plays == {"abandonado": None, "zerado": "2023-02-01"}
+        assert plays == {"abandonado": "2024-02-01", "zerado": "2023-02-01"}  # o passado não é reescrito
         assert raw.execute("SELECT COUNT(*) FROM reviews").fetchone()[0] == 1  # as notas antigas não são mexidas
     finally:
         raw.close()
@@ -503,7 +579,7 @@ def test_random_sequences_of_actions_never_break_the_rules(ana, bruno, app):
         elif action == "replay":
             response = client.post(f"/api/library/{game}/replay", {})
         else:
-            response = client.delete(f"/api/library/{game}")
+            response = client.delete(f"/api/library/{game}", {"with_review": rng.random() < 0.5})
         assert response.status_code < 500, (step, action, response.get_json())
         served += response.status_code < 400
         if step % 25 == 0:

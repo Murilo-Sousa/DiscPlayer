@@ -209,6 +209,7 @@ export default function GamePage() {
                     patchViewer({ entry: null, playthroughs: [], review: null });
                     refreshAll();
                   }}
+                  onOutdated={refreshAll}
                 />
                 <ReviewPanel
                   rawgId={game.rawg_id}

@@ -269,25 +269,35 @@ def upsert_entry(
     return get_entry(user_id, game_id), created  # type: ignore[return-value]
 
 
-def delete_entry(user_id: int, game_id: int) -> dict | None:
+def delete_entry(user_id: int, game_id: int, *, confirm_review: bool = False) -> dict | None:
     """Remove a entrada, as jogadas anteriores e o rastro delas no histórico.
 
     Nota e review só existem para um jogo que a pessoa jogou: sem o jogo no diário, elas saem junto (com as
-    curtidas e a atividade "avaliou"). Devolve `{"review_removed": bool}`, ou None se o jogo não estava no diário.
+    curtidas e a atividade "avaliou"). Como isso apaga algo que a pessoa publicou, quem chama precisa confirmar
+    (`confirm_review=True`) quando há nota; sem a confirmação, nada é apagado e a resposta é 409. A tela só envia a
+    confirmação depois de mostrar o aviso, então uma aba desatualizada não apaga uma nota sem querer.
+
+    Devolve `{"review_removed": bool}`, ou None se o jogo não estava no diário.
     """
     with transaction():
-        cursor = execute(
-            "DELETE FROM library_entries WHERE user_id = ? AND game_id = ?", (user_id, game_id)
-        )
-        if cursor.rowcount == 0:
+        entry = fetch_one("SELECT id FROM library_entries WHERE user_id = ? AND game_id = ?", (user_id, game_id))
+        if entry is None:
             return None
+        rated = fetch_one("SELECT 1 FROM reviews WHERE user_id = ? AND game_id = ?", (user_id, game_id)) is not None
+        if rated and not confirm_review:
+            raise ApiError(
+                409,
+                "review_would_be_removed",
+                "Você tem uma nota neste jogo, e ela sai junto com o jogo do diário. Confirme para remover os dois.",
+            )
+        execute("DELETE FROM library_entries WHERE id = ?", (entry["id"],))
         execute("DELETE FROM playthroughs WHERE user_id = ? AND game_id = ?", (user_id, game_id))
         execute(
             "DELETE FROM activities WHERE user_id = ? AND game_id = ? AND type = 'logged'",
             (user_id, game_id),
         )
-        removed = execute("DELETE FROM reviews WHERE user_id = ? AND game_id = ?", (user_id, game_id))
-    return {"review_removed": removed.rowcount > 0}
+        execute("DELETE FROM reviews WHERE user_id = ? AND game_id = ?", (user_id, game_id))
+    return {"review_removed": rated}
 
 
 def list_playthroughs(user_id: int, game_id: int) -> list[sqlite3.Row]:
@@ -299,13 +309,20 @@ def list_playthroughs(user_id: int, game_id: int) -> list[sqlite3.Row]:
     )
 
 
+# Por que cada status não se "joga de novo" (o texto depende do status em que o jogo está agora).
+_CANNOT_REPLAY = {
+    "quero_jogar": "Este jogo está na sua fila: ainda não há uma jogada para recomeçar.",
+    "jogando": "Você já está jogando este jogo: não há jogada anterior para recomeçar.",
+    "pausado": "Um jogo pausado se retoma voltando para “Jogando”: é a mesma jogada, não uma nova.",
+}
+
+
 def replay_entry(user_id: int, game_id: int, *, today: str | None = None) -> sqlite3.Row:
     """Guarda a jogada atual no histórico e começa outra ("jogar de novo").
 
     A entrada volta a "jogando", com início em hoje e sem data de término; o favorito
-    continua. Só vale para jogos zerados, abandonados ou pausados: clicar duas vezes
-    seguidas não cria uma jogada fantasma, porque depois do primeiro clique o status já
-    é "jogando".
+    continua. Só vale para jogos zerados ou abandonados: clicar duas vezes seguidas não
+    cria uma jogada fantasma, porque depois do primeiro clique o status já é "jogando".
     """
     with transaction():
         current = fetch_one(
@@ -314,11 +331,7 @@ def replay_entry(user_id: int, game_id: int, *, today: str | None = None) -> sql
         if current is None:
             raise ApiError(404, "not_found", "Este jogo não está no seu diário.")
         if current["status"] not in REPLAYABLE:
-            raise ApiError(
-                409,
-                "cannot_replay",
-                "Só dá para jogar de novo um jogo que você zerou ou abandonou. Para retomar um jogo pausado, volte para “Jogando”.",
-            )
+            raise ApiError(409, "cannot_replay", _CANNOT_REPLAY[current["status"]])
         now = utcnow_iso()
         execute(
             "INSERT INTO playthroughs (user_id, game_id, status, started_at, completed_at, created_at)"
@@ -327,8 +340,8 @@ def replay_entry(user_id: int, game_id: int, *, today: str | None = None) -> sql
         )
         execute(
             "UPDATE library_entries SET status = 'jogando', started_at = ?, completed_at = NULL,"
-            " updated_at = ? WHERE id = ?",
-            (today or today_utc().isoformat(), now, current["id"]),
+            " status_changed_at = ?, updated_at = ? WHERE id = ?",
+            (today or today_utc().isoformat(), now, now, current["id"]),
         )
         execute(
             "INSERT INTO activities (user_id, type, game_id, status, is_replay, created_at)"

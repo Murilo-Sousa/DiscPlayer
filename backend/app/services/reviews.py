@@ -86,13 +86,13 @@ def get_author_id(review_id: int) -> int | None:
 
 
 def create_review(
-    user_id: int, game: dict, rating: float, body: str | None, has_spoilers: bool = False
+    user_id: int, game: dict, rating: float, body: str | None, has_spoilers: bool = False, *, today: str | None = None
 ) -> int:
     """Publica a nota (e o texto). Só quem já começou o jogo avalia: veja `library.require_can_rate`."""
     now = utcnow_iso()
     game_id = game["id"]
     with transaction():
-        library.require_can_rate(user_id, game)  # dentro da transação: o status não muda entre a checagem e o INSERT
+        library.require_can_rate(user_id, game, today)  # dentro da transação: o status não muda entre a checagem e o INSERT
         if fetch_one("SELECT 1 FROM reviews WHERE user_id = ? AND game_id = ?", (user_id, game_id)):
             raise ApiError(
                 409,

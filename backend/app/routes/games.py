@@ -147,7 +147,7 @@ def game_detail(rawg_id: int):
         if local and (
             (local["name"], local["cover_url"]) != (detail["name"], detail.get("cover_url"))
             # A data de lançamento decide se o jogo já pode ser jogado e avaliado: não pode ficar velha.
-            or (detail.get("released") and detail["released"] != local["release_date"])
+            or games_service.release_of(detail) != local["release_date"]
         ):
             local = games_service.sync_game(detail)  # mantém a cópia local em dia
     except rawg.RawgNotFound:

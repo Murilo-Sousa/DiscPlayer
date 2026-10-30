@@ -9,7 +9,12 @@
 --        de término e sem favorito;
 --      - só um jogo ZERADO tem data de término (nos demais status ela não significa nada).
 --    As regras agora são impostas pela API; esta migração só deixa o que já estava salvo de
---    acordo com elas. Notas e reviews antigas não são tocadas.
+--    acordo com elas. Isso APAGA essas datas e o favorito da fila (sem cópia): é o único jeito de
+--    uma data velha não voltar a valer quando o jogo mudar de status.
+--  * O que a migração NÃO faz, de propósito: notas e reviews antigas não são tocadas (nem apagadas, nem
+--    "corrigidas" para um status que ninguém informou), e as datas das jogadas anteriores (`playthroughs`)
+--    ficam como estão. Uma nota antiga de um jogo que não está no diário (ou está na fila) continua
+--    existindo e pode ser editada ou excluída; as regras novas só impedem criar outras assim.
 
 ALTER TABLE library_entries ADD COLUMN status_changed_at TEXT;
 
@@ -27,4 +32,3 @@ UPDATE library_entries
 
 UPDATE library_entries SET completed_at = NULL WHERE status <> 'zerado' AND completed_at IS NOT NULL;
 
-UPDATE playthroughs SET completed_at = NULL WHERE status <> 'zerado' AND completed_at IS NOT NULL;

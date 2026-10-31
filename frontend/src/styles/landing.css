@@ -1,0 +1,442 @@
+/*
+ * Página inicial de quem ainda não entrou.
+ *
+ * Uma peça forte (o disco grande do topo) e o resto quieto: tipografia grande, bastante respiro e filetes finos em vez
+ * de cartões empilhados. O amarelo só aparece onde algo está "fechado": o disco zerado, as notas e a ação principal.
+ */
+.landing {
+  --landing-gap: clamp(4.5rem, 3rem + 6vw, 8rem);
+}
+
+.landing-title {
+  font-size: clamp(2.9rem, 1.1rem + 6.4vw, 5.9rem);
+  line-height: 0.96;
+  letter-spacing: -0.045em;
+}
+
+.landing-lead {
+  max-width: 31rem;
+  text-wrap: pretty;
+  margin-block: var(--space-5) var(--space-6);
+  color: var(--text-2);
+  font-family: var(--font-read);
+  font-size: var(--step-2);
+  line-height: 1.5;
+}
+
+.landing-h2 {
+  max-width: 24ch;
+  text-wrap: balance;
+  font-size: var(--step-4);
+  line-height: 1.06;
+  letter-spacing: -0.032em;
+}
+
+.landing-h3 {
+  font-size: var(--step-2);
+  letter-spacing: -0.015em;
+}
+
+.landing-body {
+  max-width: 34rem;
+  text-wrap: pretty;
+  margin-top: var(--space-4);
+  color: var(--text-2);
+  font-family: var(--font-read);
+  font-size: var(--step-1);
+  line-height: 1.7;
+}
+
+.landing-h2 + .landing-body {
+  margin-top: var(--space-5);
+}
+
+.landing-fine {
+  margin-top: var(--space-4);
+  color: var(--text-3);
+  font-size: var(--step--1);
+  line-height: 1.5;
+}
+
+/* ---------- Abertura ---------- */
+.landing-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+  gap: var(--space-6) var(--space-7);
+  align-items: center;
+  padding-block: var(--space-6) 0;
+}
+
+/* ---------- Faixas e seções ---------- */
+.landing-band,
+.landing-section {
+  margin-top: var(--landing-gap);
+}
+
+.landing-section {
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--line);
+}
+
+.landing-band-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.landing-tiles {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.landing-split {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  gap: var(--space-6) var(--space-8);
+  align-items: center;
+}
+
+.landing-split > * {
+  min-width: 0;
+}
+
+.landing-split > :only-child {
+  grid-column: 1 / -1;
+}
+
+.landing-split-text .section-link {
+  display: inline-block;
+  margin-top: var(--space-5);
+}
+
+/* ---------- Jornada ---------- */
+.journey {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-6);
+  margin-top: var(--space-6);
+}
+
+.journey-step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-top: var(--space-5);
+  border-top: 2px solid var(--line-strong);
+}
+
+.journey-step h3 {
+  margin-top: var(--space-2);
+  font-size: var(--step-2);
+  letter-spacing: -0.015em;
+}
+
+.journey-step p {
+  max-width: 24rem;
+  color: var(--text-2);
+  font-family: var(--font-read);
+  line-height: 1.65;
+}
+
+/* ---------- Nota em discos ---------- */
+.rating-demo,
+.year-demo {
+  padding: var(--space-6);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+
+.rating-demo-title {
+  margin-bottom: var(--space-5);
+  color: var(--text-3);
+  font-size: 0.9375rem;
+}
+
+.rating-demo .rating-input-readout {
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-4);
+}
+
+.rating-demo .link-btn {
+  white-space: nowrap;
+}
+
+.rating-demo .rating-discs {
+  gap: 0.4rem;
+}
+
+.rating-demo .rating-discs .disc {
+  width: clamp(1.9rem, 6.4vw, 3.1rem);
+  height: clamp(1.9rem, 6.4vw, 3.1rem);
+}
+
+.rating-demo .rating-input-value {
+  font-size: var(--step-4);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+/* ---------- Comunidade ---------- */
+.landing-community {
+  display: grid;
+  gap: var(--space-6) var(--space-7);
+  margin-top: var(--space-6);
+}
+
+.landing-community[data-with-ranking] {
+  grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+  align-items: start;
+}
+
+.landing-review-skeleton {
+  min-height: 9rem;
+}
+
+.landing-ranking .landing-h3 {
+  margin-bottom: var(--space-4);
+}
+
+.landing-example-note {
+  margin-top: var(--space-6);
+}
+
+.landing-example-note .demo-badge {
+  margin-inline: 0.2em;
+}
+
+/* ---------- Listas ---------- */
+.landing-lists {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  gap: var(--space-4);
+}
+
+/* ---------- Ano em jogos ---------- */
+.year-demo-number {
+  margin-bottom: var(--space-5);
+  color: var(--text-2);
+  font-size: var(--step-1);
+}
+
+.year-demo-number span {
+  display: block;
+  color: var(--text);
+  font-size: var(--step-5);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.year-demo figcaption {
+  margin-top: var(--space-4);
+  font-size: 0.9375rem;
+}
+
+/* ---------- Regras do site ---------- */
+.principles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 var(--space-8);
+  margin-top: var(--space-6);
+}
+
+.principles li {
+  padding-block: var(--space-5);
+  border-top: 1px solid var(--line);
+}
+
+.principles h3 {
+  font-size: var(--step-1);
+  letter-spacing: -0.01em;
+}
+
+.principles p {
+  max-width: 30rem;
+  margin-top: var(--space-2);
+  color: var(--text-2);
+  font-family: var(--font-read);
+  line-height: 1.65;
+}
+
+/* ---------- Fechamento ---------- */
+.landing-final {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-6);
+  margin-top: var(--landing-gap);
+  padding: var(--space-8) var(--space-7);
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+
+.landing-final .hero-actions {
+  margin-top: var(--space-6);
+}
+
+.landing-final-disc {
+  width: clamp(11rem, 26vw, 19rem);
+  height: auto;
+  margin-right: calc(var(--space-6) * -1);
+  color: var(--accent);
+}
+
+/* ---------- O disco grande ---------- */
+.instrument {
+  display: grid;
+  gap: var(--space-5);
+  padding: var(--space-6);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+
+.instrument-stage {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-4);
+}
+
+.instrument-disc {
+  width: min(100%, 17rem);
+  height: auto;
+  color: var(--text-2);
+  transition: color 0.45s var(--ease);
+}
+
+.instrument-disc[data-status="zerado"] {
+  color: var(--accent);
+}
+
+.disc-quarter {
+  opacity: 0;
+  transition: opacity 0.4s var(--ease);
+}
+
+.disc-quarter[data-on] {
+  opacity: 1;
+}
+
+.instrument-caption {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 3rem;
+  text-align: center;
+  line-height: 1.35;
+}
+
+.instrument-caption strong {
+  font-size: var(--step-1);
+}
+
+.instrument-caption span {
+  color: var(--text-2);
+  font-size: 0.9375rem;
+}
+
+.instrument-title {
+  margin-bottom: var(--space-3);
+  font-size: var(--step-0);
+}
+
+.instrument-abilities {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 var(--space-5);
+  margin-top: var(--space-4);
+}
+
+.instrument-ability {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-block: 0.55rem;
+  border-top: 1px solid var(--line);
+  font-size: 0.9375rem;
+}
+
+.instrument-ability dt {
+  color: var(--text-3);
+  transition: color 0.3s;
+}
+
+.instrument-ability dd {
+  color: var(--text-3);
+  font-weight: 700;
+}
+
+.instrument-ability[data-allowed] dt,
+.instrument-ability[data-allowed] dd {
+  color: var(--text);
+}
+
+.instrument-note {
+  margin-top: var(--space-3);
+  color: var(--text-3);
+  font-size: var(--step--1);
+}
+
+/* ---------- Perfil de exemplo ---------- */
+.demo-badge {
+  display: inline-block;
+  margin-left: 0.5em;
+  padding: 0.05em 0.55em;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  color: var(--text-3);
+  font-size: 0.72em;
+  font-weight: 700;
+  line-height: 1.6;
+  letter-spacing: 0;
+  vertical-align: 0.12em;
+  white-space: nowrap;
+}
+
+/* ---------- Telas menores ---------- */
+@media (max-width: 62rem) {
+  .landing-hero,
+  .landing-split,
+  .landing-community[data-with-ranking] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .landing-tiles {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .landing-hero {
+    gap: var(--space-7);
+  }
+}
+
+@media (max-width: 47.99rem) {
+  .journey,
+  .principles {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .landing-final {
+    grid-template-columns: minmax(0, 1fr);
+    padding: var(--space-7) var(--space-5);
+  }
+  .landing-final-disc {
+    order: -1;
+    width: 9rem;
+    margin: 0 0 0 calc(var(--space-4) * -1);
+  }
+  .instrument,
+  .rating-demo,
+  .year-demo {
+    padding: var(--space-5) var(--space-4);
+  }
+  .instrument-abilities {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

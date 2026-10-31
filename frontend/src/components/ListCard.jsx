@@ -2,6 +2,7 @@ import { Link } from "../router/index.jsx";
 import { listPath, plural, userPath } from "../utils/format.js";
 import { CoverStack } from "./Cover.jsx";
 import { Icon } from "./Icon.jsx";
+import { DemoBadge } from "./DemoBadge.jsx";
 
 /** Lista com a composição das capas dos primeiros jogos. */
 export function ListCard({ list, showOwner = true }) {
@@ -23,6 +24,7 @@ export function ListCard({ list, showOwner = true }) {
       {showOwner && (
         <Link to={userPath(list.owner.username)} className="list-card-owner">
           por {list.owner.display_name}
+          <DemoBadge user={list.owner} />
         </Link>
       )}
     </article>

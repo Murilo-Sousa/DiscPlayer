@@ -3,7 +3,7 @@ import { GameCard } from "../components/GameCard.jsx";
 import { StatusDisc } from "../components/Disc.jsx";
 import { ActivityList, GameGrid, GameGridSkeleton, ListSkeleton, Section } from "../components/Layout.jsx";
 import { ReviewCard } from "../components/ReviewCard.jsx";
-import { Async, EmptyState, ErrorState, Skeleton } from "../components/States.jsx";
+import { Async, EmptyState, ErrorState, Loader } from "../components/States.jsx";
 import { Tabs, panelId } from "../components/Tabs.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useAsync } from "../hooks/useAsync.js";
@@ -11,94 +11,10 @@ import { useDocumentTitle } from "../hooks/useDocumentTitle.js";
 import { Link } from "../router/index.jsx";
 import { feedApi, gamesApi, libraryApi, listsApi, reviewsApi } from "../services/api.js";
 import { ListCard } from "../components/ListCard.jsx";
-import {
-  STATUS_LABELS,
-  STATUS_PROGRESS,
-  formatAverage,
-  formatDate,
-  formatYear,
-  gamePath,
-  playingFor,
-  plural,
-} from "../utils/format.js";
+import { formatDate, formatYear, gamePath, playingFor } from "../utils/format.js";
 import { Cover } from "../components/Cover.jsx";
-
-const STATUS_MEANING = {
-  quero_jogar: "Na fila, ainda sem começar.",
-  jogando: "Em andamento agora.",
-  pausado: "Começou e deixou para depois.",
-  zerado: "Terminou. O disco fecha o círculo.",
-  abandonado: "Largou pelo caminho.",
-};
-
-/** Seis jogos em alta, como prateleira ao lado da apresentação. Sem a RAWG, a prateleira some e o resto fica. */
-function HeroShelf({ state }) {
-  const games = state.data?.popular?.slice(0, 6) ?? [];
-  if (state.error || (state.data && games.length === 0)) return null;
-  return (
-    <div className="hero-shelf">
-      <p className="hero-shelf-title">Em alta agora</p>
-      <ul className="hero-tiles">
-        {!state.data
-          ? Array.from({ length: 6 }, (_, index) => (
-              <li key={index} className="hero-tile" aria-hidden="true">
-                <Skeleton className="skeleton-cover" />
-              </li>
-            ))
-          : games.map((game) => (
-              <li key={game.rawg_id} className="hero-tile">
-                <Link to={gamePath(game)} className="hero-tile-link">
-                  <Cover game={game} ratio="wide" />
-                  <span className="hero-tile-name">{game.name}</span>
-                </Link>
-              </li>
-            ))}
-      </ul>
-    </div>
-  );
-}
-
-function Hero() {
-  const featured = useAsync((signal) => gamesApi.featured({ signal }), []);
-  const hasShelf = !featured.error && !(featured.data && !featured.data.popular?.length);
-  return (
-    <section className="hero" aria-labelledby="hero-title" data-solo={hasShelf ? undefined : true}>
-      <div className="hero-copy">
-        <p className="eyebrow">Diário e comunidade de videogames</p>
-        <h1 id="hero-title" className="hero-title">
-          O diário de quem joga.
-        </h1>
-        <p className="hero-lead">
-          Anote o que você quer jogar, o que está jogando e o que zerou. Dê uma nota, escreva o que achou e veja o que
-          outras pessoas andam jogando.
-        </p>
-        <div className="hero-actions">
-          <Link to="/cadastro" className="btn btn-primary btn-lg">
-            Começar meu diário
-          </Link>
-          <Link to="/jogos" className="btn btn-lg">
-            Explorar jogos
-          </Link>
-        </div>
-      </div>
-      {hasShelf && <HeroShelf state={featured} />}
-      <figure className="hero-legend">
-        <figcaption className="hero-legend-title">Como o disco conta o seu jogo</figcaption>
-        <ol className="legend-list">
-          {STATUS_PROGRESS.map((status, index) => (
-            <li key={status} className="legend-item" data-status={status} style={{ "--i": index }}>
-              <StatusDisc status={status} size={34} />
-              <span className="legend-text">
-                <strong>{STATUS_LABELS[status]}</strong>
-                <span>{STATUS_MEANING[status]}</span>
-              </span>
-            </li>
-          ))}
-        </ol>
-      </figure>
-    </section>
-  );
-}
+import { RankingList } from "../components/Ranking.jsx";
+import { Landing } from "./landing/Landing.jsx";
 
 function PlayingCard({ item }) {
   const { game, entry } = item;
@@ -272,28 +188,7 @@ function TopRated() {
               Um jogo entra aqui quando {data.min_notes ?? 3} pessoas diferentes dão nota a ele. Que tal dar a sua?
             </EmptyState>
           ) : (
-            <ol className="ranking">
-              {data.items.map((item, index) => (
-                <li key={item.game.rawg_id} className="ranking-item">
-                  <span className="ranking-position" aria-hidden="true">
-                    {index + 1}
-                  </span>
-                  <Link to={gamePath(item.game)} className="ranking-cover" tabIndex={-1} aria-hidden="true">
-                    <Cover game={item.game} ratio="poster" />
-                  </Link>
-                  <span className="ranking-text">
-                    <Link to={gamePath(item.game)} className="ranking-name">
-                      {item.game.name}
-                    </Link>
-                    <span className="ranking-meta">{plural(item.count, "nota", "notas")}</span>
-                  </span>
-                  <span className="ranking-score">
-                    <span className="sr-only">Média </span>
-                    {formatAverage(item.average)}
-                  </span>
-                </li>
-              ))}
-            </ol>
+            <RankingList items={data.items} />
           )
         }
       </Async>
@@ -393,18 +288,28 @@ function Discover() {
 export default function HomePage() {
   useDocumentTitle("");
   const { user, ready } = useAuth();
+  if (!ready) {
+    return (
+      <div className="container page page-loading">
+        <Loader label="Carregando o início" />
+      </div>
+    );
+  }
+  // Quem ainda não entrou vê a apresentação do DiscPlayer (com a comunidade real dentro dela).
+  if (!user) {
+    return (
+      <div className="container page home">
+        <Landing />
+      </div>
+    );
+  }
   return (
     <div className="container page home">
-      {ready && !user && <Hero />}
-      {ready && user && (
-        <>
-          <h1 className="sr-only">Seu início no DiscPlayer</h1>
-          <div className="home-columns home-top">
-            <PlayingNow user={user} />
-            <UpNext user={user} />
-          </div>
-        </>
-      )}
+      <h1 className="sr-only">Seu início no DiscPlayer</h1>
+      <div className="home-columns home-top">
+        <PlayingNow user={user} />
+        <UpNext user={user} />
+      </div>
       <div className="home-columns">
         <CommunityActivity user={user} />
         <div className="home-side">
@@ -412,7 +317,7 @@ export default function HomePage() {
           <CommunityLists />
         </div>
       </div>
-      {user && <Discover />}
+      <Discover />
       <RecentReviews />
     </div>
   );

@@ -4,6 +4,7 @@ import { Avatar } from "./Avatar.jsx";
 import { Cover } from "./Cover.jsx";
 import { RatingDiscs, StatusDisc } from "./Disc.jsx";
 import { Icon } from "./Icon.jsx";
+import { DemoBadge } from "./DemoBadge.jsx";
 
 /** Uma linha do histórico/feed: quem fez o quê, em qual jogo (ou lista) e quando. */
 export function ActivityItem({ activity, showUser = true }) {
@@ -11,6 +12,7 @@ export function ActivityItem({ activity, showUser = true }) {
   const who = showUser ? (
     <Link to={userPath(user.username)} className="activity-user">
       {user.display_name}
+      <DemoBadge user={user} />
     </Link>
   ) : null;
 

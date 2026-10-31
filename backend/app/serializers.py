@@ -53,6 +53,8 @@ def user_public(row: dict | sqlite3.Row) -> dict:
         data["bio"] = row["bio"]
     if "created_at" in keys:
         data["created_at"] = row["created_at"]
+    if "is_demo" in keys:
+        data["is_demo"] = bool(row["is_demo"])
     return data
 
 
@@ -138,6 +140,7 @@ def list_summary_from_row(row: sqlite3.Row, covers: list[dict]) -> dict:
             "username": row["username"],
             "display_name": row["display_name"],
             "avatar_url": row["avatar_url"],
+            "is_demo": bool(row["is_demo"]),
         },
     }
 

@@ -12,8 +12,19 @@ const QUARTER_PATH = `M12 ${12 - INNER}V${12 - OUTER}A${OUTER} ${OUTER} 0 0 1 ${
  * @param quarters 0 a 4 quartos preenchidos (sentido horário, a partir das 12h)
  * @param dashed   anel tracejado (jogo que ainda não começou)
  * @param slash    risco diagonal (jogo abandonado)
+ * @param strokeScale  espessura dos traços (use menos de 1 em discos grandes, para o anel não engrossar junto)
+ * @param animate  desenha os quatro quartos e acende/apaga cada um com transição (o disco grande da página inicial)
  */
-export function Disc({ quarters = 0, size = 16, dashed = false, slash = false, className, ...rest }) {
+export function Disc({
+  quarters = 0,
+  size = 16,
+  dashed = false,
+  slash = false,
+  strokeScale = 1,
+  animate = false,
+  className,
+  ...rest
+}) {
   const filled = Math.max(0, Math.min(4, Math.round(quarters)));
   return (
     <svg
@@ -31,15 +42,22 @@ export function Disc({ quarters = 0, size = 16, dashed = false, slash = false, c
         r="10.4"
         fill="none"
         stroke="currentColor"
-        strokeWidth="1.3"
+        strokeWidth={1.3 * strokeScale}
         strokeDasharray={dashed ? "2.6 2.6" : undefined}
         opacity={filled === 0 ? 0.75 : 1}
       />
-      {Array.from({ length: filled }, (_, index) => (
-        <path key={index} d={QUARTER_PATH} fill="currentColor" transform={`rotate(${index * 90} 12 12)`} />
+      {Array.from({ length: animate ? 4 : filled }, (_, index) => (
+        <path
+          key={index}
+          d={QUARTER_PATH}
+          fill="currentColor"
+          transform={`rotate(${index * 90} 12 12)`}
+          className={animate ? "disc-quarter" : undefined}
+          data-on={animate && index < filled ? "" : undefined}
+        />
       ))}
-      <circle cx="12" cy="12" r={INNER} fill="none" stroke="currentColor" strokeWidth="1.1" opacity="0.5" />
-      {slash && <path d="M5.6 18.4 18.4 5.6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />}
+      <circle cx="12" cy="12" r={INNER} fill="none" stroke="currentColor" strokeWidth={1.1 * strokeScale} opacity="0.5" />
+      {slash && <path d="M5.6 18.4 18.4 5.6" stroke="currentColor" strokeWidth={1.6 * strokeScale} strokeLinecap="round" />}
     </svg>
   );
 }

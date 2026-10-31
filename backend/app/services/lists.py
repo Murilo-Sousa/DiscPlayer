@@ -14,7 +14,7 @@ MAX_GAMES_PER_LIST = 200
 
 LIST_COLUMNS = """
     l.id, l.title, l.description, l.is_public, l.created_at, l.updated_at,
-    l.user_id AS owner_id, u.username, u.display_name, u.avatar_url,
+    l.user_id AS owner_id, u.username, u.display_name, u.avatar_url, u.is_demo,
     (SELECT COUNT(*) FROM list_games lg WHERE lg.list_id = l.id) AS game_count
 """
 LIST_FROM = "FROM lists l JOIN users u ON u.id = l.user_id"

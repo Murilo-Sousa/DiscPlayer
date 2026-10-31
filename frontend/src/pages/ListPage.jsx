@@ -12,6 +12,7 @@ import { Link, useNavigate, useParams } from "../router/index.jsx";
 import { gamesApi, listsApi } from "../services/api.js";
 import { formatDate, formatYear, gamePath, paragraphs, plural, userPath } from "../utils/format.js";
 import NotFoundPage from "./NotFoundPage.jsx";
+import { DemoBadge } from "../components/DemoBadge.jsx";
 
 function AddGamesDialog({ open, onClose, list, onAdded }) {
   const toast = useToast();
@@ -186,6 +187,7 @@ export default function ListPage() {
         <div className="list-head-text">
           <p className="eyebrow">
             Lista de <Link to={userPath(list.owner.username)}>{list.owner.display_name}</Link>
+            <DemoBadge user={list.owner} />
             {!list.is_public && (
               <span className="badge">
                 <Icon name="lock" size={13} /> Privada

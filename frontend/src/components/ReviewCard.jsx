@@ -6,6 +6,7 @@ import { Avatar } from "./Avatar.jsx";
 import { Cover } from "./Cover.jsx";
 import { RatingDiscs } from "./Disc.jsx";
 import { Icon } from "./Icon.jsx";
+import { DemoBadge } from "./DemoBadge.jsx";
 
 /**
  * Uma review. O texto é renderizado como texto (React escapa tudo), nunca como HTML.
@@ -42,6 +43,7 @@ export function ReviewCard({ review, showGame = false, showAuthor = true, canLik
             <Link to={userPath(review.user.username)} className="review-author">
               <Avatar user={review.user} size={28} />
               <span>{review.user.display_name}</span>
+              <DemoBadge user={review.user} />
             </Link>
           )}
           {showGame && review.game && (

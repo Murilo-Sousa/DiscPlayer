@@ -1,4 +1,4 @@
-"""A página inicial de quem ainda não entrou: apresentação, disco interativo, nota em discos e perfis de exemplo."""
+"""A página inicial de quem ainda não entrou: mural de capas, disco interativo, nota em discos e perfis de exemplo."""
 import re
 
 from playwright.sync_api import expect
@@ -19,6 +19,11 @@ def disc(client):
     return client.page.locator(".instrument-disc")
 
 
+def go_to_disc(client):
+    """O disco só começa a jogar quando aparece na tela."""
+    client.page.locator(".instrument").scroll_into_view_if_needed()
+
+
 def choose(client, name):
     client.page.locator(".status-picker").get_by_role("button", name=name, exact=True).click()
 
@@ -29,6 +34,7 @@ def test_visitante_ve_a_apresentacao_inteira(stack, client):
     expect(page.get_by_role("heading", level=1)).to_have_text("O diário de quem joga.")
     for titulo in (
         "Do “quero jogar” ao “zerei”",
+        "Veja como o diário funciona",
         "Dez pontos, cinco discos",
         "Listas para dividir o que você ama",
         "Seu ano em jogos",
@@ -43,8 +49,57 @@ def test_visitante_ve_a_apresentacao_inteira(stack, client):
     assert client.errors == []
 
 
-def test_o_disco_grande_joga_sozinho_ate_o_zerado_e_para(stack, client):
+def test_o_topo_e_um_mural_de_capas_e_o_disco_fica_numa_secao_mais_abaixo(stack, client):
     client.open("/")
+    page = client.page
+    page.wait_for_selector(".cover-wall-link")
+    assert 6 <= page.locator(".cover-wall-link").count() <= 15  # a RAWG de teste tem poucos jogos recentes
+    assert page.locator(".cover-wall-col").count() == 3
+    # os nomes só aparecem ao passar o mouse, mas cada capa tem nome para quem usa leitor de tela
+    expect(page.locator(".cover-wall-name").first).to_have_css("opacity", "0")
+    assert page.locator(".cover-wall-link").first.inner_text().strip() != ""
+    mural = page.locator(".cover-wall").bounding_box()
+    instrumento = page.locator(".instrument").bounding_box()
+    assert mural["y"] + mural["height"] < instrumento["y"], "o disco deve ficar abaixo do mural"
+    # passar o mouse pelo mural para as colunas (para o clique não fugir)
+    page.locator(".cover-wall").hover(force=True)
+    expect(page.locator(".cover-wall-col").first).to_have_css("animation-play-state", "paused")
+    assert client.errors == []
+
+
+def test_o_mural_anda_devagar_e_com_movimento_reduzido_fica_parado(stack, make_client):
+    normal = make_client()
+    normal.open("/")
+    normal.page.wait_for_selector(".cover-wall-link")
+    normal.page.wait_for_timeout(1500)
+    assert normal.page.locator(".cover-wall-col").nth(1).evaluate("el => getComputedStyle(el).transform") != "none"
+    parado = make_client(reduced_motion=True)
+    parado.open("/")
+    parado.page.wait_for_selector(".cover-wall-link")
+    parado.page.wait_for_timeout(500)
+    assert parado.page.locator(".cover-wall-col").nth(1).evaluate("el => getComputedStyle(el).transform") == "none"
+
+
+def test_sem_a_rawg_o_topo_fica_so_com_o_titulo_e_o_resto_da_pagina_continua(stack, client):
+    stack.rawg_down()
+    try:
+        client.open("/")
+        page = client.page
+        expect(page.get_by_role("heading", name="O diário de quem joga.", level=1)).to_be_visible()
+        expect(page.locator(".landing-hero")).to_have_attribute("data-wall", "off")
+        expect(page.locator(".cover-wall")).to_have_count(0)
+        expect(page.get_by_role("link", name="Criar meu diário").first).to_be_visible()
+        expect(page.locator(".instrument")).to_be_attached()
+    finally:
+        stack.rawg_up()
+
+
+def test_o_disco_grande_so_comeca_a_jogar_quando_aparece_na_tela_e_vai_ate_o_zerado(stack, client):
+    client.open("/")
+    client.page.wait_for_selector(".cover-wall-link")
+    client.page.wait_for_timeout(1500)
+    expect(disc(client)).to_have_attribute("data-status", "quero_jogar")  # longe da tela, nada acontece
+    go_to_disc(client)
     expect(disc(client)).to_have_attribute("data-status", "zerado", timeout=7000)
     expect(client.page.locator(".instrument-ability[data-allowed]")).to_have_count(5)
     expect(client.page.locator(".instrument-caption")).to_contain_text("O disco fecha o círculo")
@@ -53,6 +108,7 @@ def test_o_disco_grande_joga_sozinho_ate_o_zerado_e_para(stack, client):
 def test_mexer_no_disco_assume_o_controle_e_mostra_o_que_cada_status_libera(stack, client):
     client.open("/")
     page = client.page
+    go_to_disc(client)
     for nome, liberados in STATUSES.items():
         choose(client, nome)
         expect(page.locator(".instrument-ability[data-allowed]")).to_have_count(liberados)

@@ -20,9 +20,87 @@ const MONTH_NAMES = [
   "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
 ];
 
-function Hero() {
+const WALL_COLUMNS = 3;
+const WALL_SIZE = 15;
+const WALL_MIN = 6;
+
+/**
+ * Os jogos do mural: os em alta primeiro, depois os lançamentos recentes, sem repetir e só com capa de verdade
+ * (uma capa de iniciais num mural de capas parece um buraco).
+ */
+export function wallGames(featured) {
+  const seen = new Set();
+  const games = [];
+  for (const game of [...(featured?.popular ?? []), ...(featured?.new ?? [])]) {
+    if (!game?.cover_thumb_url && !game?.cover_url) continue;
+    if (seen.has(game.rawg_id)) continue;
+    seen.add(game.rawg_id);
+    games.push(game);
+  }
+  return games.length >= WALL_MIN ? games.slice(0, WALL_SIZE) : [];
+}
+
+/** Reparte os jogos em colunas, um de cada vez, para cada coluna ter um pouco de tudo. */
+export function wallColumns(games, columns = WALL_COLUMNS) {
+  const result = Array.from({ length: columns }, () => []);
+  games.forEach((game, index) => result[index % columns].push(game));
+  return result;
+}
+
+/** Colunas de capas que sobem e descem bem devagar. Para o movimento quando a pessoa passa o mouse ou foca uma capa. */
+function CoverWall({ games }) {
+  const columns = wallColumns(games);
   return (
-    <section className="landing-hero" aria-labelledby="hero-title">
+    <div className="landing-hero-art">
+      <div className="cover-wall" role="group" aria-label="Jogos em alta agora">
+        {columns.map((column, index) => (
+          <ul key={index} className="cover-wall-col">
+            {column.map((game) => (
+              <li key={game.rawg_id}>
+                <Link to={gamePath(game)} className="cover-wall-link">
+                  <Cover game={game} ratio="poster" />
+                  <span className="cover-wall-name">{game.name}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        ))}
+      </div>
+      <p className="landing-fine cover-wall-caption">
+        Em alta agora.{" "}
+        <Link to="/jogos?ordering=popular" className="section-link">
+          Ver o catálogo
+        </Link>
+      </p>
+    </div>
+  );
+}
+
+function CoverWallSkeleton() {
+  return (
+    <div className="landing-hero-art" aria-hidden="true">
+      <div className="cover-wall">
+        {Array.from({ length: WALL_COLUMNS }, (_, column) => (
+          <ul key={column} className="cover-wall-col" data-loading>
+            {Array.from({ length: 3 }, (_, row) => (
+              <li key={row}>
+                <Skeleton className="skeleton-cover" />
+              </li>
+            ))}
+          </ul>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Título editorial e, ao lado, o mural de capas da RAWG. Sem a RAWG, o mural some e o título fica sozinho. */
+function Hero() {
+  const state = useAsync((signal) => gamesApi.featured({ signal }), []);
+  const games = state.data ? wallGames(state.data) : [];
+  const hasWall = !state.error && (!state.data || games.length > 0);
+  return (
+    <section className="landing-hero" data-wall={hasWall ? "on" : "off"} aria-labelledby="hero-title">
       <div className="landing-hero-copy">
         <h1 id="hero-title" className="landing-title">
           O diário de quem joga.
@@ -40,42 +118,23 @@ function Hero() {
           </Link>
         </div>
       </div>
-      <DiscInstrument />
+      {hasWall && (state.data ? <CoverWall games={games} /> : <CoverWallSkeleton />)}
     </section>
   );
 }
 
-/** Seis jogos em alta, direto da RAWG. Sem a RAWG, a faixa some e o resto da página fica. */
-function Trending() {
-  const state = useAsync((signal) => gamesApi.featured({ signal }), []);
-  const games = state.data?.popular?.slice(0, 6) ?? [];
-  if (state.error || (state.data && games.length === 0)) return null;
+/** O disco grande, numa seção só dele: escolha um status e veja o que o diário libera. */
+function DiscSection() {
   return (
-    <section className="landing-band" aria-labelledby="trending-title">
-      <div className="landing-band-head">
-        <h2 id="trending-title" className="landing-h3">
-          Em alta agora
-        </h2>
-        <Link to="/jogos?ordering=popular" className="section-link">
-          Ver o catálogo
-        </Link>
-      </div>
-      <ul className="landing-tiles">
-        {!state.data
-          ? Array.from({ length: 6 }, (_, index) => (
-              <li key={index} className="hero-tile" aria-hidden="true">
-                <Skeleton className="skeleton-cover" />
-              </li>
-            ))
-          : games.map((game) => (
-              <li key={game.rawg_id} className="hero-tile">
-                <Link to={gamePath(game)} className="hero-tile-link">
-                  <Cover game={game} ratio="wide" />
-                  <span className="hero-tile-name">{game.name}</span>
-                </Link>
-              </li>
-            ))}
-      </ul>
+    <section className="landing-section" aria-labelledby="disc-title">
+      <h2 id="disc-title" className="landing-h2">
+        Veja como o diário funciona
+      </h2>
+      <p className="landing-body">
+        Cada status libera uma coisa diferente: datas, favorito, nota, jogar de novo. Escolha um e veja o disco fechar,
+        junto com o que o diário passa a aceitar.
+      </p>
+      <DiscInstrument />
     </section>
   );
 }
@@ -331,8 +390,8 @@ export function Landing() {
   return (
     <div className="landing">
       <Hero />
-      <Trending />
       <Journey />
+      <DiscSection />
       <RatingSection />
       <Community reviews={reviews} hasExamples={hasExamples} />
       <Lists />

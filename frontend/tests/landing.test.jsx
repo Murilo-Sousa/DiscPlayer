@@ -5,6 +5,7 @@ import { Disc } from "../src/components/Disc.jsx";
 import { RankingList } from "../src/components/Ranking.jsx";
 import { ReviewCard } from "../src/components/ReviewCard.jsx";
 import { ABILITIES, DiscInstrument } from "../src/pages/landing/DiscInstrument.jsx";
+import { Landing, wallColumns, wallGames } from "../src/pages/landing/Landing.jsx";
 import { STATUS_PROGRESS } from "../src/utils/format.js";
 import { count, html } from "./helpers.jsx";
 
@@ -85,4 +86,57 @@ test("a lista do ranking numera, mostra o número de notas e a média", () => {
   assert.match(markup, /3 notas/);
   assert.match(markup, /4 notas/);
   assert.match(markup, /9,5/);
+});
+
+// ----------------------------------------------------------------------------- mural de capas
+const game = (id, extra = {}) => ({
+  rawg_id: id,
+  name: `Jogo ${id}`,
+  cover_thumb_url: `https://media.rawg.io/${id}-t.jpg`,
+  cover_url: `https://media.rawg.io/${id}.jpg`,
+  ...extra,
+});
+const ids = (games) => games.map((item) => item.rawg_id);
+
+test("o mural mostra os jogos em alta primeiro, depois os lançamentos, sem repetir e só com capa", () => {
+  const featured = {
+    popular: [1, 2, 3, 4, 5, 6].map((id) => game(id)),
+    new: [game(6), game(7), game(8, { cover_thumb_url: null, cover_url: null }), game(9, { cover_thumb_url: null })],
+  };
+  assert.deepEqual(ids(wallGames(featured)), [1, 2, 3, 4, 5, 6, 7, 9]); // 6 não repete, 8 não tem capa, 9 tem só a original
+});
+
+test("o mural tem no máximo 15 capas e some quando há poucas", () => {
+  assert.equal(wallGames({ popular: Array.from({ length: 12 }, (_, i) => game(i + 1)), new: Array.from({ length: 12 }, (_, i) => game(i + 50)) }).length, 15);
+  assert.deepEqual(wallGames({ popular: [1, 2, 3, 4, 5].map((id) => game(id)), new: [] }), []);
+  assert.deepEqual(wallGames({ popular: null, new: null }), []); // a RAWG pode falhar numa das listas ou nas duas
+  assert.deepEqual(wallGames(null), []);
+  assert.equal(wallGames({ popular: null, new: [1, 2, 3, 4, 5, 6].map((id) => game(id)) }).length, 6); // basta uma lista boa
+});
+
+test("o mural reparte as capas pelas colunas, uma de cada vez", () => {
+  const columns = wallColumns([1, 2, 3, 4, 5, 6, 7].map((id) => game(id)));
+  assert.deepEqual(columns.map(ids), [[1, 4, 7], [2, 5], [3, 6]]);
+});
+
+test("a landing ainda carregando abre com o título e o esqueleto do mural, e o disco vem depois da jornada", () => {
+  const markup = html(<Landing />);
+  assert.match(markup, /<h1[^>]*>O diário de quem joga\.<\/h1>/);
+  assert.match(markup, /data-wall="on"/);
+  assert.equal(count(markup, /class="cover-wall-col"/g), 3);
+  assert.equal(count(markup, /cover-wall-link/g), 0); // enquanto a RAWG não responde, só o esqueleto (sem links)
+  const titles = [
+    "O diário de quem joga.",
+    "Do “quero jogar” ao “zerei”",
+    "Veja como o diário funciona",
+    "Dez pontos, cinco discos",
+    "Listas para dividir o que você ama",
+    "Seu ano em jogos",
+    "Um diário que não faz de conta",
+    "Qual foi o último jogo que você terminou?",
+  ];
+  const positions = titles.map((title) => markup.indexOf(title));
+  assert.ok(positions.every((position) => position >= 0), `faltou algum título: ${positions}`);
+  assert.deepEqual(positions, [...positions].sort((a, b) => a - b));
+  assert.equal(count(markup, /class="instrument"/g), 1); // o disco aparece uma vez só, na própria seção
 });

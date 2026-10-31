@@ -1,8 +1,8 @@
 /*
  * Página inicial de quem ainda não entrou.
  *
- * Uma peça forte (o disco grande do topo) e o resto quieto: tipografia grande, bastante respiro e filetes finos em vez
- * de cartões empilhados. O amarelo só aparece onde algo está "fechado": o disco zerado, as notas e a ação principal.
+ * Uma peça forte (o mural de capas do topo) e o resto quieto: tipografia grande, bastante respiro e filetes finos em
+ * vez de cartões empilhados. O amarelo só aparece onde algo está "fechado": o disco zerado, as notas e a ação principal.
  */
 .landing {
   --landing-gap: clamp(4.5rem, 3rem + 6vw, 8rem);
@@ -61,14 +61,112 @@
 /* ---------- Abertura ---------- */
 .landing-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
   gap: var(--space-6) var(--space-7);
   align-items: center;
-  padding-block: var(--space-6) 0;
+  padding-block: var(--space-4) 0;
 }
 
-/* ---------- Faixas e seções ---------- */
-.landing-band,
+.landing-hero > * {
+  min-width: 0;
+}
+
+/* Sem a RAWG não há mural: o título fica sozinho, com o mesmo respiro. */
+.landing-hero[data-wall="off"] {
+  grid-template-columns: minmax(0, 1fr);
+  padding-block: var(--space-7) 0;
+}
+
+/* ---------- Mural de capas ---------- */
+.landing-hero-art {
+  --wall-h: 36rem;
+}
+
+.cover-wall {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+  max-height: var(--wall-h); /* com poucas capas, o mural é só tão alto quanto elas */
+  overflow: hidden;
+  /* as capas entram e saem esmaecendo, sem cortar na borda */
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 11%, #000 89%, transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 11%, #000 89%, transparent);
+}
+
+.cover-wall-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-self: start; /* a coluna mantém a altura que tem; é isso que dá a distância que ela anda */
+  animation: wall-drift 64s ease-in-out infinite alternate;
+}
+
+.cover-wall-col:nth-child(2) {
+  margin-top: calc(var(--space-7) * -1);
+  animation-duration: 78s;
+  animation-direction: alternate-reverse;
+}
+
+.cover-wall-col:nth-child(3) {
+  animation-duration: 70s;
+}
+
+.cover-wall-col[data-loading] {
+  animation: none;
+}
+
+/* Anda até o fim da coluna (se ela for mais alta que o mural) e volta. Coluna curta não anda. */
+@keyframes wall-drift {
+  to {
+    transform: translateY(min(0px, calc(var(--wall-h) - 100%)));
+  }
+}
+
+.cover-wall:hover .cover-wall-col,
+.cover-wall:focus-within .cover-wall-col {
+  animation-play-state: paused;
+}
+
+.cover-wall-link {
+  position: relative;
+  display: block;
+  text-decoration: none;
+}
+
+.cover-wall .cover {
+  border-radius: var(--radius);
+}
+
+.cover-wall-name {
+  position: absolute;
+  inset: auto 0 0 0;
+  padding: var(--space-3) var(--space-2) var(--space-2);
+  overflow: hidden;
+  background: rgb(19 19 22 / 0.88);
+  border-radius: 0 0 var(--radius) var(--radius);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.2s var(--ease);
+}
+
+.cover-wall-link:hover .cover-wall-name,
+.cover-wall-link:focus-visible .cover-wall-name {
+  opacity: 1;
+}
+
+.cover-wall-link:hover .cover {
+  outline: 2px solid var(--text-3);
+}
+
+.cover-wall-caption {
+  margin-top: var(--space-3);
+}
+
+/* ---------- Seções ---------- */
 .landing-section {
   margin-top: var(--landing-gap);
 }
@@ -76,21 +174,6 @@
 .landing-section {
   padding-top: var(--space-6);
   border-top: 1px solid var(--line);
-}
-
-.landing-band-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-2) var(--space-4);
-  margin-bottom: var(--space-4);
-}
-
-.landing-tiles {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: var(--space-3);
 }
 
 .landing-split {
@@ -292,8 +375,11 @@
 /* ---------- O disco grande ---------- */
 .instrument {
   display: grid;
-  gap: var(--space-5);
-  padding: var(--space-6);
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  align-items: center;
+  gap: var(--space-6) var(--space-8);
+  margin-top: var(--space-6);
+  padding: var(--space-7);
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
@@ -306,7 +392,7 @@
 }
 
 .instrument-disc {
-  width: min(100%, 17rem);
+  width: min(100%, 21rem);
   height: auto;
   color: var(--text-2);
   transition: color 0.45s var(--ease);
@@ -404,16 +490,20 @@
 
 /* ---------- Telas menores ---------- */
 @media (max-width: 62rem) {
-  .landing-hero,
   .landing-split,
+  .instrument,
   .landing-community[data-with-ranking] {
     grid-template-columns: minmax(0, 1fr);
   }
-  .landing-tiles {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
   .landing-hero {
-    gap: var(--space-7);
+    gap: var(--space-6);
+  }
+  .landing-hero-art {
+    --wall-h: 30rem;
+  }
+  .instrument {
+    gap: var(--space-6);
+    padding: var(--space-6);
   }
 }
 
@@ -430,6 +520,15 @@
     order: -1;
     width: 9rem;
     margin: 0 0 0 calc(var(--space-4) * -1);
+  }
+  /* o título e o mural só se empilham em telas estreitas; antes disso ficam lado a lado, mais compactos */
+  .landing-hero {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-7);
+  }
+  .landing-hero-art {
+    --wall-h: 22rem;
+    max-width: 34rem;
   }
   .instrument,
   .rating-demo,

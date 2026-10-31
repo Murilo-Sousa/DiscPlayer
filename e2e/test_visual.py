@@ -49,13 +49,14 @@ def test_colagem_de_capas_da_lista_cabe_na_caixa(stack, make_client):
             assert capa["x"] >= esquerda and capa["x"] + capa["width"] <= direita, f"capa {indice + 1} passa da caixa a {largura}px"
 
 
-def test_inicio_de_quem_ainda_nao_entrou_mostra_jogos_em_alta(stack, client):
+def test_inicio_de_quem_ainda_nao_entrou_mostra_o_mural_de_jogos_em_alta(stack, client):
     client.open("/")
-    client.page.wait_for_selector(".hero-tile-link")
-    nomes = client.page.locator(".hero-tile-name")
-    assert nomes.count() == 6
+    client.page.wait_for_selector(".cover-wall-link")
+    nomes = client.page.locator(".cover-wall-name")
+    assert 6 <= nomes.count() <= 15  # a RAWG de teste tem poucos jogos recentes
     primeiro = nomes.first.inner_text()
-    client.page.locator(".hero-tile-link").first.click()
+    # O mural anda devagar, e o Playwright espera o elemento parar para clicar: aqui o clique é direto.
+    client.page.locator(".cover-wall-link").first.click(force=True)
     client.page.wait_for_selector(".game-title")
     assert client.page.locator(".game-title").inner_text() == primeiro
 

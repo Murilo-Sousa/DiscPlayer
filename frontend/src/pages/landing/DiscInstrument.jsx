@@ -21,7 +21,7 @@ export const ABILITIES = [
   { key: "replay", label: "Jogar de novo", allowed: canReplay },
 ];
 
-// Na abertura da página o disco "joga" um jogo da fila até o zerado, uma vez. Qualquer clique interrompe.
+// Quando o disco aparece na tela, ele "joga" um jogo da fila até o zerado, uma vez. Qualquer clique interrompe.
 const AUTOPLAY = ["quero_jogar", "jogando", "pausado", "zerado"];
 const STEP_MS = 650;
 
@@ -32,23 +32,45 @@ function prefersReducedMotion() {
 /**
  * O disco grande da página inicial: escolha um status e veja o disco fechar e o que o diário libera. É a mesma
  * lógica de verdade (o seletor é o do diário), mas nada é salvo: serve para mostrar o produto antes do cadastro.
+ * A abertura sozinha só começa quando o disco entra na tela, senão ela terminaria antes de alguém chegar aqui.
  */
 export function DiscInstrument() {
   const [status, setStatus] = useState("quero_jogar");
   const [touched, setTouched] = useState(false);
   const stopped = useRef(false);
+  const root = useRef(null);
 
   useEffect(() => {
     if (prefersReducedMotion()) {
       setStatus("zerado");
       return undefined;
     }
-    const timers = AUTOPLAY.slice(1).map((next, index) =>
-      setTimeout(() => {
-        if (!stopped.current) setStatus(next);
-      }, 500 + STEP_MS * (index + 1)),
-    );
-    return () => timers.forEach(clearTimeout);
+    let timers = [];
+    const play = () => {
+      timers = AUTOPLAY.slice(1).map((next, index) =>
+        setTimeout(() => {
+          if (!stopped.current) setStatus(next);
+        }, 300 + STEP_MS * (index + 1)),
+      );
+    };
+    let observer = null;
+    if (typeof IntersectionObserver === "undefined" || !root.current) {
+      play();
+    } else {
+      observer = new IntersectionObserver(
+        ([entry]) => {
+          if (!entry.isIntersecting) return;
+          observer.disconnect();
+          play();
+        },
+        { threshold: 0.3 },
+      );
+      observer.observe(root.current);
+    }
+    return () => {
+      observer?.disconnect();
+      timers.forEach(clearTimeout);
+    };
   }, []);
 
   const choose = (next) => {
@@ -59,7 +81,7 @@ export function DiscInstrument() {
 
   const shape = STATUS_DISC[status];
   return (
-    <section className="instrument" aria-labelledby="instrument-title">
+    <div className="instrument" role="group" aria-labelledby="instrument-title" ref={root}>
       <div className="instrument-stage">
         <Disc
           className="instrument-disc"
@@ -77,9 +99,9 @@ export function DiscInstrument() {
         </p>
       </div>
       <div className="instrument-panel">
-        <h2 id="instrument-title" className="instrument-title">
+        <h3 id="instrument-title" className="instrument-title">
           Como esse jogo está para você?
-        </h2>
+        </h3>
         <StatusPicker value={status} onChange={choose} label="Experimente um status" />
         <dl className="instrument-abilities" aria-label={`O que o diário libera em “${STATUS_LABELS[status]}”`}>
           {ABILITIES.map(({ key, label, allowed }) => (
@@ -91,6 +113,6 @@ export function DiscInstrument() {
         </dl>
         <p className="instrument-note">Um exemplo para mexer: nada aqui é salvo.</p>
       </div>
-    </section>
+    </div>
   );
 }

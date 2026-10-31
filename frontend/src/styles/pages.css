@@ -85,37 +85,6 @@
   gap: var(--space-4);
 }
 
-/* Capas da faixa "Em alta agora" (página de quem ainda não entrou). */
-.hero-tile-link {
-  position: relative;
-  display: block;
-  text-decoration: none;
-}
-
-.hero-tile .cover[data-ratio="wide"],
-.hero-tile .skeleton-cover {
-  aspect-ratio: 4 / 3;
-}
-
-.hero-tile-name {
-  position: absolute;
-  inset: auto 0 0 0;
-  padding: 0.3rem 0.45rem;
-  overflow: hidden;
-  background: rgb(19 19 22 / 0.86);
-  font-size: 0.8125rem;
-  font-weight: 700;
-  line-height: 1.3;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  border-radius: 0 0 var(--radius-xs) var(--radius-xs);
-}
-
-.hero-tile-link:hover .cover,
-.hero-tile-link:focus-visible .cover {
-  outline: 2px solid var(--text-3);
-}
-
 .home-columns {
   display: grid;
   grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);

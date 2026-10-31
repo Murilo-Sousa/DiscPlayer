@@ -10,7 +10,7 @@ from ..utils.dates import today_utc, utcnow_iso
 
 def get_by_username(username: str) -> sqlite3.Row | None:
     return fetch_one(
-        "SELECT id, username, display_name, bio, avatar_url, created_at FROM users WHERE username = ?",
+        "SELECT id, username, display_name, bio, avatar_url, created_at, is_demo FROM users WHERE username = ?",
         (username.strip().lower(),),
     )
 
@@ -57,7 +57,7 @@ def list_follows(user_id: int, direction: str, *, limit: int = 30, offset: int =
     else:
         raise ValueError(direction)
     return fetch_all(
-        f"SELECT u.username, u.display_name, u.avatar_url, u.bio FROM follows f"
+        f"SELECT u.username, u.display_name, u.avatar_url, u.bio, u.is_demo FROM follows f"
         f" JOIN users u ON u.id = {join} WHERE {where} = ?"
         " ORDER BY f.created_at DESC, f.id DESC LIMIT ? OFFSET ?",
         (user_id, limit, offset),

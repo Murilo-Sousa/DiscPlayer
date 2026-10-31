@@ -13,7 +13,7 @@ KEEP = object()  # "não mexer neste campo" (None é um valor válido: limpa o t
 REVIEW_COLUMNS = """
     r.id AS review_id, r.rating, r.body, r.has_spoilers,
     r.created_at AS review_created_at, r.updated_at AS review_updated_at,
-    u.username, u.display_name, u.avatar_url,
+    u.username, u.display_name, u.avatar_url, u.is_demo,
     g.rawg_id, g.name AS game_name, g.slug AS game_slug, g.cover_url, g.release_date,
     (SELECT COUNT(*) FROM review_likes rl WHERE rl.review_id = r.id) AS like_count,
     EXISTS (SELECT 1 FROM review_likes rl

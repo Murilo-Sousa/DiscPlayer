@@ -94,6 +94,8 @@ def login():
 
     key = identifier.strip().lower()
     row = fetch_one("SELECT * FROM users WHERE username = ? OR email = ?", (key, key))
+    if row and row["is_demo"]:
+        row = None  # perfil de exemplo: não existe login (e a resposta é a mesma de uma conta inexistente)
     # A mesma mensagem (e o mesmo tempo) para "usuário inexistente" e "senha errada".
     if not check_password(row["password_hash"] if row else None, password):
         raise ApiError(401, "invalid_credentials", "E-mail, usuário ou senha incorretos.")

@@ -55,7 +55,12 @@ def test_migrations_are_applied_once(app):
     assert database.migrate(app.config["DATABASE"]) == []  # já aplicadas na criação da app
     with sqlite3.connect(app.config["DATABASE"]) as raw:
         versions = [r[0] for r in raw.execute("SELECT version FROM schema_migrations ORDER BY version")]
-    assert versions == ["0001_initial", "0002_jogadas_spoilers_foto_conta", "0003_regras_do_diario"]
+    assert versions == [
+        "0001_initial",
+        "0002_jogadas_spoilers_foto_conta",
+        "0003_regras_do_diario",
+        "0004_perfis_de_exemplo",
+    ]
 
 
 def test_migration_0002_keeps_existing_data_and_prepares_new_columns(tmp_path, monkeypatch):
@@ -91,7 +96,11 @@ def test_migration_0002_keeps_existing_data_and_prepares_new_columns(tmp_path, m
     raw.close()
 
     monkeypatch.undo()  # volta a usar a pasta real de migrações
-    assert database.migrate(path) == ["0002_jogadas_spoilers_foto_conta", "0003_regras_do_diario"]
+    assert database.migrate(path) == [
+        "0002_jogadas_spoilers_foto_conta",
+        "0003_regras_do_diario",
+        "0004_perfis_de_exemplo",
+    ]
 
     raw = database.connect(path)
     try:

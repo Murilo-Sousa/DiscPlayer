@@ -70,7 +70,7 @@ def test_a_new_account_has_an_empty_retrospective_for_the_current_year(ana):
 def test_it_is_public_and_shows_only_public_profile_data(ana, api):
     finish(ana, HADES, "2025-03-01", "2025-03-20")
     data = get(api, "ana", 2025)  # sem login
-    assert data["user"] == {"username": "ana", "display_name": "ana", "avatar_url": None}
+    assert data["user"] == {"username": "ana", "display_name": "ana", "avatar_url": None, "is_demo": False}
     assert "email" not in str(data) and "password" not in str(data) and "session_key" not in str(data)
 
 

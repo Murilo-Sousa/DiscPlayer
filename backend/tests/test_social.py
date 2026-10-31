@@ -39,7 +39,7 @@ def test_follower_and_following_lists(ana, bruno, make_user):
     followers = ana.get("/api/users/carla/followers").get_json()["items"]
     assert [u["username"] for u in followers] == ["bruno", "ana"]
     assert [u["username"] for u in ana.get("/api/users/ana/following").get_json()["items"]] == ["carla"]
-    assert all(set(u) <= {"username", "display_name", "avatar_url", "bio"} for u in followers)
+    assert all(set(u) <= {"username", "display_name", "avatar_url", "bio", "is_demo"} for u in followers)
     assert carla.get("/api/users/carla").get_json()["stats"]["following"] == 0
 
 

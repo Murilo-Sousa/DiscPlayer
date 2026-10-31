@@ -6,7 +6,9 @@ As funcionalidades em detalhe, a stack, a estrutura de pastas, o banco de dados,
 
 ## Funcionalidades em detalhe
 
-- **Início** com a atividade real da comunidade (últimos registros, reviews, listas, jogos mais bem avaliados). Quem ainda não entrou vê uma prateleira com jogos em alta ao lado da apresentação e a legenda do disco; quem está logado vê "Jogando agora" (com a data de início e há quantos dias joga), "Na sua fila" (os jogos marcados como *Quero jogar*), as abas "Todos" e "Quem eu sigo" e uma seção "Descobrir" com *Em alta* e *Lançamentos recentes*.
+- **Início** com a atividade real da comunidade (últimos registros, reviews, listas, jogos mais bem avaliados). Quem ainda não entrou vê uma **apresentação do DiscPlayer** (veja abaixo); quem está logado vê "Jogando agora" (com a data de início e há quantos dias joga), "Na sua fila" (os jogos marcados como *Quero jogar*), as abas "Todos" e "Quem eu sigo" e uma seção "Descobrir" com *Em alta* e *Lançamentos recentes*.
+- **Página inicial de quem ainda não entrou**: abre com um disco grande e interativo (escolha um status e veja o disco fechar e o que o diário libera, com as mesmas regras do diário de verdade, sem salvar nada) e segue com os jogos em alta da RAWG, a jornada da fila ao zerado, a nota em discos (um controle para testar), as reviews e o ranking da comunidade, as listas públicas, um exemplo de retrospectiva, as regras do site e um convite final. Tudo o que vem da comunidade é dado real do banco: sem reviews ainda, a página mostra "A comunidade está começando" em vez de blocos vazios, e a seção de retrospectiva só mostra números quando existe um perfil de exemplo (nunca a conta de uma pessoa real). O disco abre sozinho até "Zerado", uma vez, e qualquer clique assume o controle; com "reduzir movimento" no sistema ele já abre em "Zerado".
+- **Perfis de exemplo** (opcional): contas fictícias, com diário, reviews, listas e curtidas, para mostrar o site com atividade (útil num portfólio ainda sem comunidade). Nada é criado sozinho: `python -m app.demo seed` cria seis perfis, `python -m app.demo remove` tira todos de uma vez (com tudo o que é deles) e `python -m app.demo status` mostra se existem. Eles aparecem com a marca **Exemplo** ao lado do nome (reviews, atividade, listas, perfil, busca e retrospectiva), não fazem login (a senha é aleatória e o login recusa essas contas) e passam pelas mesmas regras do diário que qualquer pessoa. Os jogos são procurados na RAWG pelo nome na hora do comando (nenhum identificador ou capa é inventado), então o comando precisa da chave da RAWG; um jogo que ela não achar é pulado. Em produção o comando exige `--sim`.
 - **Catálogo** com busca por nome, filtros de gênero, plataforma e ano, ordenação e paginação. Os filtros ficam na URL, então dá para compartilhar e recarregar.
 - **Página do jogo** com ficha técnica da RAWG e, separado e rotulado, o **resumo da comunidade DiscPlayer** (média e distribuição das notas dadas aqui). A nota agregada da RAWG aparece em outro bloco, com a origem indicada: as duas nunca se misturam.
 - **Contas**: cadastro, login, logout, sessão persistente por cookie, edição de perfil (nome de exibição, bio e **foto enviada como imagem**, que o servidor valida, recorta e reduz) e **exclusão da conta** com confirmação por senha.
@@ -40,6 +42,7 @@ DiscPlayer/
 │   │   ├── __init__.py          # create_app (fábrica da aplicação)
 │   │   ├── config.py            # configuração lida do ambiente / .env
 │   │   ├── db.py                # conexão SQLite, migrações, comando init-db
+│   │   ├── demo.py              # perfis de exemplo: python -m app.demo seed | remove | status
 │   │   ├── security.py          # CSRF, checagem de Origin, CORS, limite de requisições, cabeçalhos
 │   │   ├── errors.py            # formato único de erro da API
 │   │   ├── auth/                # senhas (scrypt), sessão, decoradores
@@ -47,7 +50,7 @@ DiscPlayer/
 │   │   ├── services/            # regras de negócio e SQL; rawg.py é o cliente da RAWG (com cache)
 │   │   │                        #   retrospective.py (contas do ano), previews.py (prévia de links), cards.py (imagens PNG)
 │   │   └── utils/               # validação, cache TTL, escape de LIKE
-│   ├── migrations/              # 0001_initial.sql, 0002_jogadas_spoilers_foto_conta.sql
+│   ├── migrations/              # 0001_initial.sql ... 0004_perfis_de_exemplo.sql
 │   ├── tests/                   # pytest (RAWG simulada)
 │   ├── wsgi.py
 │   ├── requirements.txt
@@ -69,11 +72,11 @@ DiscPlayer/
 
 ## Banco de dados
 
-SQLite com `PRAGMA foreign_keys=ON`, modo WAL e `busy_timeout`. As migrações ficam em `backend/migrations/NNNN_nome.sql` e são aplicadas em ordem, cada uma numa transação, registradas na tabela `schema_migrations`. Para evoluir o esquema, crie `0003_algo.sql`; nunca edite uma migração já aplicada. A `0002` não perde dados de quem já usava o app, com uma exceção deliberada: **fotos de perfil que eram links deixam de existir** (agora a foto é um arquivo enviado), e cada pessoa volta às iniciais até enviar a sua. A mesma migração cria a `session_key` de cada conta, e por isso **quem estava logado antes da atualização precisa entrar de novo uma vez** (os cookies antigos não têm a chave).
+SQLite com `PRAGMA foreign_keys=ON`, modo WAL e `busy_timeout`. As migrações ficam em `backend/migrations/NNNN_nome.sql` e são aplicadas em ordem, cada uma numa transação, registradas na tabela `schema_migrations`. Para evoluir o esquema, crie a próxima migração (`0005_algo.sql`, por exemplo); nunca edite uma migração já aplicada. A `0002` não perde dados de quem já usava o app, com uma exceção deliberada: **fotos de perfil que eram links deixam de existir** (agora a foto é um arquivo enviado), e cada pessoa volta às iniciais até enviar a sua. A mesma migração cria a `session_key` de cada conta, e por isso **quem estava logado antes da atualização precisa entrar de novo uma vez** (os cookies antigos não têm a chave).
 
 | Tabela | Conteúdo |
 | --- | --- |
-| `users` | Contas. `username` e `email` únicos (sem diferenciar maiúsculas), senha só como hash; `session_key` é uma chave por conta, copiada para o cookie de sessão (veja [Segurança](#segurança)) |
+| `users` | Contas. `username` e `email` únicos (sem diferenciar maiúsculas), senha só como hash; `session_key` é uma chave por conta, copiada para o cookie de sessão (veja [Segurança](#segurança)); `is_demo` marca os perfis de exemplo (0 nas contas reais) |
 | `user_avatars` | A foto de perfil já reprocessada (WebP quadrado, no máximo 256 KB, em geral uns 15 KB), guardada no próprio SQLite. `users.avatar_url` aponta para ela |
 | `games` | Cópia local mínima de cada jogo usado pela comunidade (id da RAWG, nome, capa...), para que o diário continue funcionando se a RAWG falhar |
 | `library_entries` | Diário: um registro por pessoa e jogo (a jogada **atual**), com status, datas, favorito e `status_changed_at` (quando o status mudou pela última vez, para o "Largado em ..."; favoritar ou editar datas não mexe nele) |

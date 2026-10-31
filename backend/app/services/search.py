@@ -12,7 +12,7 @@ from . import reviews as reviews_service
 def users(term: str, limit: int = 5) -> list[sqlite3.Row]:
     pattern = f"%{escape_like(term.lower())}%"
     return fetch_all(
-        "SELECT username, display_name, avatar_url, bio FROM users"
+        "SELECT username, display_name, avatar_url, bio, is_demo FROM users"
         " WHERE lower(username) LIKE :p ESCAPE '\\' OR lower(display_name) LIKE :p ESCAPE '\\'"
         " ORDER BY (username = :exact) DESC, (username LIKE :prefix ESCAPE '\\') DESC, username LIMIT :limit",
         {"p": pattern, "exact": term.lower(), "prefix": f"{escape_like(term.lower())}%", "limit": limit},

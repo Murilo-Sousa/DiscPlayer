@@ -11,6 +11,7 @@ import { useDocumentTitle } from "../hooks/useDocumentTitle.js";
 import { Link, useSearchParams } from "../router/index.jsx";
 import { searchApi } from "../services/api.js";
 import { userPath } from "../utils/format.js";
+import { DemoBadge } from "../components/DemoBadge.jsx";
 
 export default function SearchPage() {
   const [params, setParams] = useSearchParams();
@@ -89,7 +90,10 @@ export default function SearchPage() {
                     <Link to={userPath(user.username)} className="person">
                       <Avatar user={user} size={44} />
                       <span className="person-text">
-                        <strong>{user.display_name}</strong>
+                        <strong>
+                          {user.display_name}
+                          <DemoBadge user={user} />
+                        </strong>
                         <span>@{user.username}</span>
                       </span>
                     </Link>

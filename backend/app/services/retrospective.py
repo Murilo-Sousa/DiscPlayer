@@ -216,6 +216,7 @@ def build(user: sqlite3.Row, year: int) -> dict:
             "username": user["username"],
             "display_name": user["display_name"],
             "avatar_url": user["avatar_url"],
+            "is_demo": bool(user["is_demo"]),
         },
         "year": year,
         "partial": year == today_utc().year,

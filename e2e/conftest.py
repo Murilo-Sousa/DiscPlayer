@@ -68,6 +68,7 @@ class _Server:
 class Stack:
     url: str
     rawg: _Server
+    app: object = None  # a aplicação Flask em execução (para preparar dados dentro do processo, como os perfis de exemplo)
 
     def rawg_down(self) -> None:
         """Derruba a RAWG de mentira e esvazia o cache do back-end (como após um reinício)."""
@@ -95,7 +96,7 @@ def stack(tmp_path):
     )
     web = _Server(app).start()
     try:
-        yield Stack(url=f"http://127.0.0.1:{web.port}", rawg=rawg)
+        yield Stack(url=f"http://127.0.0.1:{web.port}", rawg=rawg, app=app)
     finally:
         web.stop()
         rawg.stop()
@@ -135,6 +136,7 @@ class Client:
         height: int = 900,
         mobile: bool = False,
         timezone_id: str | None = None,
+        reduced_motion: bool = False,
     ):
         self.base = base
         self.context = browser.new_context(
@@ -143,6 +145,7 @@ class Client:
             is_mobile=mobile,
             has_touch=mobile,
             timezone_id=timezone_id,
+            reduced_motion="reduce" if reduced_motion else "no-preference",
         )
         self.context.route(re.compile(r"https://media\.rawg\.io/.*"), _fake_cover)
         self.page = self.context.new_page()

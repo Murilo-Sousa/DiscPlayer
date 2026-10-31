@@ -30,6 +30,7 @@ import {
 } from "../utils/format.js";
 import { shareLink } from "../utils/share.js";
 import NotFoundPage from "./NotFoundPage.jsx";
+import { DemoBadge } from "../components/DemoBadge.jsx";
 
 /**
  * O número em destaque da imagem de compartilhamento: o primeiro destes que existe. É a mesma ordem
@@ -317,6 +318,7 @@ export function RetrospectiveView({ data, isSelf, shareUrl }) {
         <Link to={userPath(user.username)} className="retro-owner">
           <Avatar user={user} size={28} />
           <span>{user.display_name}</span>
+          <DemoBadge user={user} />
           <span className="retro-handle">@{user.username}</span>
         </Link>
         <h1 className="retro-title">

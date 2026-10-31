@@ -28,6 +28,7 @@ import {
   userPath,
 } from "../utils/format.js";
 import NotFoundPage from "./NotFoundPage.jsx";
+import { DemoBadge } from "../components/DemoBadge.jsx";
 
 function Summary({ profile, isSelf }) {
   const { stats, favorites, recent, user } = profile;
@@ -169,7 +170,10 @@ function People({ users }) {
           <Link to={userPath(person.username)} className="person">
             <Avatar user={person} size={44} />
             <span className="person-text">
-              <strong>{person.display_name}</strong>
+              <strong>
+                {person.display_name}
+                <DemoBadge user={person} />
+              </strong>
               <span>@{person.username}</span>
             </span>
           </Link>
@@ -287,7 +291,10 @@ export default function ProfilePage() {
       <header className="profile-head">
         <Avatar user={user} size={96} className="profile-avatar" />
         <div className="profile-head-text">
-          <h1 className="profile-name">{user.display_name}</h1>
+          <h1 className="profile-name">
+            {user.display_name}
+            <DemoBadge user={user} />
+          </h1>
           <p className="profile-handle">@{user.username}</p>
           {user.bio && <p className="profile-bio">{user.bio}</p>}
           <p className="profile-meta">

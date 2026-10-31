@@ -29,7 +29,7 @@ def test_search_finds_users_by_username_or_display_name(ana, make_user):
     by_display = ana.get("/api/search?q=da silva").get_json()["users"]
     assert [u["username"] for u in by_username] == ["maria_silva"]
     assert [u["username"] for u in by_display] == ["maria_silva"]
-    assert set(by_username[0]) == {"username", "display_name", "avatar_url", "bio"}
+    assert set(by_username[0]) == {"username", "display_name", "avatar_url", "bio", "is_demo"}
     assert ana.get("/api/search?q=inexistente").get_json()["users"] == []
 
 

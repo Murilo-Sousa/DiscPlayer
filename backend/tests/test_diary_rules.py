@@ -478,7 +478,7 @@ def test_migration_0003_cleans_old_entries_and_backfills_the_status_date(tmp_pat
     raw.close()
 
     monkeypatch.undo()
-    assert database.migrate(path) == ["0003_regras_do_diario"]
+    assert database.migrate(path) == ["0003_regras_do_diario", "0004_perfis_de_exemplo"]
 
     raw = database.connect(path)
     try:
@@ -494,6 +494,7 @@ def test_migration_0003_cleans_old_entries_and_backfills_the_status_date(tmp_pat
         plays = {r["status"]: r["completed_at"] for r in raw.execute("SELECT status, completed_at FROM playthroughs")}
         assert plays == {"abandonado": "2024-02-01", "zerado": "2023-02-01"}  # o passado não é reescrito
         assert raw.execute("SELECT COUNT(*) FROM reviews").fetchone()[0] == 1  # as notas antigas não são mexidas
+        assert raw.execute("SELECT COUNT(*) FROM users WHERE is_demo = 1").fetchone()[0] == 0  # contas reais não são "exemplo"
     finally:
         raw.close()
 

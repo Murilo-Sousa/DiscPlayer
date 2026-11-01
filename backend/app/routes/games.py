@@ -16,6 +16,7 @@ from ..services import library as library_service
 from ..services import rawg, reviews as reviews_service
 from ..utils.dates import today_utc
 from ..utils.pagination import page_envelope, page_args
+from ..utils.ratings import empty_distribution
 
 bp = Blueprint("games", __name__, url_prefix="/api")
 
@@ -134,7 +135,7 @@ def _community_block(local: dict | None) -> dict:
             "average": None,
             "count": 0,
             "with_text": 0,
-            "distribution": [0] * 10,
+            "distribution": empty_distribution(),
             "library": {"total": 0, "quero_jogar": 0, "jogando": 0, "zerado": 0, "abandonado": 0, "pausado": 0},
         }
     return reviews_service.community_stats(local["id"])

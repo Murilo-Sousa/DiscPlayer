@@ -16,7 +16,6 @@ import {
   paragraphs,
   parseGameParam,
   playSpan,
-  playingFor,
   plural,
   statusLabel,
   timeAgo,
@@ -168,21 +167,3 @@ test("localToday preenche mês e dia com zero à esquerda", () => {
   assert.equal(localToday(new Date(2026, 0, 5, 12)), "2026-01-05");
 });
 
-test("playingFor diz que começou hoje, no singular e no plural", () => {
-  assert.equal(playingFor("2026-10-26", "2026-10-26"), "Começou hoje");
-  assert.equal(playingFor("2026-10-25", "2026-10-26"), "1 dia jogando");
-  assert.equal(playingFor("2026-09-10", "2026-10-26"), "46 dias jogando");
-});
-
-test("playingFor não inventa um tempo sem data de início ou com data no futuro", () => {
-  assert.equal(playingFor(null, "2026-10-26"), null);
-  assert.equal(playingFor("", "2026-10-26"), null);
-  assert.equal(playingFor("2026-10-27", "2026-10-26"), null);
-  assert.equal(playingFor("não é data", "2026-10-26"), null);
-});
-
-test("playingFor conta dias de calendário, sem se perder na virada de mês ou de ano", () => {
-  assert.equal(playingFor("2025-12-31", "2026-01-01"), "1 dia jogando");
-  assert.equal(playingFor("2026-02-28", "2026-03-01"), "1 dia jogando");
-  assert.equal(playingFor("2026-01-01", "2026-12-31"), "364 dias jogando");
-});

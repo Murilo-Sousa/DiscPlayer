@@ -128,15 +128,24 @@ def test_community_average_is_computed_from_real_reviews(ana, bruno, make_user):
     assert community["count"] == 3
     assert community["average"] == round((8 + 9 + 7.5) / 3, 2)
     assert community["with_text"] == 1
+    assert len(community["distribution"]) == 11  # de 0 a 10
     assert community["distribution"][7] == 1  # 7,5
     assert community["distribution"][8] == 1  # 8
     assert community["distribution"][9] == 1  # 9
     assert sum(community["distribution"]) == 3
 
 
-def test_a_perfect_ten_lands_in_the_last_bucket(ana):
+def test_a_perfect_ten_has_its_own_bar(ana, bruno):
     review(ana, rating=10)
-    assert ana.get(f"/api/games/{HADES}").get_json()["community"]["distribution"][9] == 1
+    bruno.play(HADES)
+    bruno.post(f"/api/games/{HADES}/reviews", {"rating": 9.5})
+    distribution = ana.get(f"/api/games/{HADES}").get_json()["community"]["distribution"]
+    assert distribution[10] == 1  # só o 10
+    assert distribution[9] == 1  # o 9,5 fica com o 9
+
+
+def test_a_game_nobody_rated_has_an_empty_distribution_from_0_to_10(api):
+    assert api.get(f"/api/games/{HADES}").get_json()["community"]["distribution"] == [0] * 11
 
 
 def test_community_rating_is_kept_separate_from_rawg_data(ana):

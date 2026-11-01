@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { GameCard } from "../components/GameCard.jsx";
-import { StatusDisc } from "../components/Disc.jsx";
 import { ActivityList, GameGrid, GameGridSkeleton, ListSkeleton, Section } from "../components/Layout.jsx";
 import { ReviewCard } from "../components/ReviewCard.jsx";
 import { Async, EmptyState, ErrorState, Loader } from "../components/States.jsx";
@@ -9,112 +8,10 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { useAsync } from "../hooks/useAsync.js";
 import { useDocumentTitle } from "../hooks/useDocumentTitle.js";
 import { Link } from "../router/index.jsx";
-import { feedApi, gamesApi, libraryApi, listsApi, reviewsApi } from "../services/api.js";
+import { feedApi, gamesApi, listsApi, reviewsApi } from "../services/api.js";
 import { ListCard } from "../components/ListCard.jsx";
-import { formatDate, formatYear, gamePath, playingFor } from "../utils/format.js";
-import { Cover } from "../components/Cover.jsx";
 import { RankingList } from "../components/Ranking.jsx";
 import { Landing } from "./landing/Landing.jsx";
-
-function PlayingCard({ item }) {
-  const { game, entry } = item;
-  const since = entry.started_at ? `Desde ${formatDate(entry.started_at)}` : "Sem data de início";
-  const span = playingFor(entry.started_at);
-  return (
-    <article className="playing-card">
-      <Link to={gamePath(game)} className="playing-cover" tabIndex={-1} aria-hidden="true">
-        <Cover game={game} ratio="poster" />
-      </Link>
-      <div className="playing-text">
-        <Link to={gamePath(game)} className="playing-name">
-          {game.name}
-        </Link>
-        <span className="playing-meta">
-          <StatusDisc status="jogando" size={16} />
-          <span>{since}</span>
-        </span>
-        {span && <span className="playing-span">{span}</span>}
-      </div>
-    </article>
-  );
-}
-
-function PlayingNow({ user }) {
-  const state = useAsync((signal) => libraryApi.mine({ status: "jogando", per_page: 4 }, { signal }), [user.username]);
-  return (
-    <Section
-      title="Jogando agora"
-      action={
-        <Link to="/diario" className="section-link">
-          Abrir meu diário
-        </Link>
-      }
-    >
-      <Async
-        state={state}
-        skeleton={<ListSkeleton rows={2} />}
-        isEmpty={(data) => data.items.length === 0}
-        empty={
-          <EmptyState
-            title="Nenhum jogo em andamento"
-            compact
-            action={
-              <Link to="/jogos" className="btn btn-primary">
-                Escolher um jogo
-              </Link>
-            }
-          >
-            Quando você marcar um jogo como “Jogando”, ele aparece aqui, com o tempo que você já dedicou a ele.
-          </EmptyState>
-        }
-      >
-        {(data) => (
-          <div className="playing-list">
-            {data.items.map((item) => (
-              <PlayingCard key={item.game.rawg_id} item={item} />
-            ))}
-          </div>
-        )}
-      </Async>
-    </Section>
-  );
-}
-
-function UpNext({ user }) {
-  const state = useAsync((signal) => libraryApi.mine({ status: "quero_jogar", per_page: 5 }, { signal }), [user.username]);
-  return (
-    <Section title="Na sua fila">
-      <Async
-        state={state}
-        skeleton={<ListSkeleton rows={3} />}
-        isEmpty={(data) => data.items.length === 0}
-        empty={
-          <EmptyState title="Sua fila está vazia" compact>
-            Marque jogos como “Quero jogar” para guardar o que vem por aí.
-          </EmptyState>
-        }
-      >
-        {(data) => (
-          <ul className="queue">
-            {data.items.map(({ game }) => (
-              <li key={game.rawg_id} className="queue-item">
-                <Link to={gamePath(game)} className="ranking-cover" tabIndex={-1} aria-hidden="true">
-                  <Cover game={game} ratio="poster" />
-                </Link>
-                <span className="ranking-text">
-                  <Link to={gamePath(game)} className="ranking-name">
-                    {game.name}
-                  </Link>
-                  {formatYear(game.released) && <span className="ranking-meta">{formatYear(game.released)}</span>}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Async>
-    </Section>
-  );
-}
 
 function CommunityActivity({ user }) {
   const [tab, setTab] = useState("community");
@@ -306,10 +203,6 @@ export default function HomePage() {
   return (
     <div className="container page home">
       <h1 className="sr-only">Seu início no DiscPlayer</h1>
-      <div className="home-columns home-top">
-        <PlayingNow user={user} />
-        <UpNext user={user} />
-      </div>
       <div className="home-columns">
         <CommunityActivity user={user} />
         <div className="home-side">

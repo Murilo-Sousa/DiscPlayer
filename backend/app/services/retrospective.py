@@ -25,6 +25,7 @@ from ..db import fetch_all, fetch_one
 from ..errors import ApiError
 from ..serializers import game_from_row
 from ..utils.dates import parse_iso_date, today_utc
+from ..utils.ratings import distribution_from
 from . import profiles
 
 MIN_YEAR = 2000
@@ -152,13 +153,13 @@ def _pace(completions: list[sqlite3.Row]) -> dict | None:
 
 def _ratings(user_id: int, year: int) -> dict:
     bounds = _bounds(year)
-    buckets = [0] * 10
-    for row in fetch_all(
-        "SELECT MIN(CAST(rating AS INTEGER), 9) AS bucket, COUNT(*) AS n FROM reviews"
-        " WHERE user_id = :u AND created_at >= :ts_a AND created_at < :ts_b GROUP BY bucket",
-        {"u": user_id, **bounds},
-    ):
-        buckets[row["bucket"]] = row["n"]
+    buckets = distribution_from(
+        fetch_all(
+            "SELECT CAST(rating AS INTEGER) AS bucket, COUNT(*) AS n FROM reviews"
+            " WHERE user_id = :u AND created_at >= :ts_a AND created_at < :ts_b GROUP BY bucket",
+            {"u": user_id, **bounds},
+        )
+    )
     totals = fetch_one(
         "SELECT COUNT(*) AS n, AVG(rating) AS avg, COALESCE(SUM(body IS NOT NULL), 0) AS with_text FROM reviews"
         " WHERE user_id = :u AND created_at >= :ts_a AND created_at < :ts_b",

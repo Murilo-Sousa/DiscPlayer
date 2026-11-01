@@ -1,9 +1,6 @@
 import { StatusDisc, RatingDiscs } from "../../components/Disc.jsx";
 import { Histogram } from "../../components/Layout.jsx";
-import { STATUS_LABELS, STATUS_PROGRESS, formatAverage, plural } from "../../utils/format.js";
-
-const BUCKET_LABELS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
-const BUCKET_SR = BUCKET_LABELS.map((n) => `Notas de ${n} a ${Number(n) + 1}`);
+import { RATING_LABELS, RATING_SR, STATUS_LABELS, STATUS_PROGRESS, formatAverage, plural } from "../../utils/format.js";
 
 /** Nota da comunidade DiscPlayer: calculada só com as notas dadas aqui. */
 export function CommunityCard({ community }) {
@@ -31,11 +28,11 @@ export function CommunityCard({ community }) {
           </p>
           <Histogram
             values={distribution}
-            labels={BUCKET_LABELS}
-            srLabels={BUCKET_SR}
+            labels={RATING_LABELS}
+            srLabels={RATING_SR}
             caption="Distribuição das notas da comunidade DiscPlayer"
           />
-          <p className="score-note">Cada barra reúne as notas de n a n+1; a última inclui o 10.</p>
+          <p className="score-note">Cada barra reúne a nota inteira e a meia nota seguinte (a barra 8 inclui 8 e 8,5); a última é só a nota 10.</p>
         </>
       )}
       {library.total > 0 && (

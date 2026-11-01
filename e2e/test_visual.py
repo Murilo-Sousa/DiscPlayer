@@ -3,7 +3,7 @@ import re
 
 from playwright.sync_api import expect
 
-from helpers import api, register
+from helpers import api, login, open_game, register
 from tests.fake_rawg import by_name
 
 
@@ -61,19 +61,75 @@ def test_inicio_de_quem_ainda_nao_entrou_mostra_o_mural_de_jogos_em_alta(stack, 
     assert client.page.locator(".game-title").inner_text() == primeiro
 
 
-def test_inicio_logado_mostra_jogando_agora_fila_e_ranking_em_formacao(stack, make_client):
+def test_inicio_logado_e_da_comunidade_e_de_quem_a_pessoa_segue(stack, make_client):
+    """O diário pessoal (jogando agora, fila) tem a sua própria página; o início é para ver o que a comunidade faz."""
     ana = preparar_ana(make_client)
+    bia = make_client()
+    register(bia, "Bia Lima", "bia")
+    api(bia, "PUT", f"/api/library/{gid('Celeste')}", {"status": "jogando", "started_at": "2026-02-01"})
+    page = ana.page
     ana.open("/")
-    ana.page.wait_for_selector(".playing-card")
-    cartao = ana.page.locator(".playing-card").first
-    expect(cartao).to_contain_text("Stardew Valley")
-    expect(cartao).to_contain_text("Desde 10 de jan de 2026")
-    expect(cartao).to_contain_text(re.compile(r"\d+ dias? jogando"))
-    expect(ana.page.locator(".queue")).to_contain_text("Super Metroid")
+    page.wait_for_selector(".tabs")
+    expect(page.get_by_role("heading", name="Na comunidade", exact=True)).to_be_visible()
+    for titulo in ("Jogando agora", "Na sua fila"):
+        expect(page.get_by_role("heading", name=titulo)).to_have_count(0)
+    expect(page.locator(".playing-card")).to_have_count(0)
+    expect(page.locator(".queue")).to_have_count(0)
+    # o primeiro bloco da página já é a atividade (nada de linha própria acima dela)
+    assert page.locator("h2").first.inner_text() == "Na comunidade"
+
+    # "Todos" mostra a comunidade inteira, inclusive quem a pessoa não segue
+    expect(page.locator("#home-feed-panel-community")).to_contain_text("Bia Lima")
+    # "Quem eu sigo" começa vazio, e explica o que fazer
+    page.get_by_role("tab", name="Quem eu sigo").click()
+    expect(page.get_by_text("Seu feed está vazio")).to_be_visible()
+    api(ana, "PUT", "/api/users/bia/follow")
+    page.reload(wait_until="networkidle")
+    page.get_by_role("tab", name="Quem eu sigo").click()
+    seguidos = page.locator("#home-feed-panel-following")
+    expect(seguidos).to_contain_text("Bia Lima")
+    expect(seguidos).to_contain_text("Celeste")
+    expect(seguidos).not_to_contain_text("Ana Souza")  # o feed de quem se segue não repete a própria atividade
+
     # Uma só nota não monta ranking: a página explica a regra em vez de mostrar "10 · 1 nota".
-    expect(ana.page.locator(".ranking")).to_have_count(0)
-    expect(ana.page.get_by_text("O ranking ainda está se formando")).to_be_visible()
-    expect(ana.page.get_by_text("3 pessoas diferentes")).to_be_visible()
+    expect(page.locator(".ranking")).to_have_count(0)
+    expect(page.get_by_text("O ranking ainda está se formando")).to_be_visible()
+    expect(page.get_by_text("3 pessoas diferentes")).to_be_visible()
+    assert ana.errors == []
+
+
+def test_distribuicao_das_notas_vai_de_0_a_10_no_perfil_e_na_pagina_do_jogo(stack, make_client):
+    ana = preparar_ana(make_client)  # o Hades tem nota 9,5
+    api(ana, "PUT", f"/api/library/{gid('Celeste')}", {"status": "zerado", "started_at": "2025-04-01", "completed_at": "2025-04-10"})
+    api(ana, "POST", f"/api/games/{gid('Celeste')}/reviews", {"rating": 10})
+    page = ana.page
+    esperado = [str(n) for n in range(11)]
+
+    ana.open("/u/ana")
+    grafico = page.locator(".histogram").filter(has=page.locator(".histogram-label", has_text="10"))
+    expect(grafico).to_have_count(1)
+    assert grafico.locator(".histogram-label").all_inner_texts() == esperado
+    colunas = grafico.locator(".histogram-col")
+    expect(colunas.nth(9).locator(".histogram-count")).to_have_text("1")   # o 9,5 fica com o 9
+    expect(colunas.nth(10).locator(".histogram-count")).to_have_text("1")  # o 10 tem a sua barra
+    expect(colunas.nth(8).locator(".histogram-count")).to_have_text("")
+    assert "Nota 10" in grafico.locator("table").inner_text(timeout=2000)  # a leitura por voz também vai até o 10
+
+    open_game(ana, "celeste")
+    barras = page.locator(".score-card .histogram-label")
+    expect(barras).to_have_count(11)
+    assert barras.all_inner_texts() == esperado
+    expect(page.locator(".score-card .histogram-count").last).to_have_text("1")
+
+    # no celular as 11 barras cabem sem rolagem lateral
+    celular = make_client(width=390, height=800, mobile=True)
+    celular.open("/entrar")
+    login(celular, "ana")
+    celular.page.wait_for_selector(".user-menu-button")
+    celular.open("/u/ana")
+    celular.page.wait_for_selector(".histogram-label")
+    assert celular.page.evaluate("document.documentElement.scrollWidth") <= 391
+    assert ana.errors == [] and celular.errors == []
 
 
 def test_ranking_aparece_com_notas_de_tres_pessoas(stack, make_client):

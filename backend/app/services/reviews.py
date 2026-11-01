@@ -169,6 +169,19 @@ def community_stats(game_id: int) -> dict:
     }
 
 
+def community_summary(rawg_ids) -> dict[int, dict]:
+    """Média e número de notas dos jogos que têm review (chave: id da RAWG). Quem não tem nota fica de fora."""
+    ids = sorted({int(rawg_id) for rawg_id in rawg_ids})
+    if not ids:
+        return {}
+    rows = fetch_all(
+        "SELECT g.rawg_id, AVG(r.rating) AS average, COUNT(*) AS count FROM reviews r JOIN games g ON g.id = r.game_id"
+        f" WHERE g.rawg_id IN ({','.join('?' * len(ids))}) GROUP BY g.id",
+        tuple(ids),
+    )
+    return {row["rawg_id"]: {"average": round(row["average"], 2), "count": row["count"]} for row in rows}
+
+
 def set_like(user_id: int, review_id: int, liked: bool) -> int:
     """Curte ou descurte (idempotente). Devolve o total de curtidas."""
     with transaction():

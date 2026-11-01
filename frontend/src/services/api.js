@@ -26,11 +26,17 @@ export const gamesApi = {
   genres: (options) => http.get("/genres", options),
   platforms: (options) => http.get("/platforms", options),
   detail: (rawgId, options) => http.get(`/games/${rawgId}`, options),
+  // Mais jogos do primeiro gênero do jogo (sem ele). Se a RAWG falhar, vem uma lista vazia.
+  related: (rawgId, options) => http.get(`/games/${rawgId}/related`, options),
   reviews: (rawgId, params, options) => http.get(`/games/${rawgId}/reviews`, { ...options, params }),
 };
 
 export const libraryApi = {
   mine: (params, options) => http.get("/library", { ...options, params }),
+  // Quais destes jogos já estão no diário de quem está logado, e com que status (para os cards).
+  statuses: (rawgIds, options) => http.get("/library/status", { ...options, params: { ids: rawgIds.join(",") } }),
+  // "Guardar na fila" a partir de um card: só cria. Se o jogo já estiver no diário, o servidor recusa (409) e não muda nada.
+  queue: (rawgId) => http.put(`/library/${rawgId}`, { today: localToday(), status: "quero_jogar", create_only: true }),
   // `today` é a data local de quem usa o site: o servidor a usa ao preencher início/término automaticamente.
   save: (rawgId, data) => http.put(`/library/${rawgId}`, { today: localToday(), ...data }),
   // Se o jogo tem nota, a nota sai junto: o servidor só aceita isso com `withReview` (a pessoa já viu o aviso).

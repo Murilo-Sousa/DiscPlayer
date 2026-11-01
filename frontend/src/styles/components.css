@@ -834,6 +834,69 @@ input[type="search"]::-webkit-search-cancel-button {
   display: block;
 }
 
+/* Média da comunidade no card (sempre com o número de notas) */
+.game-card-community {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.1rem;
+  color: var(--text-2);
+  font-size: 0.8125rem;
+}
+
+.game-card-community-disc {
+  flex: none;
+  color: var(--accent);
+}
+
+.game-card-count {
+  color: var(--text-3);
+}
+
+/* Atalho "guardar na fila": aparece com o mouse em cima ou o foco no card; em tela de toque fica sempre à mostra */
+.game-card {
+  position: relative;
+}
+
+.game-card-add {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  background: rgb(19 19 22 / 0.92);
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  color: var(--accent);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s var(--ease), border-color 0.15s;
+}
+
+.game-card:hover .game-card-add,
+.game-card:focus-within .game-card-add,
+.game-card-add:focus-visible {
+  opacity: 1;
+}
+
+.game-card-add:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.game-card-add:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+@media (hover: none) {
+  .game-card-add {
+    opacity: 1;
+  }
+}
+
 /* ---------- Status ---------- */
 .status-picker {
   display: flex;

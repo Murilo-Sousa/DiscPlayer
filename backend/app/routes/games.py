@@ -63,13 +63,18 @@ def _catalog_params() -> dict:
     }
 
 
+def _with_community(results: list[dict]) -> list[dict]:
+    """Cópias dos jogos da RAWG com a média da comunidade DiscPlayer (ou None). A lista da RAWG fica no cache: não se altera."""
+    summary = reviews_service.community_summary(game["rawg_id"] for game in results)
+    return [{**game, "community": summary.get(game["rawg_id"])} for game in results]
+
+
 @bp.get("/games")
 @rate_limit("catalog", 120, 60)
 def catalog():
     params = _catalog_params()
     data = rawg.search_games(**params)
-    data["ordering"] = params["ordering"]
-    return jsonify(data)
+    return jsonify({**data, "results": _with_community(data["results"]), "ordering": params["ordering"]})
 
 
 @bp.get("/games/featured")
@@ -79,7 +84,7 @@ def featured():
     out: dict = {"popular": None, "new": None, "errors": {}}
     for kind in ("popular", "new"):
         try:
-            out[kind] = rawg.featured_games(kind)["results"]
+            out[kind] = _with_community(rawg.featured_games(kind)["results"])
         except rawg.RawgError as exc:
             out["errors"][kind] = {"code": exc.code, "message": exc.message}
             out[kind] = []
@@ -199,6 +204,31 @@ def game_detail(rawg_id: int):
             "list_ids": sorted(lists_service.membership(uid, rawg_id)),
         }
     return jsonify(payload)
+
+
+RELATED_SIZE = 12
+
+
+@bp.get("/games/<int:rawg_id>/related")
+@rate_limit("game-detail", 120, 60)
+def related(rawg_id: int):
+    """Mais jogos do primeiro gênero do jogo, dos mais populares, sem o próprio jogo.
+
+    É um extra da página do jogo: se a RAWG falhar, a resposta é uma lista vazia e a página segue sem a prateleira.
+    """
+    try:
+        detail = rawg.get_game(rawg_id)
+        by_name = {genre["name"]: genre for genre in rawg.list_genres()}
+        genre = next((by_name[name] for name in detail.get("genres") or [] if name in by_name), None)
+        if genre is None:
+            return jsonify({"genre": None, "items": []})
+        found = rawg.search_games(genres=genre["slug"], ordering="popular", page_size=RELATED_SIZE + 1)["results"]
+    except rawg.RawgNotFound:
+        raise
+    except rawg.RawgError:
+        return jsonify({"genre": None, "items": []})
+    others = [game for game in found if game["rawg_id"] != rawg_id][:RELATED_SIZE]
+    return jsonify({"genre": {"name": genre["name"], "slug": genre["slug"]}, "items": _with_community(others)})
 
 
 @bp.get("/games/<int:rawg_id>/reviews")

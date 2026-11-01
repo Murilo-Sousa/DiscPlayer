@@ -68,7 +68,7 @@ function CoverWall({ games }) {
       </div>
       <p className="landing-fine cover-wall-caption">
         Em alta agora.{" "}
-        <Link to="/jogos?ordering=popular" className="section-link">
+        <Link to="/jogos?ordem=popular" className="section-link">
           Ver o catálogo
         </Link>
       </p>

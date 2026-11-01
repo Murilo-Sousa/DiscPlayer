@@ -100,11 +100,11 @@ def test_descobrir_troca_entre_em_alta_e_lancamentos(stack, make_client):
     em_alta.wait_for()
     assert em_alta.get_attribute("aria-selected") == "true"
     secao = ana.page.locator("section", has=ana.page.get_by_role("heading", name="Descobrir"))
-    assert secao.get_by_role("link", name="Ver no catálogo").get_attribute("href") == "/jogos?ordering=popular"
+    assert secao.get_by_role("link", name="Ver no catálogo").get_attribute("href") == "/jogos?ordem=popular"
     assert secao.locator(".game-card").count() == 6
     lancamentos.click()
     assert lancamentos.get_attribute("aria-selected") == "true" and em_alta.get_attribute("aria-selected") == "false"
-    assert secao.get_by_role("link", name="Ver no catálogo").get_attribute("href") == "/jogos?ordering=released"
+    assert secao.get_by_role("link", name="Ver no catálogo").get_attribute("href") == "/jogos?ordem=released"
     assert secao.locator(".game-card").count() == 6
     ana.page.keyboard.press("ArrowLeft")  # teclado: as abas se movem com as setas
     assert em_alta.get_attribute("aria-selected") == "true"

@@ -223,48 +223,6 @@
   font-weight: 700;
 }
 
-/* ---------- Catálogo ---------- */
-.filters {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: var(--space-3) var(--space-4);
-  padding-block: var(--space-4);
-  border-block: 1px solid var(--line);
-}
-
-.filter {
-  display: flex;
-  flex: 1 1 10rem;
-  flex-direction: column;
-  gap: 0.35rem;
-  min-width: 0;
-}
-
-.filter-wide {
-  flex: 2 1 16rem;
-}
-
-.filter-narrow {
-  flex: 0 1 8rem;
-}
-
-.filter-order {
-  flex: 1 1 13rem;
-}
-
-.filter label {
-  color: var(--text-2);
-  font-size: 0.875rem;
-}
-
-.catalog-status {
-  min-height: 1.5rem;
-  margin-block: var(--space-4);
-  color: var(--text-3);
-  font-size: 0.9375rem;
-}
-
 /* ---------- Página do jogo ---------- */
 .game-wrap {
   position: relative;
@@ -1416,5 +1374,49 @@
   .retro-goty {
     grid-template-columns: minmax(6rem, 8rem) minmax(0, 1fr);
     gap: var(--space-4);
+  }
+}
+
+/* ---------- Página do jogo: barra de status do celular e "mais do mesmo gênero" ---------- */
+.game-diary-anchor {
+  scroll-margin-top: calc(var(--header-h) + var(--space-4));
+}
+
+.status-dock {
+  display: none;
+}
+
+.game-wrap .game-related {
+  margin-top: var(--space-8);
+  color: var(--text);
+  font-size: 1rem;
+}
+
+@media (max-width: 47.99rem) {
+  .game-wrap {
+    padding-bottom: var(--space-7);
+  }
+  .status-dock {
+    position: fixed;
+    z-index: 25;
+    right: var(--space-3);
+    bottom: calc(var(--mobile-nav-h) + var(--space-3));
+    left: var(--space-3);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+    background: var(--surface-2);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-lg);
+  }
+  .status-dock-state {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
+    color: var(--text);
+    font-weight: 700;
   }
 }

@@ -58,6 +58,19 @@ def get_entry(user_id: int, game_id: int) -> sqlite3.Row | None:
     )
 
 
+def statuses_for(user_id: int, rawg_ids) -> dict[str, dict]:
+    """Status e favorito dos jogos que já estão no diário (chave: id da RAWG como texto). Os outros ficam de fora."""
+    ids = sorted({int(rawg_id) for rawg_id in rawg_ids})
+    if not ids:
+        return {}
+    rows = fetch_all(
+        "SELECT g.rawg_id, e.status, e.is_favorite FROM library_entries e JOIN games g ON g.id = e.game_id"
+        f" WHERE e.user_id = ? AND g.rawg_id IN ({','.join('?' * len(ids))})",
+        (user_id, *ids),
+    )
+    return {str(row["rawg_id"]): {"status": row["status"], "is_favorite": bool(row["is_favorite"])} for row in rows}
+
+
 def list_entries(
     user_id: int,
     *,

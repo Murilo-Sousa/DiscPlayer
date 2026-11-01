@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Cover } from "../components/Cover.jsx";
 import { Loader } from "../components/States.jsx";
 import { ErrorState } from "../components/States.jsx";
@@ -16,7 +16,9 @@ import { CommunityCard, RawgCard } from "./game/CommunityBlock.jsx";
 import { DiaryPanel } from "./game/DiaryPanel.jsx";
 import { ListsPanel } from "./game/ListsPanel.jsx";
 import { ReviewPanel } from "./game/ReviewPanel.jsx";
+import { RelatedShelf } from "./game/RelatedShelf.jsx";
 import { ReviewsList } from "./game/ReviewsList.jsx";
+import { StatusDock } from "./game/StatusDock.jsx";
 import { LoginPrompt } from "./game/DiaryPanel.jsx";
 
 const LONG_TEXT = 700;
@@ -73,6 +75,7 @@ export default function GamePage() {
     [rawgId],
   );
   const [reviewsKey, setReviewsKey] = useState(0);
+  const diaryRef = useRef(null);
   const data = state.data;
   useDocumentTitle(data?.game.name ?? "Jogo");
 
@@ -108,6 +111,7 @@ export default function GamePage() {
 
   return (
     <div className="game-wrap">
+      <StatusDock anchorRef={diaryRef} ready={ready} signedIn={Boolean(user)} entry={viewer?.entry ?? null} />
       <Backdrop key={game.cover_url} src={game.cover_url} />
       <div className="container page game">
         {notice && (
@@ -186,6 +190,7 @@ export default function GamePage() {
           <div className="game-main">
             {!ready ? null : user ? (
               <>
+                <div ref={diaryRef} className="game-diary-anchor">
                 <DiaryPanel
                   rawgId={game.rawg_id}
                   game={game}
@@ -211,6 +216,7 @@ export default function GamePage() {
                   }}
                   onOutdated={refreshAll}
                 />
+                </div>
                 <ReviewPanel
                   rawgId={game.rawg_id}
                   game={game}
@@ -221,12 +227,14 @@ export default function GamePage() {
                 <ListsPanel rawgId={game.rawg_id} memberIds={viewer?.list_ids ?? []} onChange={(list_ids) => patchViewer({ list_ids })} />
               </>
             ) : (
-              <section className="panel" aria-labelledby="guest-title">
-                <h2 id="guest-title" className="panel-title">
-                  Registre este jogo
-                </h2>
-                <LoginPrompt>Entre na sua conta para colocar o jogo no seu diário, dar uma nota de 0 a 10, escrever uma review e guardá-lo em listas.</LoginPrompt>
-              </section>
+              <div ref={diaryRef} className="game-diary-anchor">
+                <section className="panel" aria-labelledby="guest-title">
+                  <h2 id="guest-title" className="panel-title">
+                    Registre este jogo
+                  </h2>
+                  <LoginPrompt>Entre na sua conta para colocar o jogo no seu diário, dar uma nota de 0 a 10, escrever uma review e guardá-lo em listas.</LoginPrompt>
+                </section>
+              </div>
             )}
             <ReviewsList rawgId={game.rawg_id} refreshKey={reviewsKey} />
           </div>
@@ -249,6 +257,7 @@ export default function GamePage() {
             )}
           </aside>
         </div>
+        <RelatedShelf key={game.rawg_id} rawgId={game.rawg_id} />
       </div>
     </div>
   );

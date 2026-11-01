@@ -251,7 +251,7 @@ function Discover() {
     <Section
       title="Descobrir"
       action={
-        <Link to={tab === "new" ? "/jogos?ordering=released" : "/jogos?ordering=popular"} className="section-link">
+        <Link to={tab === "new" ? "/jogos?ordem=released" : "/jogos?ordem=popular"} className="section-link">
           Ver no catálogo
         </Link>
       }

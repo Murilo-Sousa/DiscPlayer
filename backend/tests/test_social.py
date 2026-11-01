@@ -1,7 +1,7 @@
 """Perfis públicos, seguir, feed e privacidade."""
 from __future__ import annotations
 
-from datetime import date
+from app.utils.dates import today_utc
 
 from .conftest import CELESTE, HADES, HOLLOW
 
@@ -121,7 +121,7 @@ def test_profile_stats_are_computed_from_real_records(ana):
     assert stats["ratings"] == 2 and stats["reviews_with_text"] == 1
     assert stats["average_rating"] == 8.5
     assert stats["completed_this_year"] == 2
-    month = date.today().month
+    month = today_utc().month  # o mesmo "hoje" do servidor (UTC): perto da meia-noite o dia local pode ser outro
     assert stats["completions_by_month"][month - 1] == 2 and sum(stats["completions_by_month"]) == 2
     assert stats["rating_distribution"][8] == 1  # a nota 8
     assert stats["rating_distribution"][9] == 1  # a nota 9

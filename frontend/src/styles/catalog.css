@@ -1,0 +1,209 @@
+/*
+ * Catálogo de jogos: cabeçalho enxuto, busca com botão de filtros, chips de gênero, filtros ativos e prateleiras.
+ * Tudo o que filtra mora na URL; aqui só está a aparência.
+ */
+.catalog-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.catalog-title {
+  font-size: var(--step-4);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
+.catalog-count {
+  min-height: 1.5rem;
+  color: var(--text-3);
+  font-size: 0.9375rem;
+}
+
+/* ---------- Busca e botão de filtros ---------- */
+.catalog-bar {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.catalog-filter-toggle {
+  flex: none;
+  gap: var(--space-2);
+}
+
+.count-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  padding: 0 0.3rem;
+  background: var(--accent-soft);
+  border-radius: 999px;
+  color: var(--accent);
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.catalog-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+  padding: var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+
+.catalog-panel[hidden] {
+  display: none;
+}
+
+.filter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.filter label {
+  color: var(--text-2);
+  font-size: 0.875rem;
+}
+
+/* ---------- Gêneros e filtros ativos ---------- */
+.genre-chips,
+.filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.filter-chips {
+  align-items: center;
+  margin-top: var(--space-3);
+}
+
+.genre-chip,
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 2.25rem;
+  padding: 0 0.85rem;
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background-color 0.15s;
+}
+
+.genre-chip:hover,
+.filter-chip:hover {
+  border-color: var(--text-3);
+  color: var(--text);
+}
+
+.genre-chip[aria-pressed="true"] {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.filter-chip {
+  background: var(--surface);
+}
+
+/* ---------- Prateleiras ---------- */
+.catalog-shelves {
+  display: block;
+}
+
+.shelf,
+.catalog-all {
+  margin-top: var(--space-7);
+}
+
+.catalog-results {
+  margin-top: var(--space-5);
+}
+
+.shelf-tools {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.shelf-buttons {
+  display: inline-flex;
+  gap: var(--space-2);
+}
+
+.btn-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 2.25rem;
+  min-height: 2.25rem;
+  padding: 0;
+}
+
+.shelf-track {
+  display: flex;
+  gap: var(--space-4);
+  /* a fileira vai até a borda da tela e a primeira capa continua alinhada com o resto da página */
+  margin-inline: calc(var(--gutter) * -1);
+  padding: 0 var(--gutter) var(--space-3);
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scroll-padding-inline: var(--gutter);
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+.shelf-item {
+  flex: 0 0 9.25rem;
+  min-width: 0;
+  scroll-snap-align: start;
+}
+
+.shelf-item .skeleton-line {
+  margin-top: 0.6rem;
+}
+
+/* Quem usa o dedo rola a fileira com o dedo; os botões são para o mouse. */
+@media (hover: none) {
+  .shelf-buttons {
+    display: none;
+  }
+}
+
+@media (min-width: 48rem) {
+  .shelf-item {
+    flex-basis: 11rem;
+  }
+}
+
+/* ---------- Telas estreitas ---------- */
+@media (max-width: 47.99rem) {
+  /* os gêneros viram uma fileira que rola de lado, para não ocupar a tela inteira */
+  .genre-chips {
+    flex-wrap: nowrap;
+    margin-inline: calc(var(--gutter) * -1);
+    padding-inline: var(--gutter);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .genre-chips::-webkit-scrollbar {
+    display: none;
+  }
+  .genre-chip {
+    flex: none;
+  }
+}

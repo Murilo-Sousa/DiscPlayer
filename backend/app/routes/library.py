@@ -1,10 +1,12 @@
 """Diário pessoal do usuário autenticado."""
 from __future__ import annotations
 
+import re
+
 from flask import Blueprint, jsonify, request
 
 from ..auth import current_user, login_required
-from ..db import fetch_one
+from ..db import fetch_one, transaction
 from ..errors import ApiError
 from ..security import rate_limit
 from ..serializers import entry_from_row, game_from_local, game_from_row, playthrough_from_row
@@ -17,6 +19,9 @@ from ..utils.validation import UNSET, FieldErrors, json_body, read_bool, read_cl
 bp = Blueprint("library", __name__, url_prefix="/api/library")
 
 SORTS = {"recent", "name", "rating", "completed"}
+
+MAX_STATUS_IDS = 80
+_ID_LIST = re.compile(rf"^\d+(,\d+){{0,{MAX_STATUS_IDS - 1}}}$")
 
 
 def entry_item(row) -> dict:
@@ -66,6 +71,18 @@ def my_library():
     return jsonify(library_page(current_user()["id"]))
 
 
+@bp.get("/status")
+@login_required
+@rate_limit("library-status", 120, 60)
+def statuses():
+    """Quais destes jogos (?ids=1,2,3) já estão no diário de quem pergunta, e com que status. Os cards do catálogo usam."""
+    raw = (request.args.get("ids") or "").strip()
+    if raw and not _ID_LIST.match(raw):
+        raise ApiError(400, "invalid_parameter", f"Parâmetro 'ids' inválido: informe até {MAX_STATUS_IDS} números separados por vírgula.")
+    ids = [int(value) for value in raw.split(",")] if raw else []
+    return jsonify({"items": library_service.statuses_for(current_user()["id"], ids)})
+
+
 def _read_changes(data: dict) -> dict:
     errors = FieldErrors()
     changes: dict = {}
@@ -94,8 +111,15 @@ def save_entry(rawg_id: int):
     """Cria ou atualiza o registro do jogo. Só os campos enviados mudam."""
     data = json_body()
     changes = _read_changes(data)
+    # "Só se for novo": os atalhos dos cards (guardar na fila) nunca podem mexer num jogo que já está no diário,
+    # por exemplo se ele foi registrado em outra aba depois que a página carregou.
+    create_only = data.get("create_only") is True
     game = games_service.ensure_game(rawg_id)  # consulta a RAWG antes de abrir transação de escrita
-    entry, created = library_service.upsert_entry(current_user()["id"], game, **changes)
+    user_id = current_user()["id"]
+    with transaction():
+        if create_only and library_service.get_entry(user_id, game["id"]):
+            raise ApiError(409, "already_in_diary", "Este jogo já está no seu diário.")
+        entry, created = library_service.upsert_entry(user_id, game, **changes)
     response = jsonify({"game": game_from_local(game), "entry": entry_from_row(entry), "rating": entry["rating"]})
     response.status_code = 201 if created else 200
     return response

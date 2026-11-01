@@ -6,6 +6,7 @@ import sqlite3
 from ..db import execute, fetch_all, fetch_one, transaction
 from ..errors import ApiError
 from ..utils.dates import today_utc, utcnow_iso
+from ..utils.ratings import distribution_from
 
 
 def get_by_username(username: str) -> sqlite3.Row | None:
@@ -16,14 +17,12 @@ def get_by_username(username: str) -> sqlite3.Row | None:
 
 
 def _distribution(user_id: int) -> list[int]:
-    buckets = [0] * 10
-    for row in fetch_all(
-        "SELECT MIN(CAST(rating AS INTEGER), 9) AS bucket, COUNT(*) AS n"
-        " FROM reviews WHERE user_id = ? GROUP BY bucket",
-        (user_id,),
-    ):
-        buckets[row["bucket"]] = row["n"]
-    return buckets
+    return distribution_from(
+        fetch_all(
+            "SELECT CAST(rating AS INTEGER) AS bucket, COUNT(*) AS n FROM reviews WHERE user_id = ? GROUP BY bucket",
+            (user_id,),
+        )
+    )
 
 
 def completions_by_month(user_id: int, year: int) -> list[int]:

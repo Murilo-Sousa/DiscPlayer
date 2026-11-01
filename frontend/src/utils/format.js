@@ -108,13 +108,6 @@ export function daysBetween(from, to) {
   return Math.round((b.getTime() - a.getTime()) / 86400000);
 }
 
-/** Há quanto tempo a pessoa joga: "Começou hoje", "1 dia jogando", "46 dias jogando". `null` sem data de início ou com data no futuro. */
-export function playingFor(startedAt, today = localToday()) {
-  const days = daysBetween(startedAt, today); // `null` sem data de início
-  if (days === null || days < 0) return null;
-  return days === 0 ? "Começou hoje" : `${plural(days, "dia", "dias")} jogando`;
-}
-
 export function plural(count, one, many) {
   return `${count} ${count === 1 ? one : many}`;
 }
@@ -183,8 +176,9 @@ export function daysText(days) {
 // Meses e notas usados nos gráficos (perfil e retrospectiva).
 export const MONTH_LETTERS = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
 export const MONTH_NAMES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
-export const RATING_LABELS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
-export const RATING_SR = RATING_LABELS.map((n) => `Notas de ${n} a ${Number(n) + 1}`);
+// Distribuição de notas: 11 barras (0 a 10). A barra n reúne a nota n e a n,5; a barra 10 é só a nota 10.
+export const RATING_LABELS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
+export const RATING_SR = RATING_LABELS.map((n) => (n === "10" ? "Nota 10" : `Notas de ${n} a ${n},5`));
 
 /** Remove chaves vazias de um objeto de parâmetros de busca. */
 export function cleanParams(params) {

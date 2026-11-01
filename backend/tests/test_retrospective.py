@@ -338,14 +338,18 @@ def test_ratings_count_only_reviews_published_in_the_year(ana, app):
     backdate(app, "reviews", "2024-06-01T12:00:00Z", "rating < 7")
     ratings = get(ana, year=2025)["ratings"]
     assert ratings["count"] == 2 and ratings["average"] == 8.0 and ratings["with_text"] == 1
-    assert ratings["distribution"] == [0, 0, 0, 0, 0, 0, 0, 1, 0, 1]
+    assert ratings["distribution"] == [0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0]  # 11 barras, de 0 a 10
     assert get(ana, year=2024)["ratings"]["distribution"][4] == 1
 
 
-def test_a_ten_goes_into_the_last_bucket(ana, app):
+def test_a_ten_has_its_own_bar_and_half_notes_stay_with_the_whole_note(ana, app):
     review(ana, HADES, 10)
+    review(ana, CELESTE, 9.5)
     backdate(app, "reviews", "2025-06-01T12:00:00Z")
-    assert get(ana, year=2025)["ratings"]["distribution"][9] == 1
+    distribution = get(ana, year=2025)["ratings"]["distribution"]
+    assert len(distribution) == 11
+    assert distribution[10] == 1 and distribution[9] == 1  # o 10 não se mistura com o 9,5
+    assert sum(distribution) == 2
 
 
 def test_only_ratings_make_a_year_non_empty(ana, app):

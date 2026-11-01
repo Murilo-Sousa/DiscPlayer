@@ -42,7 +42,7 @@ function sample(overrides = {}) {
       fastest: { game: celeste, days: 3, completed_at: "2025-05-04" },
       longest: { game: hades, days: 19, completed_at: "2025-03-20" },
     },
-    ratings: { count: 2, average: 8.75, with_text: 1, distribution: [0, 0, 0, 0, 0, 0, 0, 0, 1, 1] },
+    ratings: { count: 2, average: 8.75, with_text: 1, distribution: [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0] },
     social: { likes_received: 5, new_followers: 2, lists_created: 1 },
     ...overrides,
   };
@@ -102,8 +102,9 @@ test("notas: seção, média e distribuição só com notas no ano", () => {
   const markup = render(sample());
   assert.match(markup, /Notas dadas/);
   assert.match(markup, />8,75</);
-  assert.match(markup, /Notas de 9 a 10/);
-  const none = render(sample({ ratings: { count: 0, average: null, with_text: 0, distribution: Array(10).fill(0) } }));
+  assert.match(markup, /Notas de 9 a 9,5/);
+  assert.match(markup, /Nota 10/); // a barra do 10 existe (as notas vão de 0 a 10)
+  const none = render(sample({ ratings: { count: 0, average: null, with_text: 0, distribution: Array(11).fill(0) } }));
   assert.doesNotMatch(none, /Notas dadas/);
 });
 
@@ -210,7 +211,7 @@ test("o avatar e o nome levam ao perfil", () => {
 test("o texto da imagem diz o mesmo número que o cartão desenha (jogos zerados, começados, notas...)", () => {
   const base = sample();
   const none = { completed: 0, completed_games: 0, started: 0, abandoned: 0, replays: 0 };
-  const noRatings = { count: 0, average: null, with_text: 0, distribution: Array(10).fill(0) };
+  const noRatings = { count: 0, average: null, with_text: 0, distribution: Array(11).fill(0) };
   assert.equal(headline(base), "3 jogos zerados");
   assert.equal(headline({ ...base, totals: { ...none, started: 3 } }), "3 jogos começados");
   assert.equal(headline({ ...base, totals: { ...none, started: 1 } }), "1 jogo começado");

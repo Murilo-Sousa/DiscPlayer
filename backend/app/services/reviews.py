@@ -6,6 +6,7 @@ import sqlite3
 from ..db import execute, fetch_all, fetch_one, transaction
 from ..errors import ApiError
 from ..utils.dates import utcnow_iso
+from ..utils.ratings import distribution_from
 from . import library
 
 KEEP = object()  # "não mexer neste campo" (None é um valor válido: limpa o texto)
@@ -147,13 +148,12 @@ def community_stats(game_id: int) -> dict:
         " FROM reviews WHERE game_id = ?",
         (game_id,),
     )
-    buckets = [0] * 10  # [0–1), [1–2) ... [9–10]; a nota 10 conta na última faixa
-    for row in fetch_all(
-        "SELECT MIN(CAST(rating AS INTEGER), 9) AS bucket, COUNT(*) AS n"
-        " FROM reviews WHERE game_id = ? GROUP BY bucket",
-        (game_id,),
-    ):
-        buckets[row["bucket"]] = row["n"]
+    buckets = distribution_from(  # 11 barras, de 0 a 10 (veja utils/ratings.py)
+        fetch_all(
+            "SELECT CAST(rating AS INTEGER) AS bucket, COUNT(*) AS n FROM reviews WHERE game_id = ? GROUP BY bucket",
+            (game_id,),
+        )
+    )
     library = {"total": 0, "quero_jogar": 0, "jogando": 0, "zerado": 0, "abandonado": 0, "pausado": 0}
     for row in fetch_all(
         "SELECT status, COUNT(*) AS n FROM library_entries WHERE game_id = ? GROUP BY status", (game_id,)

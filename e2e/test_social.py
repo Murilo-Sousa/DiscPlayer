@@ -32,15 +32,18 @@ def test_seguir_curtir_e_feed(stack, make_client):
     like.click()  # descurtir também funciona (não existe curtida duplicada)
     expect(like).to_have_attribute("aria-pressed", "false")
 
-    # Segue a Ana; o feed "Quem eu sigo" mostra a atividade dela.
+    # Segue a Ana; o início ("Quem eu sigo") mostra o que ela fez, zerou e avaliou num cartão só.
     bruno.open("/u/ana")
     page.wait_for_selector(".profile-name")
     page.get_by_role("button", name="Seguir").click()
     page.wait_for_selector("button:has-text('Seguindo')")
     bruno.open("/")
-    page.get_by_role("tab", name="Quem eu sigo").click()
-    page.wait_for_selector(".activity")
-    assert "Ana Souza" in page.locator("main").inner_text()
+    page.wait_for_selector(".news-item")
+    expect(page.get_by_role("button", name="Quem eu sigo", exact=True)).to_have_attribute("aria-pressed", "true")
+    novidade = page.locator(".news-item")
+    expect(novidade).to_have_count(1)
+    expect(novidade).to_contain_text("Ana Souza zerou Minecraft")
+    expect(novidade).to_contain_text("Minha review.")
 
     # A Ana vê o Bruno entre os seguidores.
     ana.open("/u/ana?aba=seguidores")

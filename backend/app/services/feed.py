@@ -37,10 +37,15 @@ def activities(
     target_id: int | None = None,
     limit: int = 20,
     offset: int = 0,
+    skip_own: bool = False,
 ) -> list[sqlite3.Row]:
-    """`scope` é uma de: global, user (perfil de target_id), following (quem viewer_id segue)."""
+    """`scope` é uma de: global, user (perfil de target_id), following (quem viewer_id segue).
+
+    `skip_own` tira a atividade de quem está vendo (o início mostra o que os outros fazem).
+    """
+    own = " AND a.user_id <> :viewer" if skip_own else ""
     return fetch_all(
-        f"{ACTIVITY_SELECT} WHERE {_SCOPES[scope]} AND {VISIBILITY}"
+        f"{ACTIVITY_SELECT} WHERE {_SCOPES[scope]} AND {VISIBILITY}{own}"
         " ORDER BY a.created_at DESC, a.id DESC LIMIT :limit OFFSET :offset",
         {"viewer": viewer_id, "target": target_id, "limit": limit, "offset": offset},
     )

@@ -28,9 +28,10 @@ export function LibraryGameCard({ game, diary, community, showGenre = true }) {
 
 /**
  * Prateleira: uma fileira de jogos que rola de lado (e tem botões para quem usa o mouse). Cada filho é um jogo,
- * dentro de um `<ShelfItem>`.
+ * dentro de um `<ShelfItem>`. Com `placeholder` (um aviso de vazio ou de erro), ele ocupa o lugar da fileira e o
+ * cabeçalho, com o `action`, continua no mesmo lugar.
  */
-export function GameShelf({ title, action, children, className }) {
+export function GameShelf({ title, action, children, className, placeholder }) {
   const id = useId();
   const track = useRef(null);
   const [overflows, setOverflows] = useState(false);
@@ -59,7 +60,7 @@ export function GameShelf({ title, action, children, className }) {
         </h2>
         <div className="shelf-tools">
           {action}
-          {overflows && (
+          {overflows && !placeholder && (
             <span className="shelf-buttons">
               <button type="button" className="btn btn-icon" onClick={() => scroll(-1)} aria-label={`Ver os jogos anteriores de “${title}”`}>
                 <Icon name="left" size={18} />
@@ -71,9 +72,13 @@ export function GameShelf({ title, action, children, className }) {
           )}
         </div>
       </div>
-      <ul className="shelf-track" ref={track}>
-        {children}
-      </ul>
+      {placeholder ? (
+        <div className="shelf-placeholder">{placeholder}</div>
+      ) : (
+        <ul className="shelf-track" ref={track}>
+          {children}
+        </ul>
+      )}
     </section>
   );
 }

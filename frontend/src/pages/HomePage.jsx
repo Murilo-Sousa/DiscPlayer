@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { GameCard } from "../components/GameCard.jsx";
-import { ActivityList, GameGrid, GameGridSkeleton, ListSkeleton, Section } from "../components/Layout.jsx";
+import { GameGrid, GameGridSkeleton, ListSkeleton, Section } from "../components/Layout.jsx";
 import { ReviewCard } from "../components/ReviewCard.jsx";
 import { Async, EmptyState, ErrorState, Loader } from "../components/States.jsx";
 import { Tabs, panelId } from "../components/Tabs.jsx";
@@ -12,67 +12,8 @@ import { feedApi, gamesApi, listsApi, reviewsApi } from "../services/api.js";
 import { ListCard } from "../components/ListCard.jsx";
 import { RankingList } from "../components/Ranking.jsx";
 import { Landing } from "./landing/Landing.jsx";
-
-function CommunityActivity({ user }) {
-  const [tab, setTab] = useState("community");
-  const community = useAsync((signal) => feedApi.community({ per_page: 6 }, { signal }), []);
-  const following = useAsync(
-    (signal) => (user ? feedApi.following({ per_page: 6 }, { signal }) : Promise.resolve(null)),
-    [user?.username],
-  );
-  const active = tab === "following" && user ? following : community;
-
-  const list = (
-    <Async
-      state={active}
-      skeleton={<ListSkeleton rows={5} />}
-      isEmpty={(data) => data.items.length === 0}
-      empty={
-        tab === "following" && user ? (
-          <EmptyState title="Seu feed está vazio" compact>
-            Siga outras pessoas para ver o que elas jogam e avaliam.{" "}
-            <Link to="/buscar">Procurar jogadores</Link>
-          </EmptyState>
-        ) : (
-          <EmptyState
-            title="Ainda não há atividade"
-            compact
-            action={
-              <Link to={user ? "/jogos" : "/cadastro"} className="btn btn-primary">
-                {user ? "Registrar um jogo" : "Começar meu diário"}
-              </Link>
-            }
-          >
-            Quando alguém registrar um jogo, escrever uma review ou criar uma lista, aparece aqui. Que tal ser a primeira
-            pessoa?
-          </EmptyState>
-        )
-      }
-    >
-      {(data) => <ActivityList items={data.items} />}
-    </Async>
-  );
-
-  return (
-    <Section title="Na comunidade">
-      {user && (
-        <Tabs
-          prefix="home-feed"
-          label="Origem da atividade"
-          value={tab}
-          onChange={setTab}
-          tabs={[
-            { value: "community", label: "Todos" },
-            { value: "following", label: "Quem eu sigo" },
-          ]}
-        />
-      )}
-      <div role={user ? "tabpanel" : undefined} id={user ? panelId("home-feed", tab) : undefined} aria-labelledby={user ? `home-feed-tab-${tab}` : undefined}>
-        {list}
-      </div>
-    </Section>
-  );
-}
+import { Highlights } from "./home/Highlights.jsx";
+import { PlayingRail, SCOPES } from "./home/PlayingRail.jsx";
 
 function TopRated() {
   const state = useAsync((signal) => gamesApi.topRated({ per_page: 6 }, { signal }), []);
@@ -182,6 +123,56 @@ function Discover() {
   );
 }
 
+const SCOPE_KEY = "discplayer.home-scope";
+
+function savedScope() {
+  try {
+    const value = window.localStorage.getItem(SCOPE_KEY);
+    return SCOPES.some((scope) => scope.value === value) ? value : "following";
+  } catch {
+    return "following"; // sem armazenamento (janela privada, por exemplo): vale o padrão
+  }
+}
+
+/**
+ * O início de quem está logado: quem joga o quê agora e as novidades, da comunidade ou de quem a pessoa segue.
+ * A escolha vale para as duas partes e fica guardada neste navegador. Quem não segue ninguém começa na comunidade.
+ */
+function HomeBoard() {
+  const [scope, setScope] = useState(savedScope);
+  const [touched, setTouched] = useState(false);
+  const playing = useAsync((signal) => feedApi.playing(scope, { per_page: 12 }, { signal }), [scope]);
+  const news = useAsync((signal) => feedApi.highlights(scope, { per_page: 10 }, { signal }), [scope]);
+
+  useEffect(() => {
+    if (!touched && scope === "following" && playing.data?.scope === "following" && playing.data.following === 0) {
+      setScope("community");
+    }
+  }, [touched, scope, playing.data]);
+
+  const choose = (next) => {
+    setTouched(true);
+    setScope(next);
+    try {
+      window.localStorage.setItem(SCOPE_KEY, next);
+    } catch {
+      /* só uma conveniência: sem armazenamento, a escolha vale até recarregar */
+    }
+  };
+  return (
+    <>
+      <PlayingRail data={playing.data} scope={scope} error={playing.error} onRetry={playing.reload} onScope={choose} />
+      <div className="home-columns">
+        <Highlights data={news.data} scope={scope} error={news.error} onRetry={news.reload} />
+        <div className="home-side">
+          <TopRated />
+          <CommunityLists />
+        </div>
+      </div>
+    </>
+  );
+}
+
 export default function HomePage() {
   useDocumentTitle("");
   const { user, ready } = useAuth();
@@ -203,13 +194,7 @@ export default function HomePage() {
   return (
     <div className="container page home">
       <h1 className="sr-only">Seu início no DiscPlayer</h1>
-      <div className="home-columns">
-        <CommunityActivity user={user} />
-        <div className="home-side">
-          <TopRated />
-          <CommunityLists />
-        </div>
-      </div>
+      <HomeBoard />
       <Discover />
       <RecentReviews />
     </div>

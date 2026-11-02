@@ -61,43 +61,6 @@ def test_inicio_de_quem_ainda_nao_entrou_mostra_o_mural_de_jogos_em_alta(stack, 
     assert client.page.locator(".game-title").inner_text() == primeiro
 
 
-def test_inicio_logado_e_da_comunidade_e_de_quem_a_pessoa_segue(stack, make_client):
-    """O diário pessoal (jogando agora, fila) tem a sua própria página; o início é para ver o que a comunidade faz."""
-    ana = preparar_ana(make_client)
-    bia = make_client()
-    register(bia, "Bia Lima", "bia")
-    api(bia, "PUT", f"/api/library/{gid('Celeste')}", {"status": "jogando", "started_at": "2026-02-01"})
-    page = ana.page
-    ana.open("/")
-    page.wait_for_selector(".tabs")
-    expect(page.get_by_role("heading", name="Na comunidade", exact=True)).to_be_visible()
-    for titulo in ("Jogando agora", "Na sua fila"):
-        expect(page.get_by_role("heading", name=titulo)).to_have_count(0)
-    expect(page.locator(".playing-card")).to_have_count(0)
-    expect(page.locator(".queue")).to_have_count(0)
-    # o primeiro bloco da página já é a atividade (nada de linha própria acima dela)
-    assert page.locator("h2").first.inner_text() == "Na comunidade"
-
-    # "Todos" mostra a comunidade inteira, inclusive quem a pessoa não segue
-    expect(page.locator("#home-feed-panel-community")).to_contain_text("Bia Lima")
-    # "Quem eu sigo" começa vazio, e explica o que fazer
-    page.get_by_role("tab", name="Quem eu sigo").click()
-    expect(page.get_by_text("Seu feed está vazio")).to_be_visible()
-    api(ana, "PUT", "/api/users/bia/follow")
-    page.reload(wait_until="networkidle")
-    page.get_by_role("tab", name="Quem eu sigo").click()
-    seguidos = page.locator("#home-feed-panel-following")
-    expect(seguidos).to_contain_text("Bia Lima")
-    expect(seguidos).to_contain_text("Celeste")
-    expect(seguidos).not_to_contain_text("Ana Souza")  # o feed de quem se segue não repete a própria atividade
-
-    # Uma só nota não monta ranking: a página explica a regra em vez de mostrar "10 · 1 nota".
-    expect(page.locator(".ranking")).to_have_count(0)
-    expect(page.get_by_text("O ranking ainda está se formando")).to_be_visible()
-    expect(page.get_by_text("3 pessoas diferentes")).to_be_visible()
-    assert ana.errors == []
-
-
 def test_distribuicao_das_notas_vai_de_0_a_10_no_perfil_e_na_pagina_do_jogo(stack, make_client):
     ana = preparar_ana(make_client)  # o Hades tem nota 9,5
     api(ana, "PUT", f"/api/library/{gid('Celeste')}", {"status": "zerado", "started_at": "2025-04-01", "completed_at": "2025-04-10"})

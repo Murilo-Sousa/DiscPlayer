@@ -95,8 +95,10 @@ export const usersApi = {
 };
 
 export const feedApi = {
-  community: (params, options) => http.get("/activity", { ...options, params }),
-  following: (params, options) => http.get("/feed", { ...options, params }),
+  // O início de quem está logado. `scope` é "following" (quem a pessoa segue) ou "community".
+  // Jogando agora: um cartão por pessoa. Novidades: a atividade recente já agrupada em cartões.
+  playing: (scope, params, options) => http.get("/playing", { ...options, params: { scope, ...params } }),
+  highlights: (scope, params, options) => http.get("/highlights", { ...options, params: { scope, ...params } }),
 };
 
 export const searchApi = {

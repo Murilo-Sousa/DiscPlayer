@@ -532,6 +532,92 @@
   margin-left: auto;
 }
 
+/* ---- Quem você segue jogou ---- */
+.following-card {
+  padding: var(--space-5);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+
+.following-summary {
+  margin-top: var(--space-2);
+  color: var(--text-2);
+  font-size: 0.9375rem;
+}
+
+.following-summary strong {
+  color: var(--text);
+}
+
+.following-list {
+  display: grid;
+  margin-top: var(--space-3);
+}
+
+.following-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding-block: var(--space-3);
+  border-top: 1px solid var(--line);
+}
+
+.following-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.following-name {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 700;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.following-name:hover {
+  text-decoration: underline;
+}
+
+.following-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--text-2);
+  font-size: 0.875rem;
+}
+
+.following-heart {
+  color: var(--accent);
+}
+
+.following-rating {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.2rem;
+}
+
+.following-rating strong {
+  font-size: 0.9375rem;
+  line-height: 1;
+}
+
+.following-more {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line);
+  color: var(--text-3);
+  font-size: 0.875rem;
+}
+
 .score-facts {
   display: grid;
   gap: var(--space-3);

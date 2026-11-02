@@ -71,6 +71,46 @@ def statuses_for(user_id: int, rawg_ids) -> dict[str, dict]:
     return {str(row["rawg_id"]): {"status": row["status"], "is_favorite": bool(row["is_favorite"])} for row in rows}
 
 
+_FOLLOWED_PLAYERS = (
+    " FROM follows f JOIN users u ON u.id = f.followed_id"
+    " LEFT JOIN library_entries e ON e.user_id = u.id AND e.game_id = :game"
+    " LEFT JOIN reviews r ON r.user_id = u.id AND r.game_id = :game"
+    " WHERE f.follower_id = :viewer"
+)
+# Jogou (ou joga): começou o jogo ou deu nota (notas antigas podem existir sem o jogo no diário).
+_STARTED = " AND (r.id IS NOT NULL OR e.status <> 'quero_jogar')"
+_WANTS_TO_PLAY = " AND e.status = 'quero_jogar' AND r.id IS NULL"
+
+
+def followed_players(viewer_id: int, game_id: int, limit: int = 12) -> dict:
+    """Quem `viewer_id` segue e já começou (ou avaliou) este jogo, com status, favorito e nota de cada um.
+
+    `total`, `rated` e `average` valem para todas as pessoas seguidas, não só para as `limit` devolvidas;
+    `want_to_play` conta quem segue e só guardou o jogo em "Quero jogar" (essas pessoas não entram na lista).
+    """
+    params = {"viewer": viewer_id, "game": game_id}
+    items = fetch_all(
+        "SELECT u.username, u.display_name, u.avatar_url, u.is_demo, e.status AS status,"
+        " COALESCE(e.is_favorite, 0) AS is_favorite, r.rating AS rating, (r.body IS NOT NULL) AS has_text"
+        + _FOLLOWED_PLAYERS
+        + _STARTED
+        + " ORDER BY MAX(COALESCE(e.updated_at, ''), COALESCE(r.created_at, '')) DESC, u.id LIMIT :limit",
+        {**params, "limit": limit},
+    )
+    totals = fetch_one(
+        "SELECT COUNT(*) AS total, COUNT(r.rating) AS rated, AVG(r.rating) AS average" + _FOLLOWED_PLAYERS + _STARTED,
+        params,
+    )
+    wants = fetch_one("SELECT COUNT(*) AS n" + _FOLLOWED_PLAYERS + _WANTS_TO_PLAY, params)["n"]
+    return {
+        "items": items,
+        "total": totals["total"],
+        "rated": totals["rated"],
+        "average": round(totals["average"], 2) if totals["average"] is not None else None,
+        "want_to_play": wants,
+    }
+
+
 def list_entries(
     user_id: int,
     *,

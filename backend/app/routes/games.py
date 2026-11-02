@@ -5,11 +5,18 @@ import re
 
 from flask import Blueprint, jsonify, request
 
-from ..auth import viewer_id
+from ..auth import current_user, login_required, viewer_id
 from ..db import fetch_all
 from ..errors import ApiError
 from ..security import rate_limit
-from ..serializers import entry_from_row, game_from_local, game_from_row, playthrough_from_row, review_from_row
+from ..serializers import (
+    entry_from_row,
+    game_from_local,
+    game_from_row,
+    playthrough_from_row,
+    review_from_row,
+    user_public,
+)
 from ..services import games as games_service
 from ..services import lists as lists_service
 from ..services import library as library_service
@@ -230,6 +237,36 @@ def related(rawg_id: int):
         return jsonify({"genre": None, "items": []})
     others = [game for game in found if game["rawg_id"] != rawg_id][:RELATED_SIZE]
     return jsonify({"genre": {"name": genre["name"], "slug": genre["slug"]}, "items": _with_community(others)})
+
+
+FOLLOWING_SIZE = 12
+
+
+@bp.get("/games/<int:rawg_id>/following")
+@login_required
+@rate_limit("game-following", 120, 60)
+def following_players(rawg_id: int):
+    """Quem o usuário segue e já jogou este jogo (status, favorito e nota de cada pessoa).
+
+    Só lê o banco: um jogo que ninguém registrou ainda (sem cópia local) responde vazio, sem chamar a RAWG.
+    Mostra o que já é público no perfil de cada pessoa; o texto da review não vai junto (só se existe).
+    """
+    local = games_service.get_local_game(rawg_id)
+    empty = {"items": [], "total": 0, "rated": 0, "average": None, "want_to_play": 0}
+    if local is None:
+        return jsonify(empty)
+    found = library_service.followed_players(current_user()["id"], local["id"], FOLLOWING_SIZE)
+    items = [
+        {
+            "user": user_public(row),
+            "status": row["status"],
+            "is_favorite": bool(row["is_favorite"]),
+            "rating": row["rating"],
+            "has_text": bool(row["has_text"]),
+        }
+        for row in found.pop("items")
+    ]
+    return jsonify({**found, "items": items})
 
 
 @bp.get("/games/<int:rawg_id>/reviews")

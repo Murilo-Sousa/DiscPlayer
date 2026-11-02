@@ -28,6 +28,8 @@ export const gamesApi = {
   detail: (rawgId, options) => http.get(`/games/${rawgId}`, options),
   // Mais jogos do primeiro gênero do jogo (sem ele). Se a RAWG falhar, vem uma lista vazia.
   related: (rawgId, options) => http.get(`/games/${rawgId}/related`, options),
+  // Quem o usuário logado segue e já jogou o jogo (status, favorito e nota de cada pessoa).
+  following: (rawgId, options) => http.get(`/games/${rawgId}/following`, options),
   reviews: (rawgId, params, options) => http.get(`/games/${rawgId}/reviews`, { ...options, params }),
 };
 

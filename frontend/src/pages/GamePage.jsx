@@ -13,6 +13,7 @@ import { RatingDiscs } from "../components/Disc.jsx";
 import { formatAverage, formatDate, paragraphs, parseGameParam, plural } from "../utils/format.js";
 import NotFoundPage from "./NotFoundPage.jsx";
 import { CommunityCard, RawgCard } from "./game/CommunityBlock.jsx";
+import { FollowingPlayers } from "./game/FollowingPlayers.jsx";
 import { DiaryPanel } from "./game/DiaryPanel.jsx";
 import { ListsPanel } from "./game/ListsPanel.jsx";
 import { ReviewPanel } from "./game/ReviewPanel.jsx";
@@ -240,6 +241,7 @@ export default function GamePage() {
           </div>
           <aside className="game-side" aria-label="Notas e dados do jogo">
             <CommunityCard community={community} />
+            <FollowingPlayers key={game.rawg_id} rawgId={game.rawg_id} />
             <RawgCard game={game} />
             {game.screenshots?.length > 0 && (
               <section className="shots" aria-labelledby="shots-title">

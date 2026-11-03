@@ -146,7 +146,31 @@ Todas são lidas de `backend/.env` (modelo em `backend/.env.example`) ou do ambi
 | `PUBLIC_URL` | vazio | Endereço público do site (por exemplo, `https://seu-site.exemplo`), usado nos links absolutos das prévias de links. Vazio usa o endereço da própria requisição. Só aceita `http` ou `https`, com domínio e sem caminho; qualquer outro valor é ignorado |
 | `RATELIMIT_ENABLED` | `true` | Liga o limite de requisições por IP |
 | `RAWG_BASE_URL` | `https://api.rawg.io/api` | Troque só para usar o servidor fictício |
+| `ADULT_CONTENT_FILTER` | `explicit` | Esconde jogos 18+ da RAWG: `explicit`, `mature` ou `off` (veja [Conteúdo adulto](#conteúdo-adulto-18)). Qualquer outro valor vale como `explicit`; reinicie o Flask depois de mudar |
 | `VITE_BACKEND_URL` (front-end) | `http://127.0.0.1:5000` | Destino do proxy `/api` no `npm run dev` |
+
+## Conteúdo adulto (18+)
+
+A RAWG lista jogos adultos junto com os outros, e não tem como pedir a ela que os exclua. Por isso o back-end filtra a resposta (`backend/app/services/adult.py`) olhando a classificação da ESRB (`esrb_rating`) e as tags de cada jogo. O mesmo filtro vale para a busca, o catálogo, a página inicial, "Mais em <gênero>" e a página do jogo, e também impede guardar um jogo escondido no diário, numa review ou numa lista. Escolha o nível em `backend/.env`:
+
+| `ADULT_CONTENT_FILTER` | O que esconde |
+| --- | --- |
+| `explicit` (padrão) | O que a ESRB classifica como *Adults Only* (o 18+ de verdade) e o que a RAWG marca como explícito (tags `nsfw`, `hentai`, `eroge`, `erotic`) |
+| `mature` | Tudo isso, mais jogos *Mature* (17+) e as tags `nudity` e `sexual-content`. É bem mais rígido: esconde, por exemplo, The Witcher 3 e Red Dead Redemption 2 |
+| `off` | Nada |
+
+Quem abre o endereço de um jogo escondido vê "Jogo indisponível". `GET /api/health` mostra o nível em uso (`adult_content_filter`).
+
+**Limites.** A RAWG é editada pela comunidade e muitos jogos adultos não têm classificação nenhuma: o filtro só os pega se estiverem com as tags certas, então ele **reduz** o conteúdo adulto, não garante a ausência dele. A conta de "N jogos" no catálogo desconta só os escondidos da página atual (uma aproximação). Jogos que já estavam no diário, em listas ou em reviews antes de o filtro existir continuam aparecendo nesses lugares, mas a página deles passa a dizer "indisponível".
+
+**Confira com a sua chave.** Os nomes das tags (slugs) e o fato de a RAWG mandá-las já na listagem vêm da documentação, e este projeto nunca foi testado contra a RAWG de verdade. No Prompt de Comando (troque `SUA_CHAVE`):
+
+```
+curl "https://api.rawg.io/api/tags?search=nsfw&key=SUA_CHAVE"
+curl "https://api.rawg.io/api/games?search=witcher&page_size=1&key=SUA_CHAVE"
+```
+
+A primeira mostra o `slug` da tag; a segunda deve trazer `esrb_rating` e `tags` dentro de cada jogo. Se um slug for diferente, ajuste as listas `_TAGS_ALWAYS` e `_TAGS_MATURE_LEVEL` em `adult.py`.
 
 ## Colocar o projeto no GitHub
 

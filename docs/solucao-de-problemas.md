@@ -14,6 +14,8 @@ Os erros mais comuns ao instalar e rodar o DiscPlayer, e como resolver cada um.
 
 **O catálogo mostra "A integração com a RAWG não está configurada" (erro 503)** — falta `RAWG_API_KEY` em `backend/.env` (reinicie o Flask depois de editar). Se a mensagem for "A RAWG recusou a chave", a chave está errada; "A RAWG está indisponível" ou "limite de consultas" indicam falha ou cota esgotada do lado deles. Veja o terminal do Flask: o motivo aparece no log. Para desenvolver sem chave, use o [servidor fictício](desenvolvimento.md#desenvolver-sem-chave-da-rawg).
 
+**Um jogo não aparece na busca, ou a página dele diz "Jogo indisponível"** — o filtro de conteúdo adulto o escondeu (a RAWG o classifica como 18+ ou o marca como explícito). Não é erro. Para ver tudo, ponha `ADULT_CONTENT_FILTER=off` em `backend/.env` e reinicie o Flask; para ser mais rígido, `mature`. Detalhes em [Conteúdo adulto](desenvolvimento.md#conteúdo-adulto-18).
+
 **"Sua sessão de segurança expirou" ao entrar ou salvar** — o token CSRF não bateu (por exemplo, o servidor foi reiniciado com outro `SECRET_KEY`). O site tenta de novo sozinho uma vez; se a mensagem aparecer, recarregue a página. Se persistir, apague os cookies do site.
 
 **No front-end, requisições para `/api` falham com `ECONNREFUSED`/502** — o Flask não está rodando ou está em outra porta. Ajuste `VITE_BACKEND_URL`.

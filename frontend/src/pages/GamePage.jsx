@@ -81,6 +81,10 @@ export default function GamePage() {
   useDocumentTitle(data?.game.name ?? "Jogo");
 
   if (state.error && !data) {
+    if (state.error.code === "game_blocked") {
+      // O jogo existe, mas é conteúdo adulto e o servidor o esconde: a mensagem vem pronta da API.
+      return <NotFoundPage title="Jogo indisponível">{state.error.message}</NotFoundPage>;
+    }
     if (state.error.status === 404) {
       return (
         <NotFoundPage title="Jogo não encontrado">Não encontramos esse jogo. Procure pelo nome no catálogo.</NotFoundPage>

@@ -27,6 +27,26 @@ PARENT_PLATFORMS = {
     "nintendo": (7, "Nintendo"), "linux": (6, "Linux"), "mac": (5, "macOS"),
 }
 
+ESRB = {  # slug -> (id, nome), como a RAWG envia `esrb_rating`
+    "everyone": (1, "Everyone"), "everyone-10-plus": (2, "Everyone 10+"), "teen": (3, "Teen"),
+    "mature": (4, "Mature"), "adults-only": (5, "Adults Only"),
+}
+# Quem não está aqui é "Teen". Valores só para o ambiente de testes: não são as classificações reais.
+_ESRB_BY_NAME = {
+    "Celeste": "everyone-10-plus", "Stardew Valley": "everyone-10-plus", "Minecraft": "everyone-10-plus",
+    "Tetris Effect": "everyone", "Super Metroid": "everyone", "Street Fighter II": "teen",
+    "The Witcher 3: Wild Hunt": "mature", "Disco Elysium": "mature", "Elden Ring": "mature",
+    "Cyberpunk 2077": "mature", "Red Dead Redemption 2": "mature", "Baldur's Gate 3": "mature",
+    "Resident Evil 4": "mature", "Hotline Miami": "mature", "Half-Life 2": "mature", "God of War": "mature",
+}
+TAGS = {  # slug -> (id, nome); ids inventados
+    "singleplayer": (31, "Singleplayer"), "nudity": (9990, "Nudity"), "sexual-content": (9991, "Sexual Content"),
+    "nsfw": (9992, "NSFW"), "hentai": (9993, "Hentai"),
+}
+_EXTRA_TAGS = {  # a Steam põe "nudez" e "conteúdo sexual" em jogos 17+ comuns
+    "The Witcher 3: Wild Hunt": ("nudity", "sexual-content"), "Cyberpunk 2077": ("nudity", "sexual-content"),
+}
+
 # nome, lançamento, gêneros, plataformas, estúdio, metacritic, popularidade (added)
 _RAW = [
     ("Hades", "2020-09-17", "action indie rpg", "pc playstation xbox nintendo mac", "Supergiant Games", 93, 9800),
@@ -82,6 +102,13 @@ _FICTIONAL_UPCOMING = [  # ainda não lançados (datas relativas a hoje): só pa
 ]
 
 
+_FICTIONAL_ADULT = [  # conteúdo adulto inventado (datas relativas a hoje), só para testar o filtro (pouco populares: ficam no fim das listas)
+    ("Jardim Proibido", 120, "adventure indie", "pc", "Estúdio Sombra", "adults-only", ()),
+    ("Noite Sem Censura", 200, "simulation casual", "pc", "Lua Vermelha", None, ("nsfw",)),
+    ("Quarto Dezoito", 150, "puzzle casual", "pc", "Casa Escura", None, ("hentai", "nudity")),
+]
+
+
 def _slug(name: str) -> str:
     out = "".join(c.lower() if c.isalnum() else "-" for c in name)
     while "--" in out:
@@ -100,11 +127,22 @@ def _build() -> list[dict]:
     for index, (name, days_ahead, genres, platforms, studio) in enumerate(_FICTIONAL_UPCOMING):
         released = (today + timedelta(days=days_ahead)).isoformat()
         games.append(_game(900201 + index, name, released, genres, platforms, studio, None, 10))
+    for index, (name, days_ago, genres, platforms, studio, esrb, tags) in enumerate(_FICTIONAL_ADULT):
+        released = (today - timedelta(days=days_ago)).isoformat()
+        games.append(_game(900301 + index, name, released, genres, platforms, studio, None, 50 - index, esrb, tags))
     return games
 
 
-def _game(rawg_id, name, released, genres, platforms, studio, metacritic, added) -> dict:
+def _tag(slug: str) -> dict:
+    return {"id": TAGS[slug][0], "name": TAGS[slug][1], "slug": slug, "language": "eng"}
+
+
+def _game(rawg_id, name, released, genres, platforms, studio, metacritic, added, esrb="default", extra_tags=None) -> dict:
     slug = _slug(name)
+    if esrb == "default":
+        esrb = _ESRB_BY_NAME.get(name, "teen")
+    if extra_tags is None:
+        extra_tags = _EXTRA_TAGS.get(name, ())
     return {
         "id": rawg_id,
         "slug": slug,
@@ -130,7 +168,8 @@ def _game(rawg_id, name, released, genres, platforms, studio, metacritic, added)
         ),
         "description": f"<p>Descrição de teste de {name}.</p><p>Segundo <b>parágrafo</b>.</p>",
         "website": "",
-        "esrb_rating": {"id": 4, "name": "Mature", "slug": "mature"},
+        "esrb_rating": {"id": ESRB[esrb][0], "name": ESRB[esrb][1], "slug": esrb} if esrb else None,
+        "tags": [_tag("singleplayer"), *(_tag(t) for t in extra_tags)],
     }
 
 
@@ -145,7 +184,7 @@ def by_name(name: str) -> dict:
 def _summary(game: dict) -> dict:
     keys = (
         "id", "slug", "name", "released", "background_image", "metacritic", "rating",
-        "ratings_count", "playtime", "genres", "parent_platforms", "added",
+        "ratings_count", "playtime", "genres", "parent_platforms", "added", "esrb_rating", "tags",
     )
     return {k: game[k] for k in keys}
 
@@ -210,7 +249,7 @@ def fetch_json(path: str, params: dict | None = None):
         if len(parts) == 2:
             return {**_summary(game), **{k: game[k] for k in (
                 "description_raw", "description", "developers", "publishers", "website",
-                "esrb_rating", "background_image_additional")},
+                "background_image_additional")},
                 "name_original": game["name"], "platforms": game["parent_platforms"]}
         if parts[2] == "screenshots":
             return {"count": 3, "results": [

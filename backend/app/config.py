@@ -8,6 +8,8 @@ from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 
+from .services.adult import normalize_level
+
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 PROJECT_DIR = BACKEND_DIR.parent
 
@@ -86,6 +88,8 @@ def build_config() -> dict:
         "RAWG_TTL_LOOKUPS": 24 * 3600,
         # Quanto tempo um item expirado ainda pode ser servido se a RAWG falhar.
         "RAWG_STALE_TTL": 7 * 24 * 3600,
+        # Conteúdo adulto: explicit (padrão), mature ou off. Valor desconhecido cai no padrão, nunca desliga o filtro.
+        "ADULT_CONTENT_FILTER": normalize_level(os.environ.get("ADULT_CONTENT_FILTER")),
         # Front-end compilado (npm run build) servido pelo Flask em produção.
         "FRONTEND_DIST": str(PROJECT_DIR / "frontend" / "dist"),
     }

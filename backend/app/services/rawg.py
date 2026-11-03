@@ -21,6 +21,7 @@ from flask import current_app
 from ..utils.cache import TTLCache
 from ..utils.dates import parse_iso_date, today_utc
 from ..utils.text import strip_html
+from . import adult
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +64,17 @@ class RawgNotFound(RawgError):
     status = 404
     code = "game_not_found"
     message = "Jogo não encontrado na RAWG."
+
+
+class RawgBlocked(RawgNotFound):
+    """O jogo existe na RAWG, mas é conteúdo adulto e o filtro (ADULT_CONTENT_FILTER) o esconde.
+
+    É um "não encontrado" (404) de propósito: as rotas que já repassam o 404 da RAWG fazem o mesmo aqui, sem
+    servir nem a cópia local do jogo.
+    """
+
+    code = "game_blocked"
+    message = "Este jogo não está disponível aqui: o DiscPlayer não mostra jogos com conteúdo adulto."
 
 
 class RawgRateLimited(RawgError):
@@ -232,11 +244,21 @@ def normalize_detail(raw: dict) -> dict | None:
     return base
 
 
+def _filter_level() -> str:
+    return adult.normalize_level(current_app.config.get("ADULT_CONTENT_FILTER"))
+
+
 def _normalize_listing(raw: dict, page: int, page_size: int) -> dict:
-    results = [item for item in (normalize_summary(r) for r in raw.get("results") or []) if item]
+    level = _filter_level()
+    found = [r for r in raw.get("results") or [] if isinstance(r, dict)]
+    shown = [r for r in found if not adult.is_blocked(r, level)]
+    results = [item for item in (normalize_summary(r) for r in shown) if item]
+    # A RAWG conta os jogos escondidos no total. Só dá para descontar os desta página: é uma aproximação, mas evita
+    # "40 jogos" acima de uma lista vazia quando alguém procura por algo que o filtro esconde.
+    total = raw.get("count") if isinstance(raw.get("count"), int) else len(found)
     return {
         "results": results,
-        "count": raw.get("count") if isinstance(raw.get("count"), int) else len(results),
+        "count": max(len(results), total - (len(found) - len(shown))),
         "page": page,
         "page_size": page_size,
         "has_next": bool(raw.get("next")),
@@ -291,17 +313,26 @@ def featured_games(kind: str, page_size: int = 12) -> dict:
 
 def get_game(rawg_id: int) -> dict:
     def load() -> dict:
-        detail = normalize_detail(fetch_json(f"games/{rawg_id}"))  # type: ignore[arg-type]
+        raw = fetch_json(f"games/{rawg_id}")
+        reason = adult.block_reason(raw, _filter_level())
+        if reason:
+            logger.info("RAWG: jogo %s escondido pelo filtro de conteúdo adulto (%s)", rawg_id, reason)
+            return {"blocked": True}  # fica no cache: quem insiste nesse endereço não gasta a cota da RAWG
+        detail = normalize_detail(raw)  # type: ignore[arg-type]
         if detail is None:
             raise RawgUnavailable("A RAWG enviou uma resposta inesperada.")
         return detail
 
-    return _cached(("game", rawg_id), "RAWG_TTL_DETAIL", load)
+    detail = _cached(("game", rawg_id), "RAWG_TTL_DETAIL", load)
+    if detail.get("blocked"):
+        raise RawgBlocked()
+    return detail
 
 
 def cached_game(rawg_id: int) -> dict | None:
     """O detalhe do jogo se ele já está no cache (mesmo expirado, dentro da tolerância). Nunca chama a RAWG."""
-    return _cache.get_stale(("game", rawg_id))
+    detail = _cache.get_stale(("game", rawg_id))
+    return None if detail is None or detail.get("blocked") else detail
 
 
 def get_screenshots(rawg_id: int, limit: int = 6) -> list[str]:

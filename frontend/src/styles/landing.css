@@ -71,7 +71,7 @@
   min-width: 0;
 }
 
-/* Sem a RAWG não há mural: o título fica sozinho, com o mesmo respiro. */
+/* Sem o IGDB não há mural: o título fica sozinho, com o mesmo respiro. */
 .landing-hero[data-wall="off"] {
   grid-template-columns: minmax(0, 1fr);
   padding-block: var(--space-7) 0;

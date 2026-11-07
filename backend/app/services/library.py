@@ -37,7 +37,7 @@ ENTRY_COLUMNS = """
     e.created_at AS entry_created_at, e.updated_at AS entry_updated_at,
     1 + (SELECT COUNT(*) FROM playthroughs p
           WHERE p.user_id = e.user_id AND p.game_id = e.game_id) AS plays,
-    g.rawg_id, g.name AS game_name, g.slug AS game_slug, g.cover_url, g.release_date,
+    g.igdb_id, g.name AS game_name, g.slug AS game_slug, g.cover_url, g.release_date,
     (SELECT rv.rating FROM reviews rv
       WHERE rv.user_id = e.user_id AND rv.game_id = e.game_id) AS rating
 """
@@ -58,17 +58,17 @@ def get_entry(user_id: int, game_id: int) -> sqlite3.Row | None:
     )
 
 
-def statuses_for(user_id: int, rawg_ids) -> dict[str, dict]:
-    """Status e favorito dos jogos que já estão no diário (chave: id da RAWG como texto). Os outros ficam de fora."""
-    ids = sorted({int(rawg_id) for rawg_id in rawg_ids})
+def statuses_for(user_id: int, igdb_ids) -> dict[str, dict]:
+    """Status e favorito dos jogos que já estão no diário (chave: id do IGDB como texto). Os outros ficam de fora."""
+    ids = sorted({int(igdb_id) for igdb_id in igdb_ids})
     if not ids:
         return {}
     rows = fetch_all(
-        "SELECT g.rawg_id, e.status, e.is_favorite FROM library_entries e JOIN games g ON g.id = e.game_id"
-        f" WHERE e.user_id = ? AND g.rawg_id IN ({','.join('?' * len(ids))})",
+        "SELECT g.igdb_id, e.status, e.is_favorite FROM library_entries e JOIN games g ON g.id = e.game_id"
+        f" WHERE e.user_id = ? AND g.igdb_id IN ({','.join('?' * len(ids))})",
         (user_id, *ids),
     )
-    return {str(row["rawg_id"]): {"status": row["status"], "is_favorite": bool(row["is_favorite"])} for row in rows}
+    return {str(row["igdb_id"]): {"status": row["status"], "is_favorite": bool(row["is_favorite"])} for row in rows}
 
 
 _FOLLOWED_PLAYERS = (

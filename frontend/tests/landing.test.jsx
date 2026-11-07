@@ -67,7 +67,7 @@ test("a review de um perfil de exemplo leva a marca ao lado do nome", () => {
     like_count: 0,
     liked: false,
     user: { username: "marina_rpg", display_name: "Marina Lopes", avatar_url: null, is_demo: true },
-    game: { rawg_id: 1, name: "Hades", slug: "hades", cover_url: null, cover_thumb_url: null, released: "2020-09-17" },
+    game: { igdb_id: 1, name: "Hades", slug: "hades", cover_url: null, cover_thumb_url: null, released: "2020-09-17" },
   };
   assert.match(html(<ReviewCard review={review} showGame />), /Marina Lopes[\s\S]*demo-badge/);
   const real = { ...review, user: { ...review.user, is_demo: false } };
@@ -77,8 +77,8 @@ test("a review de um perfil de exemplo leva a marca ao lado do nome", () => {
 // ----------------------------------------------------------------------------- ranking compartilhado
 test("a lista do ranking numera, mostra o número de notas e a média", () => {
   const items = [
-    { game: { rawg_id: 1, name: "Outer Wilds", slug: "outer-wilds", cover_url: null, cover_thumb_url: null }, count: 3, average: 9.5 },
-    { game: { rawg_id: 2, name: "Celeste", slug: "celeste", cover_url: null, cover_thumb_url: null }, count: 4, average: 9 },
+    { game: { igdb_id: 1, name: "Outer Wilds", slug: "outer-wilds", cover_url: null, cover_thumb_url: null }, count: 3, average: 9.5 },
+    { game: { igdb_id: 2, name: "Celeste", slug: "celeste", cover_url: null, cover_thumb_url: null }, count: 4, average: 9 },
   ];
   const markup = html(<RankingList items={items} />);
   assert.equal(count(markup, /ranking-item/g), 2);
@@ -90,13 +90,13 @@ test("a lista do ranking numera, mostra o número de notas e a média", () => {
 
 // ----------------------------------------------------------------------------- mural de capas
 const game = (id, extra = {}) => ({
-  rawg_id: id,
+  igdb_id: id,
   name: `Jogo ${id}`,
-  cover_thumb_url: `https://media.rawg.io/${id}-t.jpg`,
-  cover_url: `https://media.rawg.io/${id}.jpg`,
+  cover_thumb_url: `https://images.igdb.com/igdb/image/upload/${id}-t.jpg`,
+  cover_url: `https://images.igdb.com/igdb/image/upload/${id}.jpg`,
   ...extra,
 });
-const ids = (games) => games.map((item) => item.rawg_id);
+const ids = (games) => games.map((item) => item.igdb_id);
 
 test("o mural mostra os jogos em alta primeiro, depois os lançamentos, sem repetir e só com capa", () => {
   const featured = {
@@ -109,7 +109,7 @@ test("o mural mostra os jogos em alta primeiro, depois os lançamentos, sem repe
 test("o mural tem no máximo 15 capas e some quando há poucas", () => {
   assert.equal(wallGames({ popular: Array.from({ length: 12 }, (_, i) => game(i + 1)), new: Array.from({ length: 12 }, (_, i) => game(i + 50)) }).length, 15);
   assert.deepEqual(wallGames({ popular: [1, 2, 3, 4, 5].map((id) => game(id)), new: [] }), []);
-  assert.deepEqual(wallGames({ popular: null, new: null }), []); // a RAWG pode falhar numa das listas ou nas duas
+  assert.deepEqual(wallGames({ popular: null, new: null }), []); // o IGDB pode falhar numa das listas ou nas duas
   assert.deepEqual(wallGames(null), []);
   assert.equal(wallGames({ popular: null, new: [1, 2, 3, 4, 5, 6].map((id) => game(id)) }).length, 6); // basta uma lista boa
 });
@@ -124,7 +124,7 @@ test("a landing ainda carregando abre com o título e o esqueleto do mural, e o 
   assert.match(markup, /<h1[^>]*>O diário de quem joga\.<\/h1>/);
   assert.match(markup, /data-wall="on"/);
   assert.equal(count(markup, /class="cover-wall-col"/g), 3);
-  assert.equal(count(markup, /cover-wall-link/g), 0); // enquanto a RAWG não responde, só o esqueleto (sem links)
+  assert.equal(count(markup, /cover-wall-link/g), 0); // enquanto o IGDB não responde, só o esqueleto (sem links)
   const titles = [
     "O diário de quem joga.",
     "Do “quero jogar” ao “zerei”",

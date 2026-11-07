@@ -9,7 +9,7 @@ from datetime import date
 from playwright.sync_api import expect
 
 from helpers import api, marcar_status, open_game, register, set_rating
-from tests.fake_rawg import by_name
+from tests.fake_igdb import by_name
 
 
 def gid(nome):

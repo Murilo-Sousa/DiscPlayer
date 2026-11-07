@@ -5,13 +5,13 @@ import { Link } from "../../router/index.jsx";
 import { gamesApi } from "../../services/api.js";
 
 /**
- * "Mais em {gênero}": jogos populares do primeiro gênero do jogo, para seguir descobrindo. É um extra: se a RAWG não
+ * "Mais em {gênero}": jogos populares do primeiro gênero do jogo, para seguir descobrindo. É um extra: se o IGDB não
  * responder (ou o jogo não tiver gênero), a prateleira simplesmente não aparece.
  */
-export function RelatedShelf({ rawgId }) {
-  const state = useAsync((signal) => gamesApi.related(rawgId, { signal }), [rawgId]);
+export function RelatedShelf({ igdbId }) {
+  const state = useAsync((signal) => gamesApi.related(igdbId, { signal }), [igdbId]);
   const items = state.data?.items ?? [];
-  const diary = useDiaryEntries(items.map((game) => game.rawg_id));
+  const diary = useDiaryEntries(items.map((game) => game.igdb_id));
   if (!state.data?.genre || items.length === 0) return null;
   const { genre } = state.data;
   return (
@@ -25,7 +25,7 @@ export function RelatedShelf({ rawgId }) {
       }
     >
       {items.map((game) => (
-        <ShelfItem key={game.rawg_id}>
+        <ShelfItem key={game.igdb_id}>
           <LibraryGameCard game={game} diary={diary} />
         </ShelfItem>
       ))}

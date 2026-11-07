@@ -41,7 +41,7 @@ def playing_now(viewer_id: int, scope: str, limit: int = 12) -> dict:
     only_followed = " AND e.user_id IN (SELECT followed_id FROM follows WHERE follower_id = :viewer)" if scope == "following" else ""
     rows = fetch_all(
         "SELECT u.id AS user_id, u.username, u.display_name, u.avatar_url, u.is_demo,"
-        " g.rawg_id, g.name AS game_name, g.slug AS game_slug, g.cover_url, g.release_date,"
+        " g.igdb_id, g.name AS game_name, g.slug AS game_slug, g.cover_url, g.release_date,"
         " e.started_at, COALESCE(e.status_changed_at, e.updated_at) AS since"
         " FROM library_entries e JOIN users u ON u.id = e.user_id JOIN games g ON g.id = e.game_id"
         f" WHERE e.status = 'jogando' AND e.user_id <> :viewer{only_followed}"
@@ -86,14 +86,14 @@ def group(activities: list[dict], limit: int) -> list[dict]:
     reviews: dict[tuple, list[dict]] = {}
     for activity in activities:
         if activity["type"] == "reviewed":
-            reviews.setdefault((activity["user"]["username"], activity["game"]["rawg_id"]), []).append(activity)
+            reviews.setdefault((activity["user"]["username"], activity["game"]["igdb_id"]), []).append(activity)
         elif activity["type"] == "logged" and activity["status"] == "zerado":
-            finishes.setdefault((activity["user"]["username"], activity["game"]["rawg_id"]), []).append(activity)
+            finishes.setdefault((activity["user"]["username"], activity["game"]["igdb_id"]), []).append(activity)
 
     used: set[int] = set()
 
     def partner(pool: dict, activity: dict) -> dict | None:
-        key = (activity["user"]["username"], activity["game"]["rawg_id"])
+        key = (activity["user"]["username"], activity["game"]["igdb_id"])
         for other in pool.get(key, []):
             if other["id"] not in used and abs(_when(other["created_at"]) - _when(activity["created_at"])) <= MERGE_WINDOW:
                 return other
@@ -123,7 +123,7 @@ def group(activities: list[dict], limit: int) -> list[dict]:
                 cards.append({**base, "kind": "status", "status": status, "game": activity["game"]})
             elif status == "quero_jogar":
                 current = open_queue.get(user["username"])
-                game_id = activity["game"]["rawg_id"]
+                game_id = activity["game"]["igdb_id"]
                 if current and _when(current["_oldest"]) - _when(activity["created_at"]) <= QUEUE_WINDOW:
                     current["_oldest"] = activity["created_at"]
                     if game_id not in current["_ids"]:  # o mesmo jogo guardado duas vezes conta uma

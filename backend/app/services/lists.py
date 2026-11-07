@@ -26,7 +26,7 @@ def covers_for(list_ids: list[int], per_list: int = 4) -> dict[int, list[dict]]:
         return {}
     marks = ",".join("?" * len(list_ids))
     rows = fetch_all(
-        f"SELECT lg.list_id, g.rawg_id, g.name, g.slug, g.cover_url FROM list_games lg"
+        f"SELECT lg.list_id, g.igdb_id, g.name, g.slug, g.cover_url FROM list_games lg"
         f" JOIN games g ON g.id = lg.game_id WHERE lg.list_id IN ({marks}) AND g.cover_url IS NOT NULL"
         " ORDER BY lg.list_id, lg.position, lg.id",
         tuple(list_ids),
@@ -34,7 +34,7 @@ def covers_for(list_ids: list[int], per_list: int = 4) -> dict[int, list[dict]]:
     covers: dict[int, list[dict]] = {i: [] for i in list_ids}
     for row in rows:
         if len(covers[row["list_id"]]) < per_list:
-            game = game_out(row["rawg_id"], row["name"], row["slug"], row["cover_url"])
+            game = game_out(row["igdb_id"], row["name"], row["slug"], row["cover_url"])
             covers[row["list_id"]].append(
                 {"name": game["name"], "cover_url": game["cover_url"], "cover_thumb_url": game["cover_thumb_url"]}
             )
@@ -61,7 +61,7 @@ def get_owned(list_id: int, user_id: int) -> sqlite3.Row:
 
 def list_items(list_id: int) -> list[sqlite3.Row]:
     return fetch_all(
-        "SELECT lg.position, lg.added_at, g.rawg_id, g.name AS game_name, g.slug AS game_slug,"
+        "SELECT lg.position, lg.added_at, g.igdb_id, g.name AS game_name, g.slug AS game_slug,"
         " g.cover_url, g.release_date FROM list_games lg JOIN games g ON g.id = lg.game_id"
         " WHERE lg.list_id = ? ORDER BY lg.position, lg.id",
         (list_id,),
@@ -91,14 +91,14 @@ def lists_of_user(
     )
 
 
-def membership(user_id: int, rawg_id: int) -> set[int]:
+def membership(user_id: int, igdb_id: int) -> set[int]:
     """Ids das listas do usuário que já contêm o jogo."""
     return {
         row["list_id"]
         for row in fetch_all(
             "SELECT lg.list_id FROM list_games lg JOIN lists l ON l.id = lg.list_id"
-            " JOIN games g ON g.id = lg.game_id WHERE l.user_id = ? AND g.rawg_id = ?",
-            (user_id, rawg_id),
+            " JOIN games g ON g.id = lg.game_id WHERE l.user_id = ? AND g.igdb_id = ?",
+            (user_id, igdb_id),
         )
     }
 
@@ -169,11 +169,11 @@ def _renumber(list_id: int) -> None:
     )
 
 
-def remove_game(list_id: int, rawg_id: int) -> bool:
+def remove_game(list_id: int, igdb_id: int) -> bool:
     with transaction():
         cursor = execute(
-            "DELETE FROM list_games WHERE list_id = ? AND game_id = (SELECT id FROM games WHERE rawg_id = ?)",
-            (list_id, rawg_id),
+            "DELETE FROM list_games WHERE list_id = ? AND game_id = (SELECT id FROM games WHERE igdb_id = ?)",
+            (list_id, igdb_id),
         )
         if cursor.rowcount == 0:
             return False
@@ -182,27 +182,27 @@ def remove_game(list_id: int, rawg_id: int) -> bool:
     return True
 
 
-def reorder(list_id: int, rawg_ids: list[int]) -> None:
+def reorder(list_id: int, igdb_ids: list[int]) -> None:
     """Aplica a nova ordem. Precisa conter exatamente os jogos que já estão na lista."""
     with transaction():
         current = {
-            row["rawg_id"]: row["game_id"]
+            row["igdb_id"]: row["game_id"]
             for row in fetch_all(
-                "SELECT g.rawg_id, g.id AS game_id FROM list_games lg JOIN games g ON g.id = lg.game_id"
+                "SELECT g.igdb_id, g.id AS game_id FROM list_games lg JOIN games g ON g.id = lg.game_id"
                 " WHERE lg.list_id = ?",
                 (list_id,),
             )
         }
-        if len(set(rawg_ids)) != len(rawg_ids) or set(rawg_ids) != set(current):
+        if len(set(igdb_ids)) != len(igdb_ids) or set(igdb_ids) != set(current):
             raise ApiError(
                 422,
                 "validation_error",
                 "A nova ordem deve conter exatamente os jogos que já estão na lista, sem repetições.",
-                fields={"rawg_ids": "Lista de jogos incompatível com a atual."},
+                fields={"igdb_ids": "Lista de jogos incompatível com a atual."},
             )
-        for position, rawg_id in enumerate(rawg_ids):
+        for position, igdb_id in enumerate(igdb_ids):
             execute(
                 "UPDATE list_games SET position = ? WHERE list_id = ? AND game_id = ?",
-                (position, list_id, current[rawg_id]),
+                (position, list_id, current[igdb_id]),
             )
         _touch(list_id)

@@ -18,7 +18,7 @@ os.environ.setdefault("APP_ENV", "production")
 # do visitante (usado no limite de tentativas) em vez do IP interno do balanceador.
 os.environ.setdefault("TRUSTED_PROXY_COUNT", "1")
 
-# SECRET_KEY e RAWG_API_KEY vêm do arquivo backend/.env (que não vai para o GitHub).
+# SECRET_KEY, IGDB_CLIENT_ID e IGDB_CLIENT_SECRET vêm do arquivo backend/.env (que não vai para o GitHub).
 from app import create_app  # noqa: E402
 
 application = create_app()

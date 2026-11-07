@@ -11,7 +11,7 @@ import { listPath, plural } from "../../utils/format.js";
 import { LoginPrompt } from "./DiaryPanel.jsx";
 
 /** Botão e janela para guardar o jogo em listas (e criar uma lista nova na hora). */
-export function ListsPanel({ rawgId, memberIds, onChange }) {
+export function ListsPanel({ igdbId, memberIds, onChange }) {
   const { user } = useAuth();
   const toast = useToast();
   const [open, setOpen] = useState(false);
@@ -43,8 +43,8 @@ export function ListsPanel({ rawgId, memberIds, onChange }) {
     const isIn = memberIds.includes(list.id);
     setBusy(list.id);
     try {
-      if (isIn) await listsApi.removeGame(list.id, rawgId);
-      else await listsApi.addGame(list.id, rawgId);
+      if (isIn) await listsApi.removeGame(list.id, igdbId);
+      else await listsApi.addGame(list.id, igdbId);
       onChange(isIn ? memberIds.filter((id) => id !== list.id) : [...memberIds, list.id]);
       state.reload();
     } catch (error) {
@@ -65,7 +65,7 @@ export function ListsPanel({ rawgId, memberIds, onChange }) {
     setTitleError("");
     try {
       const { list } = await listsApi.create({ title: name, is_public: true });
-      await listsApi.addGame(list.id, rawgId);
+      await listsApi.addGame(list.id, igdbId);
       onChange([...memberIds, list.id]);
       setTitle("");
       state.reload();

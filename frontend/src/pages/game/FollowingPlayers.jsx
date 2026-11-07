@@ -80,11 +80,11 @@ export function FollowingPlayersView({ data }) {
  * "Quem você segue jogou": as pessoas que a pessoa logada segue e que já começaram (ou avaliaram) este jogo. É um
  * extra: sem ninguém para mostrar, ou se a consulta falhar, o bloco simplesmente não aparece.
  */
-export function FollowingPlayers({ rawgId }) {
+export function FollowingPlayers({ igdbId }) {
   const { user } = useAuth();
   const state = useAsync(
-    (signal) => (user ? gamesApi.following(rawgId, { signal }) : Promise.resolve(null)),
-    [rawgId, user?.username],
+    (signal) => (user ? gamesApi.following(igdbId, { signal }) : Promise.resolve(null)),
+    [igdbId, user?.username],
   );
   if (!user || !state.data) return null;
   return <FollowingPlayersView data={state.data} />;

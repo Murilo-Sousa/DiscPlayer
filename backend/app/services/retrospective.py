@@ -82,7 +82,7 @@ def _completions(user_id: int, year: int) -> list[sqlite3.Row]:
     """Cada conclusão do ano (jogada atual e anteriores), com o jogo e a nota da própria pessoa."""
     return fetch_all(
         """
-        SELECT g.rawg_id, g.name AS game_name, g.slug AS game_slug, g.cover_url, g.release_date,
+        SELECT g.igdb_id, g.name AS game_name, g.slug AS game_slug, g.cover_url, g.release_date,
                c.started_at, c.completed_at,
                (SELECT rv.rating FROM reviews rv WHERE rv.user_id = :u AND rv.game_id = c.game_id) AS rating
           FROM (
@@ -108,9 +108,9 @@ def _group_games(completions: list[sqlite3.Row]) -> list[dict]:
     """Um item por jogo (zerar duas vezes vira `times: 2`), do mais bem avaliado ao menos."""
     by_game: dict[int, dict] = {}
     for row in completions:
-        item = by_game.get(row["rawg_id"])
+        item = by_game.get(row["igdb_id"])
         if item is None:
-            item = by_game[row["rawg_id"]] = {
+            item = by_game[row["igdb_id"]] = {
                 "game": game_from_row(row),
                 "rating": row["rating"],
                 "completed_at": row["completed_at"],

@@ -6,15 +6,15 @@ from app.db import execute
 from .conftest import CELESTE, HADES, HOLLOW
 
 
-def stamp(app, username, ts, *, type_=None, rawg_id=None, status=None):
+def stamp(app, username, ts, *, type_=None, igdb_id=None, status=None):
     """Fixa a hora das atividades de uma pessoa (dois registros no mesmo segundo não têm ordem)."""
     where, params = ["user_id = (SELECT id FROM users WHERE username = ?)"], [username]
     if type_:
         where.append("type = ?")
         params.append(type_)
-    if rawg_id:
-        where.append("game_id = (SELECT id FROM games WHERE rawg_id = ?)")
-        params.append(rawg_id)
+    if igdb_id:
+        where.append("game_id = (SELECT id FROM games WHERE igdb_id = ?)")
+        params.append(igdb_id)
     if status:
         where.append("status = ?")
         params.append(status)
@@ -22,12 +22,12 @@ def stamp(app, username, ts, *, type_=None, rawg_id=None, status=None):
         execute(f"UPDATE activities SET created_at = ? WHERE {' AND '.join(where)}", (ts, *params))
 
 
-def since(app, username, rawg_id, ts):
+def since(app, username, igdb_id, ts):
     with app.app_context():
         execute(
             "UPDATE library_entries SET status_changed_at = ? WHERE user_id = (SELECT id FROM users WHERE username = ?)"
-            " AND game_id = (SELECT id FROM games WHERE rawg_id = ?)",
-            (ts, username, rawg_id),
+            " AND game_id = (SELECT id FROM games WHERE igdb_id = ?)",
+            (ts, username, igdb_id),
         )
 
 
@@ -67,7 +67,7 @@ def test_playing_has_one_card_per_person_with_the_game_started_most_recently(ana
     body = playing(ana)
     assert len(body["items"]) == 1 and body["total"] == 1
     card = body["items"][0]
-    assert card["game"]["rawg_id"] == CELESTE and card["also"] == 1
+    assert card["game"]["igdb_id"] == CELESTE and card["also"] == 1
     assert card["user"]["username"] == "bruno" and "email" not in card["user"]
     assert card["since"] == "2026-01-02T10:00:00Z"
 
@@ -109,9 +109,9 @@ def test_playing_carries_the_start_date_when_there_is_one(ana, bruno):
 
 
 # ----------------------------------------------------------------------------- novidades: zerou + avaliou
-def finish_and_rate(person, rawg_id=HADES, rating=9, body="Ótimo."):
-    person.play(rawg_id)
-    return person.post(f"/api/games/{rawg_id}/reviews", {"rating": rating, "body": body})
+def finish_and_rate(person, igdb_id=HADES, rating=9, body="Ótimo."):
+    person.play(igdb_id)
+    return person.post(f"/api/games/{igdb_id}/reviews", {"rating": rating, "body": body})
 
 
 def test_finishing_and_rating_the_same_game_is_one_card_with_the_note(ana, bruno):
@@ -119,7 +119,7 @@ def test_finishing_and_rating_the_same_game_is_one_card_with_the_note(ana, bruno
     body = highlights(ana)
     assert kinds(body) == ["finished"]
     card = body["items"][0]
-    assert card["game"]["rawg_id"] == HADES and card["rating"] == 9.5
+    assert card["game"]["igdb_id"] == HADES and card["rating"] == 9.5
     assert card["excerpt"] == "Uma obra-prima." and card["has_spoilers"] is False
     assert card["user"]["username"] == "bruno"
 
@@ -157,28 +157,28 @@ def test_the_same_game_from_two_people_stays_two_cards(ana, bruno, make_user):
 def test_several_games_saved_in_a_row_become_one_queue_card(ana, bruno, app):
     for game in (HADES, CELESTE, HOLLOW):
         bruno.play(game, status="quero_jogar")
-    stamp(app, "bruno", "2026-01-01T10:00:00Z", rawg_id=HADES)
-    stamp(app, "bruno", "2026-01-01T11:00:00Z", rawg_id=CELESTE)
-    stamp(app, "bruno", "2026-01-01T12:00:00Z", rawg_id=HOLLOW)
+    stamp(app, "bruno", "2026-01-01T10:00:00Z", igdb_id=HADES)
+    stamp(app, "bruno", "2026-01-01T11:00:00Z", igdb_id=CELESTE)
+    stamp(app, "bruno", "2026-01-01T12:00:00Z", igdb_id=HOLLOW)
     body = highlights(ana)
     assert kinds(body) == ["queued"]
     card = body["items"][0]
     assert card["count"] == 3 and len(card["games"]) == 3
-    assert card["games"][0]["rawg_id"] == HOLLOW  # a mais nova primeiro
+    assert card["games"][0]["igdb_id"] == HOLLOW  # a mais nova primeiro
 
 
 def test_queue_cards_split_after_twelve_hours_and_show_at_most_four_covers(ana, bruno, app):
     for game in (HADES, CELESTE):
         bruno.play(game, status="quero_jogar")
-    stamp(app, "bruno", "2026-01-01T01:00:00Z", rawg_id=HADES)
-    stamp(app, "bruno", "2026-01-02T01:00:00Z", rawg_id=CELESTE)  # um dia depois
+    stamp(app, "bruno", "2026-01-01T01:00:00Z", igdb_id=HADES)
+    stamp(app, "bruno", "2026-01-02T01:00:00Z", igdb_id=CELESTE)  # um dia depois
     assert kinds(highlights(ana)) == ["queued", "queued"]
 
 
 def test_a_long_queue_run_counts_everything_but_shows_four_games(ana, bruno, app):
-    from . import fake_rawg
+    from . import fake_igdb
 
-    games = [game["id"] for game in fake_rawg.GAMES if game["name"] != "Farol do Amanhã"][:6]
+    games = [game["id"] for game in fake_igdb.GAMES if game["name"] != "Farol do Amanhã"][:6]
     for game in games:
         bruno.play(game, status="quero_jogar")
     stamp(app, "bruno", "2026-01-01T10:00:00Z")
@@ -211,14 +211,14 @@ def test_playing_again_is_not_news(ana, bruno):
     assert bruno.post(f"/api/library/{HADES}/replay", {}).status_code == 201
     assert bruno.get(f"/api/games/{HADES}").get_json()["viewer"]["entry"]["status"] == "jogando"
     assert kinds(highlights(ana)) == ["finished"]  # só o "zerou" original, não o "voltou a jogar"
-    assert playing(ana)["items"][0]["game"]["rawg_id"] == HADES  # e ele aparece no "jogando agora"
+    assert playing(ana)["items"][0]["game"]["igdb_id"] == HADES  # e ele aparece no "jogando agora"
 
 
 # ----------------------------------------------------------------------------- novidades: listas
 def make_list(person, title, games=(), public=True):
     created = person.post("/api/lists", {"title": title, "is_public": public}).get_json()["list"]
     for game in games:
-        assert person.post(f"/api/lists/{created['id']}/games", {"rawg_id": game}).status_code in (200, 201)
+        assert person.post(f"/api/lists/{created['id']}/games", {"igdb_id": game}).status_code in (200, 201)
     return created
 
 

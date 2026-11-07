@@ -49,10 +49,10 @@ def get_review(review_id: int):
     return jsonify({"review": review_from_row(row)})
 
 
-@bp.post("/games/<int:rawg_id>/reviews")
+@bp.post("/games/<int:igdb_id>/reviews")
 @login_required
 @rate_limit("review-write", 60, 60)
-def create_review(rawg_id: int):
+def create_review(igdb_id: int):
     data = json_body()
     errors = FieldErrors()
     rating = read_rating(data, errors, required=True)
@@ -61,7 +61,7 @@ def create_review(rawg_id: int):
     today = read_client_today(data, errors)  # o "hoje" de quem usa o site decide se o jogo já saiu
     errors.raise_if_any()
     user = current_user()
-    game = games_service.ensure_game(rawg_id)  # metadados vêm da RAWG, nunca do cliente
+    game = games_service.ensure_game(igdb_id)  # metadados vêm do IGDB, nunca do cliente
     review_id = reviews_service.create_review(
         user["id"],
         game,

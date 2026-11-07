@@ -6,8 +6,8 @@ from app.utils.dates import today_utc
 from .conftest import CELESTE, HADES, HOLLOW
 
 
-def log(client, rawg_id, status):
-    assert client.put(f"/api/library/{rawg_id}", {"status": status}).status_code in (200, 201)
+def log(client, igdb_id, status):
+    assert client.put(f"/api/library/{igdb_id}", {"status": status}).status_code in (200, 201)
 
 
 def test_follow_and_unfollow_are_idempotent(ana, bruno):

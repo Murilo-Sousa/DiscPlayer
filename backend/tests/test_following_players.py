@@ -4,8 +4,8 @@ from __future__ import annotations
 from .conftest import CELESTE, HADES, HOLLOW
 
 
-def following(client, rawg_id=HADES):
-    return client.get(f"/api/games/{rawg_id}/following")
+def following(client, igdb_id=HADES):
+    return client.get(f"/api/games/{igdb_id}/following")
 
 
 def names(body):
@@ -22,14 +22,14 @@ def test_nobody_followed_means_an_empty_answer(ana, bruno):
     assert body == {"items": [], "total": 0, "rated": 0, "average": None, "want_to_play": 0}
 
 
-def test_a_game_nobody_registered_answers_empty_without_asking_the_rawg(ana, monkeypatch):
-    from app.services import rawg
+def test_a_game_nobody_registered_answers_empty_without_asking_the_igdb(ana, monkeypatch):
+    from app.services import igdb
 
     def boom(*args, **kwargs):
-        raise AssertionError("não deveria chamar a RAWG")
+        raise AssertionError("não deveria chamar o IGDB")
 
-    monkeypatch.setattr(rawg, "fetch_json", boom)
-    rawg.clear_cache()
+    monkeypatch.setattr(igdb, "fetch_json", boom)
+    igdb.clear_cache()
     body = following(ana, HOLLOW).get_json()
     assert body["items"] == [] and body["total"] == 0
 
@@ -137,9 +137,9 @@ def test_demo_profiles_keep_their_mark(ana, app):
     with app.app_context():
         demo.seed()
         row = fetch_one(
-            "SELECT u.username, g.rawg_id FROM library_entries e JOIN users u ON u.id = e.user_id"
+            "SELECT u.username, g.igdb_id FROM library_entries e JOIN users u ON u.id = e.user_id"
             " JOIN games g ON g.id = e.game_id WHERE u.is_demo = 1 AND e.status <> 'quero_jogar' ORDER BY e.id LIMIT 1"
         )
     ana.put(f"/api/users/{row['username']}/follow")
-    body = following(ana, row["rawg_id"]).get_json()
+    body = following(ana, row["igdb_id"]).get_json()
     assert body["items"][0]["user"]["is_demo"] is True  # a marca "Exemplo" acompanha o perfil também aqui

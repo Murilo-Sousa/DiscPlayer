@@ -13,11 +13,12 @@ import { ReviewCard } from "../src/components/ReviewCard.jsx";
 import { StatusPicker } from "../src/components/StatusPicker.jsx";
 import { Tabs } from "../src/components/Tabs.jsx";
 import { buildOptions } from "../src/layouts/SearchBox.jsx";
+import { IgdbCard } from "../src/pages/game/CommunityBlock.jsx";
 import { safeNext } from "../src/pages/AuthPages.jsx";
 import { PHOTO_MAX_BYTES, checkPhotoFile } from "../src/pages/SettingsPage.jsx";
 import { count, html } from "./helpers.jsx";
 
-const game = { rawg_id: 3, name: "Hades", slug: "hades", cover_url: "https://media.rawg.io/a.jpg", cover_thumb_url: "https://media.rawg.io/t.jpg", released: "2020-09-17" };
+const game = { igdb_id: 3, name: "Hades", slug: "hades", cover_url: "https://images.igdb.com/igdb/image/upload/a.jpg", cover_thumb_url: "https://images.igdb.com/igdb/image/upload/t.jpg", released: "2020-09-17" };
 const user = { username: "ana", display_name: "Ana Souza", avatar_url: null };
 const review = {
   id: 1,
@@ -221,7 +222,7 @@ test("GameCard mostra ano, status, favorito e nota com texto para leitores de te
 });
 
 test("Cover usa a miniatura e, sem imagem, mostra as iniciais", () => {
-  assert.match(html(<Cover game={game} />), /src="https:\/\/media\.rawg\.io\/t\.jpg"/);
+  assert.match(html(<Cover game={game} />), /src="https:\/\/images\.igdb\.com\/igdb\/image\/upload\/t\.jpg"/);
   assert.match(html(<Cover game={game} />), /referrerPolicy|referrerpolicy="no-referrer"/i);
   const fallback = html(<Cover game={{ name: "Super Metroid" }} />);
   assert.doesNotMatch(fallback, /<img/);
@@ -350,4 +351,22 @@ test("checkPhotoFile confere tipo, tamanho e arquivo vazio antes de enviar", () 
   for (const type of ["image/gif", "image/svg+xml", "application/pdf", "text/html", ""]) {
     assert.match(checkPhotoFile(file(type, 1000)), /JPG, PNG ou WebP/, type);
   }
+});
+
+// ----------------------------------------------------------------------------- dados do IGDB
+test("o cartão do IGDB mostra cada nota na escala da própria fonte e avisa que não entra na média", () => {
+  const markup = html(<IgdbCard game={{ igdb_rating: 8.4, igdb_ratings_count: 321, critic_score: 93 }} />);
+  assert.match(markup, /Dados do IGDB/);
+  assert.match(markup, /fonte externa/);
+  assert.match(markup, /8,4 <span class="muted">de 10<\/span>/);
+  assert.match(markup, /321 votos/);
+  assert.match(markup, /93 <span class="muted">de 100<\/span>/);
+  assert.match(markup, /não entram na média da comunidade DiscPlayer/);
+});
+
+test("o cartão do IGDB aceita só uma das notas, um voto só, e some quando não há nenhuma", () => {
+  assert.doesNotMatch(html(<IgdbCard game={{ igdb_rating: 7, igdb_ratings_count: 1 }} />), /crítica/);
+  assert.match(html(<IgdbCard game={{ igdb_rating: 7, igdb_ratings_count: 1 }} />), /1 voto(?!s)/);
+  assert.doesNotMatch(html(<IgdbCard game={{ critic_score: 80 }} />), /dos jogadores/);
+  assert.equal(html(<IgdbCard game={{ igdb_rating: null, critic_score: null, igdb_ratings_count: 0 }} />), "");
 });

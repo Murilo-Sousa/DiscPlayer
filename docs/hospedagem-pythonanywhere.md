@@ -17,9 +17,11 @@ Este guia leva o projeto do seu computador até um endereço público do tipo `h
 | Disco | 512 MiB (o banco SQLite fica nele e **não se perde** entre atualizações). As fotos de perfil também ficam no banco (uns 15 KB cada, 256 KB no máximo), então não há pasta de uploads para configurar |
 | Validade | O web app **expira em 1 mês** se você não o estender: é preciso clicar em um botão no painel todo mês |
 | Suporte | Sem suporte direto para contas gratuitas (só fóruns e documentação) |
-| Acesso à internet de dentro do app | Só a sites de uma lista. `api.rawg.io` **está** na lista |
+| Acesso à internet de dentro do app | Só a sites de uma lista. `api.igdb.com` **está** na lista, mas `id.twitch.tv` (o login da Twitch, de onde vem o token do IGDB) **não aparecia** na lista quando conferimos em 07/11/2026. Veja o aviso abaixo |
 
-Consequência do processo único: se a RAWG demorar para responder, outras pessoas podem esperar um pouco junto. O cache do projeto reduz isso, mas não elimina.
+> **Atenção: a lista de sites liberados e o login da Twitch.** O IGDB exige um token da Twitch, que o back-end pede em `https://id.twitch.tv/oauth2/token`. Em 07/11/2026, a [lista de sites liberados](https://www.pythonanywhere.com/whitelist/) do plano gratuito trazia `api.igdb.com`, mas não `id.twitch.tv`. Se for o caso, o catálogo não carrega na hospedagem gratuita. **Confira antes de publicar:** no console Bash da PythonAnywhere, com o ambiente virtual ativo, rode `cd ~/DiscPlayer/backend && python -m app.igdb_check`. Se a etapa "Login na Twitch" falhar por indisponibilidade, as saídas são (1) pedir a inclusão de `id.twitch.tv` na lista (a PythonAnywhere aceita pedidos para APIs públicas e documentadas, pelo [formulário de pedido](https://help.pythonanywhere.com/pages/RequestingAllowlistAdditions/)), (2) usar um plano pago da PythonAnywhere, que não tem a restrição, ou (3) outra hospedagem. As imagens das capas não dependem disso: elas são carregadas direto pelo navegador de quem visita o site.
+
+Consequência do processo único: se o IGDB demorar para responder, outras pessoas podem esperar um pouco junto. O cache do projeto reduz isso, mas não elimina.
 
 ---
 
@@ -50,7 +52,7 @@ Consequência do processo único: se a RAWG demorar para responder, outras pesso
    git ls-files | findstr /R "node_modules \.venv instance \.db \.env$"
    ```
 
-   Se aparecer alguma linha, **pare**: sua chave da RAWG ou seu banco iriam para a internet. O `.gitignore` do projeto já impede isso, então só aconteceria se ele fosse apagado ou alterado.
+   Se aparecer alguma linha, **pare**: sua chave do IGDB ou seu banco iriam para a internet. O `.gitignore` do projeto já impede isso, então só aconteceria se ele fosse apagado ou alterado.
 
    O arquivo `frontend/package-lock.json`, criado pelo `npm install`, **deve** ir para o GitHub: ele garante que todo mundo instale as mesmas versões das bibliotecas.
 
@@ -154,11 +156,12 @@ Copie o texto longo que aparecer: é a sua `SECRET_KEY`. Agora crie o arquivo:
 nano .env
 ```
 
-Digite estas duas linhas (trocando pelos seus valores, sem aspas e sem espaços ao redor do `=`):
+Digite estas linhas (trocando pelos seus valores, sem aspas e sem espaços ao redor do `=`):
 
 ```
 SECRET_KEY=cole-aqui-o-texto-longo-gerado
-RAWG_API_KEY=cole-aqui-a-sua-chave-da-rawg
+IGDB_CLIENT_ID=cole-aqui-o-client-id
+IGDB_CLIENT_SECRET=cole-aqui-o-client-secret
 ```
 
 Salve com `Ctrl+O`, `Enter`, e saia com `Ctrl+X`. (Se preferir, abra a aba **Files**, vá em `DiscPlayer/backend`, crie o arquivo `.env` e edite pelo navegador.)
@@ -264,9 +267,9 @@ Primeiro de tudo, na aba **Web**, abra o **Error log** (e o **Server log**): qua
 | Site mostra texto "O front-end ainda não foi compilado" | A pasta `frontend/dist` não está no lugar | Confira `ls ~/DiscPlayer/frontend/dist/index.html` (3.5) |
 | Tela em branco | `dist` incompleto (falta `assets`) | Reenvie o `dist.zip` e rode `unzip -o` de novo |
 | Cria conta ou entra, mas "não pega" | Acesso por `http://` em vez de `https://`, ou **Force HTTPS** desligado | Ative **Force HTTPS** (3.7) e use sempre `https://` |
-| Catálogo mostra "A integração com a RAWG não está configurada" | `RAWG_API_KEY` ausente ou não lida | Confira o `.env` e clique em **Reload** (o `.env` só é lido ao iniciar) |
-| Catálogo mostra "A RAWG recusou a chave" | Chave errada | Corrija o `.env` e **Reload** |
-| Catálogo mostra "A RAWG está indisponível" | Falha de rede ou da RAWG | Veja o **Error log**; tente de novo em alguns minutos. `api.rawg.io` está na lista de sites liberados do plano gratuito |
+| Catálogo mostra "A integração com o IGDB não está configurada" | `IGDB_CLIENT_ID` ou `IGDB_CLIENT_SECRET` ausente ou não lida | Confira o `.env` e clique em **Reload** (o `.env` só é lido ao iniciar) |
+| Catálogo mostra "A Twitch recusou as credenciais" | Client ID ou Client Secret errado | Corrija o `.env` e **Reload**. Rode `python -m app.igdb_check` no console para conferir |
+| Catálogo mostra "O IGDB está indisponível" | Falha de rede ou do IGDB | Veja o **Error log**; tente de novo em alguns minutos. Se o `python -m app.igdb_check` falhar já no "Login na Twitch" com a mensagem de indisponível, o `id.twitch.tv` está bloqueado (veja o aviso sobre a lista de sites liberados) |
 | "Muitas tentativas" com pouquíssimas pessoas | O IP real do visitante não está chegando ao app (todos parecem o mesmo) | Confira que o arquivo WSGI define `TRUSTED_PROXY_COUNT` como `1` (já vem no modelo). Como último recurso temporário, ponha `RATELIMIT_ENABLED=false` no `.env` e **Reload**: isso desliga a proteção contra tentativas em massa |
 | O site sumiu depois de um tempo | O web app expirou (1 mês) | Aba **Web**: estenda a validade e clique em **Reload** |
 

@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import pytest
 
-from app.services import rawg
+from app.services import igdb
 
-from . import fake_rawg
+from . import fake_igdb
 from .conftest import CELESTE, HADES, HOLLOW
 
 
-def by_id(items, rawg_id):
-    return next(item for item in items if item["rawg_id"] == rawg_id)
+def by_id(items, igdb_id):
+    return next(item for item in items if item["igdb_id"] == igdb_id)
 
 
 # ----------------------------------------------------------------------------- média da comunidade nas listas
@@ -29,16 +29,16 @@ def test_catalog_and_featured_carry_the_community_average_with_the_number_of_not
     assert by_id(catalog, HADES)["community"] == {"average": 8.5, "count": 2}
     assert by_id(catalog, CELESTE)["community"] is None
     featured = ana.get("/api/games/featured").get_json()
-    shown = [game for game in featured["popular"] + featured["new"] if game["rawg_id"] == HADES]
+    shown = [game for game in featured["popular"] + featured["new"] if game["igdb_id"] == HADES]
     assert all(game["community"] == {"average": 8.5, "count": 2} for game in shown)
 
 
-def test_the_cached_rawg_list_is_not_changed_by_adding_the_community_average(ana):
+def test_the_cached_igdb_list_is_not_changed_by_adding_the_community_average(ana):
     ana.play(HADES)
     ana.post(f"/api/games/{HADES}/reviews", {"rating": 9})
     ana.get("/api/games?per_page=40")
-    cached = rawg.search_games(ordering="popular", page_size=40)["results"]
-    assert cached and all("community" not in game for game in cached)  # a nota nunca fica presa no cache da RAWG
+    cached = igdb.search_games(ordering="popular", page_size=40)["results"]
+    assert cached and all("community" not in game for game in cached)  # a nota nunca fica presa no cache do IGDB
 
 
 def test_a_new_review_shows_up_in_the_next_catalog_request(ana, bruno):
@@ -107,9 +107,9 @@ def test_without_create_only_the_same_request_still_updates(ana):
 
 
 def test_create_only_follows_the_diary_rules_for_a_game_that_is_not_out_yet(ana):
-    upcoming = fake_rawg.by_name("Farol do Amanhã")["id"] if "Farol do Amanhã" in {g["name"] for g in fake_rawg.GAMES} else None
+    upcoming = fake_igdb.by_name("Farol do Amanhã")["id"] if "Farol do Amanhã" in {g["name"] for g in fake_igdb.GAMES} else None
     if upcoming is None:
-        pytest.skip("a RAWG de teste não tem esse jogo")
+        pytest.skip("o IGDB de teste não tem esse jogo")
     # um jogo que ainda não saiu pode ir para a fila, que é exatamente o que o atalho faz
     assert ana.put(f"/api/library/{upcoming}", {"status": "quero_jogar", "create_only": True}).status_code == 201
 
@@ -121,14 +121,14 @@ def test_related_games_share_the_first_genre_and_leave_out_the_game_itself(api):
     assert body["genre"]["name"] == detail["genres"][0]
     assert body["genre"]["slug"]
     assert 0 < len(body["items"]) <= 12
-    assert all(item["rawg_id"] != HADES for item in body["items"])
+    assert all(item["igdb_id"] != HADES for item in body["items"])
     assert all(body["genre"]["name"] in item["genres"] for item in body["items"])
     assert all("community" in item for item in body["items"])
 
 
 def test_related_games_carry_the_community_average(ana):
     other = next(
-        item["rawg_id"] for item in ana.get(f"/api/games/{HADES}/related").get_json()["items"] if item["rawg_id"] != HADES
+        item["igdb_id"] for item in ana.get(f"/api/games/{HADES}/related").get_json()["items"] if item["igdb_id"] != HADES
     )
     ana.play(other)
     ana.post(f"/api/games/{other}/reviews", {"rating": 7})
@@ -140,16 +140,16 @@ def test_related_games_of_an_unknown_game_is_404(api):
     assert api.get("/api/games/99999999/related").status_code == 404
 
 
-def test_related_games_become_an_empty_list_when_the_rawg_fails(api, monkeypatch):
+def test_related_games_become_an_empty_list_when_the_igdb_fails(api, monkeypatch):
     api.get(f"/api/games/{HADES}")  # o jogo já está no cache: o que falha é a busca pelo gênero
 
-    def only_the_detail(path, params=None):
-        if path == "games":
-            raise rawg.RawgUnavailable()
-        return fake_rawg.fetch_json(path, params)
+    def only_the_detail(query):
+        if query.endpoint == "games" and not any(f[0] == "id" for f in query.filters):
+            raise igdb.IgdbUnavailable()
+        return fake_igdb.fetch_json(query)
 
-    monkeypatch.setattr(rawg, "fetch_json", only_the_detail)
-    rawg.clear_cache()
+    monkeypatch.setattr(igdb, "fetch_json", only_the_detail)
+    igdb.clear_cache()
     body = api.get(f"/api/games/{HADES}/related")
     assert body.status_code == 200
     assert body.get_json() == {"genre": None, "items": []}

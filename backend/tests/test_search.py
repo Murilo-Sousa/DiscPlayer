@@ -1,9 +1,9 @@
-"""Pesquisa global: jogos (RAWG), jogadores, listas e reviews."""
+"""Pesquisa global: jogos (IGDB), jogadores, listas e reviews."""
 from __future__ import annotations
 
 import pytest
 
-from app.services import rawg
+from app.services import igdb
 
 from .conftest import CELESTE, HADES
 
@@ -13,7 +13,7 @@ def test_search_returns_every_category(ana, bruno):
     bruno.play(HADES)
     bruno.post(f"/api/games/{HADES}/reviews", {"rating": 9, "body": "Hades é viciante."})
     lst = bruno.post("/api/lists", {"title": "Favoritos do Hades"}).get_json()["list"]
-    bruno.post(f"/api/lists/{lst['id']}/games", {"rawg_id": HADES})
+    bruno.post(f"/api/lists/{lst['id']}/games", {"igdb_id": HADES})
     body = ana.get("/api/search?q=hades").get_json()
     assert body["query"] == "hades"
     assert {g["name"] for g in body["games"]["items"]} == {"Hades", "Hades II"}
@@ -60,23 +60,23 @@ def test_search_survives_sql_injection_attempts(ana):
     assert ana.get("/api/auth/me").get_json()["user"]["username"] == "ana"
 
 
-def test_search_degrades_gracefully_when_rawg_is_down(ana, bruno, monkeypatch):
+def test_search_degrades_gracefully_when_igdb_is_down(ana, bruno, monkeypatch):
     bruno.put(f"/api/library/{HADES}", {"status": "zerado"})
     bruno.play(HADES)
     bruno.post(f"/api/games/{HADES}/reviews", {"rating": 9, "body": "Hades é viciante."})
 
     def down(*_a, **_k):
-        raise rawg.RawgUnavailable()
+        raise igdb.IgdbUnavailable()
 
-    monkeypatch.setattr(rawg, "fetch_json", down)
-    rawg.clear_cache()
+    monkeypatch.setattr(igdb, "fetch_json", down)
+    igdb.clear_cache()
     response = ana.get("/api/search?q=hades")
     assert response.status_code == 200
     body = response.get_json()
     assert body["games"]["items"] == []
-    assert body["games"]["error"]["code"] == "rawg_unavailable"
+    assert body["games"]["error"]["code"] == "igdb_unavailable"
     assert len(body["reviews"]) == 1  # os resultados locais continuam chegando
 
 
 def test_search_works_for_visitors(api):
-    assert api.get("/api/search?q=celeste").get_json()["games"]["items"][0]["rawg_id"] == CELESTE
+    assert api.get("/api/search?q=celeste").get_json()["games"]["items"][0]["igdb_id"] == CELESTE

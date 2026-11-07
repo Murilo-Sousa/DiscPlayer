@@ -17,10 +17,10 @@ from app import create_app
 from app import db as database
 from app.routes import spa as spa_routes
 from app.security import reset_rate_limits
-from app.services import cards, previews, rawg
+from app.services import cards, previews, igdb
 from app.utils.dates import today_utc
 
-from . import fake_rawg
+from . import fake_igdb
 from .conftest import CELESTE, HADES, Api
 
 REPO_INDEX = Path(__file__).resolve().parents[2] / "frontend" / "index.html"
@@ -94,7 +94,7 @@ def make_site(tmp_path, **config) -> Api:
             "TESTING": True,
             "DATABASE": str(tmp_path / "site.db"),
             "RATELIMIT_ENABLED": False,
-            "RAWG_API_KEY": "chave-de-teste",
+            "IGDB_API_KEY": "chave-de-teste",
             "FRONTEND_DIST": str(build_dist(tmp_path)),
             **config,
         }
@@ -104,10 +104,10 @@ def make_site(tmp_path, **config) -> Api:
 
 @pytest.fixture
 def site(tmp_path, monkeypatch) -> Api:
-    monkeypatch.setattr(rawg, "fetch_json", fake_rawg.fetch_json)
-    rawg.clear_cache()
+    monkeypatch.setattr(igdb, "fetch_json", fake_igdb.fetch_json)
+    igdb.clear_cache()
     yield make_site(tmp_path)
-    rawg.clear_cache()
+    igdb.clear_cache()
 
 
 def sql(site, query, params=()):
@@ -125,8 +125,8 @@ def register(site, username="ana", **extra) -> Api:
     return client
 
 
-def finish(client, rawg_id, start="2025-03-01", end="2025-03-20"):
-    response = client.put(f"/api/library/{rawg_id}", {"status": "zerado", "started_at": start, "completed_at": end})
+def finish(client, igdb_id, start="2025-03-01", end="2025-03-20"):
+    response = client.put(f"/api/library/{igdb_id}", {"status": "zerado", "started_at": start, "completed_at": end})
     assert response.status_code in (200, 201), response.get_json()
 
 
@@ -136,8 +136,13 @@ def make_list(client, title="Melhores indies", **extra):
     return response.get_json()["list"]
 
 
-def add_game(client, list_id, rawg_id):
-    assert client.post(f"/api/lists/{list_id}/games", {"rawg_id": rawg_id}).status_code in (200, 201)
+def add_game(client, list_id, igdb_id):
+    assert client.post(f"/api/lists/{list_id}/games", {"igdb_id": igdb_id}).status_code in (200, 201)
+
+
+def cover_of(igdb_id):
+    """A capa grande (t_720p) que a prévia usa, como o IGDB simulado a entrega."""
+    return f"https://images.igdb.com/igdb/image/upload/t_720p/co{igdb_id}.jpg"
 
 
 def default_image(base=BASE):
@@ -220,7 +225,7 @@ def test_without_public_url_the_request_host_is_used(site):
 
 
 def test_public_url_wins_over_the_request_host(tmp_path, monkeypatch):
-    monkeypatch.setattr(rawg, "fetch_json", fake_rawg.fetch_json)
+    monkeypatch.setattr(igdb, "fetch_json", fake_igdb.fetch_json)
     client = make_site(tmp_path, PUBLIC_URL="https://discplayer.exemplo.com")
     register_client = Api(client.client.application)
     register_client.register("ana")
@@ -259,10 +264,10 @@ def test_game_preview_uses_the_local_copy_with_year_and_https_cover(site):
     assert head.title == "Hades · DiscPlayer"
     assert head.one("og:title") == "Hades · DiscPlayer"
     assert "Lançado em 2020." in head.one("description")
-    assert head.one("og:image") == "https://media.rawg.io/media/games/fake/hades.jpg"
+    assert head.one("og:image") == cover_of(HADES)
     assert head.one("og:image:alt") == "Capa de Hades"
     assert head.one("og:url") == f"{BASE}/jogos/{HADES}-hades"
-    assert head.all("og:image:width") == []  # o tamanho da capa da RAWG não é conhecido
+    assert head.all("og:image:width") == []  # o tamanho da capa do IGDB não é conhecido
 
 
 def test_game_preview_shows_the_community_average_only_with_real_reviews(site):
@@ -287,33 +292,33 @@ def test_game_preview_never_includes_review_text(site):
     assert "SEGREDO-DO-FINAL-DO-JOGO" not in text
 
 
-def test_game_not_stored_locally_is_read_from_the_rawg_cache(site):
+def test_game_not_stored_locally_is_read_from_the_igdb_cache(site):
     assert site.get(f"/api/games/{CELESTE}").status_code == 200  # a página do jogo faz isso ao abrir
     head = head_of(site.get(f"/jogos/{CELESTE}-celeste"))  # ninguém registrou o jogo
     assert head.title == "Celeste · DiscPlayer"
     assert "Registre, avalie e escreva sobre Celeste" in head.one("description")
-    assert head.one("og:image") == "https://media.rawg.io/media/games/fake/celeste.jpg"
+    assert head.one("og:image") == cover_of(CELESTE)
 
 
-def test_previews_never_call_the_rawg(site, monkeypatch):
-    """Um robô que percorre endereços de jogos não pode gastar a cota da RAWG nem deixar a página lenta."""
+def test_previews_never_call_the_igdb(site, monkeypatch):
+    """Um robô que percorre endereços de jogos não pode gastar a cota do IGDB nem deixar a página lenta."""
     calls = []
 
-    def spy(path, params=None):
-        calls.append(path)
-        return fake_rawg.fetch_json(path, params)
+    def spy(query):
+        calls.append(query.endpoint)
+        return fake_igdb.fetch_json(query)
 
-    monkeypatch.setattr(rawg, "fetch_json", spy)
-    rawg.clear_cache()
-    for rawg_id in (CELESTE, HADES, 987654321, 1, 2, 3):
-        head = head_of(site.get(f"/jogos/{rawg_id}-qualquer-coisa"))
+    monkeypatch.setattr(igdb, "fetch_json", spy)
+    igdb.clear_cache()
+    for igdb_id in (CELESTE, HADES, 987654321, 1, 2, 3):
+        head = head_of(site.get(f"/jogos/{igdb_id}-qualquer-coisa"))
         assert head.title == "DiscPlayer"  # sem cache e sem cópia local: prévia padrão
     assert calls == []
 
 
-def test_an_expired_rawg_cache_entry_still_makes_the_preview(site):
+def test_an_expired_igdb_cache_entry_still_makes_the_preview(site):
     assert site.get(f"/api/games/{CELESTE}").status_code == 200
-    cache = rawg._cache
+    cache = igdb._cache
     key = ("game", CELESTE)
     value = cache.get(key)
     cache.set(key, value, ttl=0.0, stale_ttl=3600)  # expirou, mas ainda dentro da tolerância
@@ -328,12 +333,12 @@ def test_unknown_game_gets_the_default_preview(site):
         assert "999999999" not in head.title
 
 
-def test_rawg_down_does_not_matter_to_the_preview_and_the_page_still_opens(site, monkeypatch):
-    def down(path, params=None):
-        raise rawg.RawgUnavailable()
+def test_igdb_down_does_not_matter_to_the_preview_and_the_page_still_opens(site, monkeypatch):
+    def down(query):
+        raise igdb.IgdbUnavailable()
 
-    monkeypatch.setattr(rawg, "fetch_json", down)
-    rawg.clear_cache()
+    monkeypatch.setattr(igdb, "fetch_json", down)
+    igdb.clear_cache()
     response = site.get(f"/jogos/{CELESTE}-celeste")
     head = head_of(response)
     assert head.title == "DiscPlayer" and head.one("og:image") == default_image()
@@ -442,7 +447,7 @@ def test_public_list_preview_has_title_owner_description_and_first_cover(site):
     head = head_of(site.get(f"/listas/{lst['id']}"))
     assert head.title == "Melhores indies · lista de Ana Souza · DiscPlayer"
     assert head.one("description") == "Lista de Ana Souza. Para jogar com calma."
-    assert head.one("og:image") == "https://media.rawg.io/media/games/fake/celeste.jpg"  # a primeira da ordem da lista
+    assert head.one("og:image") == cover_of(CELESTE)  # a primeira da ordem da lista
     assert head.one("og:image:alt") == "Capa de Celeste"
 
 
@@ -574,12 +579,12 @@ def test_without_pillow_the_page_has_text_previews_and_no_broken_image(site, mon
     assert head.title == "ana (@ana) · DiscPlayer"
     assert head.all("og:image") == [] and head.all("twitter:image") == []
     assert head.one("twitter:card") == "summary"
-    finish(ana, HADES)  # a capa da RAWG continua valendo sem o Pillow
-    assert head_of(site.get(f"/jogos/{HADES}")).one("og:image").startswith("https://media.rawg.io/")
+    finish(ana, HADES)  # a capa do IGDB continua valendo sem o Pillow
+    assert head_of(site.get(f"/jogos/{HADES}")).one("og:image").startswith("https://images.igdb.com/")
 
 
 def test_dynamic_previews_are_rate_limited_and_fall_back_to_the_default(tmp_path, monkeypatch):
-    monkeypatch.setattr(rawg, "fetch_json", fake_rawg.fetch_json)
+    monkeypatch.setattr(igdb, "fetch_json", fake_igdb.fetch_json)
     limited = make_site(tmp_path, RATELIMIT_ENABLED=True)
     Api(limited.client.application).register("ana")
 
@@ -591,7 +596,7 @@ def test_dynamic_previews_are_rate_limited_and_fall_back_to_the_default(tmp_path
 
 
 def test_static_routes_do_not_spend_the_preview_limit(tmp_path, monkeypatch):
-    monkeypatch.setattr(rawg, "fetch_json", fake_rawg.fetch_json)
+    monkeypatch.setattr(igdb, "fetch_json", fake_igdb.fetch_json)
     limited = make_site(tmp_path, RATELIMIT_ENABLED=True)
     Api(limited.client.application).register("ana")
     for _ in range(spa_routes.PREVIEW_LIMIT + 50):

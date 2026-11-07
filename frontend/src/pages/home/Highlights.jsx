@@ -106,7 +106,7 @@ function QueuedCard({ card }) {
         </p>
         <ul className="news-minis">
           {games.map((game) => (
-            <li key={game.rawg_id}>
+            <li key={game.igdb_id}>
               <Link to={gamePath(game)} className="news-mini" title={game.name}>
                 <Cover game={game} ratio="poster" />
                 <span className="sr-only">{game.name}</span>

@@ -17,7 +17,7 @@ const SORTS = [
 ];
 
 /** Reviews da comunidade para o jogo, com ordenação, paginação e curtidas. */
-export function ReviewsList({ rawgId, refreshKey }) {
+export function ReviewsList({ igdbId, refreshKey }) {
   const { user } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
@@ -26,8 +26,8 @@ export function ReviewsList({ rawgId, refreshKey }) {
   const [page, setPage] = useState(1);
   const [pendingId, setPendingId] = useState(null);
   const state = useAsync(
-    (signal) => gamesApi.reviews(rawgId, { sort, page, per_page: 10 }, { signal }),
-    [rawgId, sort, page, refreshKey],
+    (signal) => gamesApi.reviews(igdbId, { sort, page, per_page: 10 }, { signal }),
+    [igdbId, sort, page, refreshKey],
   );
 
   const like = async (review) => {

@@ -12,7 +12,7 @@ import {
 import { count, html } from "./helpers.jsx";
 
 const game = (id, name, slug = name.toLowerCase().replace(/\W+/g, "-")) => ({
-  rawg_id: id,
+  igdb_id: id,
   name,
   slug,
   cover_url: null,

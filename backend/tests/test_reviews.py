@@ -3,13 +3,13 @@ from __future__ import annotations
 
 import pytest
 
-from . import fake_rawg
+from . import fake_igdb
 from .conftest import CELESTE, HADES
 
 
-def review(client, rawg_id=HADES, **body):
-    client.play(rawg_id)  # só avalia quem já jogou
-    return client.post(f"/api/games/{rawg_id}/reviews", body)
+def review(client, igdb_id=HADES, **body):
+    client.play(igdb_id)  # só avalia quem já jogou
+    return client.post(f"/api/games/{igdb_id}/reviews", body)
 
 
 def test_create_review_with_text(ana):
@@ -148,14 +148,14 @@ def test_a_game_nobody_rated_has_an_empty_distribution_from_0_to_10(api):
     assert api.get(f"/api/games/{HADES}").get_json()["community"]["distribution"] == [0] * 11
 
 
-def test_community_rating_is_kept_separate_from_rawg_data(ana):
+def test_community_rating_is_kept_separate_from_igdb_data(ana):
     body = ana.get(f"/api/games/{HADES}").get_json()
     assert body["community"]["average"] is None and body["community"]["count"] == 0
-    assert "rawg_rating" in body["game"]  # nota agregada pela RAWG, em outro campo
+    assert "igdb_rating" in body["game"]  # nota agregada pelo IGDB, em outro campo
     review(ana, rating=4)
     after = ana.get(f"/api/games/{HADES}").get_json()
     assert after["community"]["average"] == 4
-    assert after["game"]["rawg_rating"] == body["game"]["rawg_rating"]
+    assert after["game"]["igdb_rating"] == body["game"]["igdb_rating"]
 
 
 def test_game_review_list_shows_only_reviews_with_text_and_sorts(ana, bruno, make_user):
@@ -174,7 +174,7 @@ def test_game_review_list_shows_only_reviews_with_text_and_sorts(ana, bruno, mak
 
 
 def test_review_list_for_game_with_no_local_record_is_empty(api):
-    body = api.get(f"/api/games/{fake_rawg.by_name('Balatro')['id']}/reviews").get_json()
+    body = api.get(f"/api/games/{fake_igdb.by_name('Balatro')['id']}/reviews").get_json()
     assert body["items"] == [] and body["has_next"] is False
 
 

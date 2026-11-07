@@ -14,8 +14,8 @@ def health():
         {
             "status": "ok",
             "database": "ok",
-            # Apenas informa se a chave existe — nunca o valor dela.
-            "rawg_configured": bool(current_app.config["RAWG_API_KEY"]),
+            # Apenas informa se as credenciais existem — nunca os valores.
+            "igdb_configured": bool(current_app.config["IGDB_CLIENT_ID"] and current_app.config["IGDB_CLIENT_SECRET"]),
             # explicit, mature ou off: o nível do filtro de conteúdo adulto (ADULT_CONTENT_FILTER).
             "adult_content_filter": current_app.config["ADULT_CONTENT_FILTER"],
         }

@@ -1,11 +1,11 @@
-"""Conteúdo adulto da RAWG: jogos 18+ não aparecem na busca nem no catálogo, a página deles é "indisponível" e não dá
-para guardá-los no diário. Os jogos 18+ da RAWG simulada são fictícios (veja tests/fake_rawg.py)."""
+"""Conteúdo adulto do IGDB: jogos 18+ não aparecem na busca nem no catálogo, a página deles é "indisponível" e não dá
+para guardá-los no diário. Os jogos 18+ do IGDB simulado são fictícios (veja tests/fake_igdb.py)."""
 import re
 
 from playwright.sync_api import expect
 
 from helpers import api, register
-from tests.fake_rawg import by_name
+from tests.fake_igdb import by_name
 
 
 def gid(nome):

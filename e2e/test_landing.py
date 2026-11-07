@@ -53,7 +53,7 @@ def test_o_topo_e_um_mural_de_capas_e_o_disco_fica_numa_secao_mais_abaixo(stack,
     client.open("/")
     page = client.page
     page.wait_for_selector(".cover-wall-link")
-    assert 6 <= page.locator(".cover-wall-link").count() <= 15  # a RAWG de teste tem poucos jogos recentes
+    assert 6 <= page.locator(".cover-wall-link").count() <= 15  # o IGDB de teste tem poucos jogos recentes
     assert page.locator(".cover-wall-col").count() == 3
     # os nomes só aparecem ao passar o mouse, mas cada capa tem nome para quem usa leitor de tela
     expect(page.locator(".cover-wall-name").first).to_have_css("opacity", "0")
@@ -80,8 +80,8 @@ def test_o_mural_anda_devagar_e_com_movimento_reduzido_fica_parado(stack, make_c
     assert parado.page.locator(".cover-wall-col").nth(1).evaluate("el => getComputedStyle(el).transform") == "none"
 
 
-def test_sem_a_rawg_o_topo_fica_so_com_o_titulo_e_o_resto_da_pagina_continua(stack, client):
-    stack.rawg_down()
+def test_sem_o_igdb_o_topo_fica_so_com_o_titulo_e_o_resto_da_pagina_continua(stack, client):
+    stack.igdb_down()
     try:
         client.open("/")
         page = client.page
@@ -91,7 +91,7 @@ def test_sem_a_rawg_o_topo_fica_so_com_o_titulo_e_o_resto_da_pagina_continua(sta
         expect(page.get_by_role("link", name="Criar meu diário").first).to_be_visible()
         expect(page.locator(".instrument")).to_be_attached()
     finally:
-        stack.rawg_up()
+        stack.igdb_up()
 
 
 def test_o_disco_grande_so_comeca_a_jogar_quando_aparece_na_tela_e_vai_ate_o_zerado(stack, client):

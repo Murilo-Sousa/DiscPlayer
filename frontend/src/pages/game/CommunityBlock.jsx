@@ -53,30 +53,30 @@ export function CommunityCard({ community }) {
   );
 }
 
-/** Dados que vêm da RAWG. Ficam num cartão à parte e não entram na média do DiscPlayer. */
-export function RawgCard({ game }) {
-  const hasAny = game.rawg_rating || game.metacritic;
+/** Dados que vêm do IGDB. Ficam num cartão à parte e não entram na média do DiscPlayer. */
+export function IgdbCard({ game }) {
+  const hasAny = game.igdb_rating || game.critic_score;
   if (!hasAny) return null;
   return (
-    <section className="score-card score-card-external" aria-labelledby="rawg-title">
-      <h2 id="rawg-title" className="score-title">
-        Dados da RAWG <span className="score-tag">fonte externa</span>
+    <section className="score-card score-card-external" aria-labelledby="igdb-title">
+      <h2 id="igdb-title" className="score-title">
+        Dados do IGDB <span className="score-tag">fonte externa</span>
       </h2>
       <dl className="score-facts">
-        {game.rawg_rating && (
+        {game.igdb_rating && (
           <div>
-            <dt>Nota na RAWG</dt>
+            <dt>Nota dos jogadores no IGDB</dt>
             <dd>
-              {formatAverage(game.rawg_rating)} <span className="muted">de 5</span>
-              {game.rawg_ratings_count > 0 && <span className="muted">, {plural(game.rawg_ratings_count, "voto", "votos")}</span>}
+              {formatAverage(game.igdb_rating)} <span className="muted">de 10</span>
+              {game.igdb_ratings_count > 0 && <span className="muted">, {plural(game.igdb_ratings_count, "voto", "votos")}</span>}
             </dd>
           </div>
         )}
-        {game.metacritic && (
+        {game.critic_score && (
           <div>
-            <dt>Metacritic</dt>
+            <dt>Nota da crítica</dt>
             <dd>
-              {game.metacritic} <span className="muted">de 100</span>
+              {game.critic_score} <span className="muted">de 100</span>
             </dd>
           </div>
         )}

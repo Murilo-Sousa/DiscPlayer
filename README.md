@@ -4,7 +4,7 @@
 
 **O diário e a comunidade dos seus jogos.** Registre o que você joga, dê notas de 0 a 10, escreva reviews, monte listas e veja o que outras pessoas estão jogando. É a ideia do Letterboxd, só que para videogames.
 
-Os dados dos jogos (nome, capa, gêneros, plataformas, datas) vêm da [RAWG](https://rawg.io). Todo o resto — contas, diário, notas, reviews, listas, seguidores — é da própria comunidade do DiscPlayer e fica no banco de dados do projeto. Nada na tela é inventado: um site novo mostra estados vazios que explicam como começar.
+Os dados dos jogos (nome, capa, gêneros, plataformas, datas) vêm do [IGDB](https://www.igdb.com), o banco de jogos da Twitch. Todo o resto — contas, diário, notas, reviews, listas, seguidores — é da própria comunidade do DiscPlayer e fica no banco de dados do projeto. Nada na tela é inventado: um site novo mostra estados vazios que explicam como começar.
 
 ## Sumário
 
@@ -28,7 +28,7 @@ Os dados dos jogos (nome, capa, gêneros, plataformas, datas) vêm da [RAWG](htt
 - **Gerenciar a conta**: foto de perfil enviada como imagem (o servidor valida, recorta e reduz) e exclusão da conta com confirmação por senha.
 - **Usar no celular e pelo teclado**: interface responsiva e acessível.
 
-Na página de cada jogo, a média das notas da comunidade DiscPlayer e a nota da RAWG aparecem em blocos separados, com a origem indicada. Elas nunca se misturam.
+Na página de cada jogo, a média das notas da comunidade DiscPlayer e as notas do IGDB (dos jogadores e da crítica) aparecem em blocos separados, com a origem indicada. Elas nunca se misturam.
 
 ## Tecnologias
 
@@ -37,7 +37,7 @@ Na página de cada jogo, a média das notas da comunidade DiscPlayer e a nota da
 | Front-end | React 19 e Vite 7, CSS próprio com variáveis, roteador sobre a History API |
 | Back-end | Python 3.11+ e Flask 3.1 (API REST) |
 | Banco de dados | SQLite com SQL puro e migrações em arquivos `.sql` |
-| Dados de jogos | API da RAWG, sempre intermediada pelo back-end (a chave nunca chega ao navegador) |
+| Dados de jogos | API do IGDB (Twitch), sempre intermediada pelo back-end (as credenciais nunca chegam ao navegador) |
 | Testes | pytest, `node:test` e Playwright, rodando a cada alteração no GitHub Actions |
 
 ## Abrir no seu computador
@@ -52,7 +52,7 @@ O projeto tem duas partes que rodam ao mesmo tempo, cada uma no seu terminal: o 
 | Node.js (com npm) | 20.19 ou mais nova | `node --version` |
 | Git (opcional) | qualquer | `git --version` |
 
-Você também precisa de uma **chave gratuita da RAWG**: crie uma conta em <https://rawg.io/apidocs> e gere a chave. Ela fica só no seu computador.
+Você também precisa de **credenciais gratuitas do IGDB**, que vêm da Twitch: um *Client ID* e um *Client Secret*. O passo a passo para criá-las está no [guia de desenvolvimento](docs/desenvolvimento.md#como-conseguir-as-credenciais-do-igdb). Elas ficam só no seu computador.
 
 > **Windows:** se você acabou de instalar o Python ou o Node.js, **feche o terminal (e o VS Code, se estiver usando) e abra de novo**. Terminais abertos antes da instalação não enxergam os programas novos.
 
@@ -75,13 +75,14 @@ pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
 
-Quando o ambiente virtual está ativo, aparece `(.venv)` no começo da linha. Agora abra o arquivo `backend\.env` em um editor de texto e cole a sua chave depois do `=`, sem aspas nem espaços:
+Quando o ambiente virtual está ativo, aparece `(.venv)` no começo da linha. Agora abra o arquivo `backend\.env` em um editor de texto e cole o seu Client ID e o seu Client Secret depois dos `=`, sem aspas nem espaços:
 
 ```
-RAWG_API_KEY=cole-sua-chave-aqui
+IGDB_CLIENT_ID=cole-o-client-id-aqui
+IGDB_CLIENT_SECRET=cole-o-client-secret-aqui
 ```
 
-Depois suba a API:
+Para conferir se as credenciais funcionam (e se o IGDB responde como o projeto espera), rode `python -m app.igdb_check`. A saída não mostra as suas chaves. Depois suba a API:
 
 ```powershell
 flask --app wsgi run --debug
@@ -175,9 +176,9 @@ pip install -r requirements.txt
 
 Se o arquivo `frontend/package.json` mudou, rode também `npm install` na pasta `frontend`. As alterações no banco de dados são aplicadas sozinhas quando o back-end sobe.
 
-### Sem chave da RAWG?
+### Sem credenciais do IGDB?
 
-Dá para desenvolver sem chave usando um servidor local que imita a RAWG com **dados fictícios**, só para testar a interface. O passo a passo está no [guia de desenvolvimento](docs/desenvolvimento.md#desenvolver-sem-chave-da-rawg). Não use isso como catálogo de verdade.
+Dá para desenvolver sem elas usando um servidor local que imita o IGDB (e o login da Twitch) com **dados fictícios**, só para testar a interface. O passo a passo está no [guia de desenvolvimento](docs/desenvolvimento.md#desenvolver-sem-credenciais-do-igdb). Não use isso como catálogo de verdade.
 
 ### Deu algum erro?
 
@@ -186,7 +187,8 @@ Dá para desenvolver sem chave usando um servidor local que imita a RAWG com **d
 | `flask: command not found` | O ambiente virtual não está ativo. Rode `.venv\Scripts\Activate.ps1` dentro de `backend` e tente de novo. |
 | `npm` não é reconhecido | Instale o Node.js em [nodejs.org](https://nodejs.org), feche todos os terminais e abra outro. |
 | `ModuleNotFoundError` | Com o ambiente virtual ativo, rode `pip install -r requirements.txt` dentro de `backend`. |
-| O catálogo mostra que a RAWG não está configurada | Falta a chave em `backend/.env`. Salve o arquivo e reinicie o back-end. |
+| O catálogo mostra que o IGDB não está configurado | Faltam `IGDB_CLIENT_ID` e `IGDB_CLIENT_SECRET` em `backend/.env`. Salve o arquivo e reinicie o back-end. |
+| O catálogo mostra "A Twitch recusou as credenciais" | O Client ID ou o Client Secret está errado (ou o segredo foi trocado). Gere outro em dev.twitch.tv/console e rode `python -m app.igdb_check`. |
 | O site abre, mas as chamadas à API falham | O back-end não está rodando. Confira o terminal 1. |
 | Quero começar do zero | Pare o back-end e apague `backend/instance/discplayer.db*`. |
 
@@ -204,14 +206,14 @@ cd frontend
 npm test
 ```
 
-Os testes do back-end usam uma RAWG simulada e um banco temporário: não precisam de internet nem de chave. Há também testes de ponta a ponta que controlam um navegador de verdade (opcionais). O GitHub Actions roda tudo a cada alteração, e o resultado aparece no selo no topo desta página. Detalhes em [docs/testes.md](docs/testes.md).
+Os testes do back-end usam um IGDB simulado e um banco temporário: não precisam de internet nem de credenciais. Há também testes de ponta a ponta que controlam um navegador de verdade (opcionais). O GitHub Actions roda tudo a cada alteração, e o resultado aparece no selo no topo desta página. Detalhes em [docs/testes.md](docs/testes.md).
 
 ## Como o projeto está organizado
 
 ```
 DiscPlayer/
 ├── backend/                 # API em Flask
-│   ├── app/                 # rotas, regras de negócio, segurança, cliente da RAWG
+│   ├── app/                 # rotas, regras de negócio, segurança, cliente do IGDB
 │   ├── migrations/          # alterações do banco, em arquivos .sql numerados
 │   ├── tests/               # testes (pytest)
 │   └── .env.example         # modelo das configurações
@@ -227,7 +229,7 @@ DiscPlayer/
 
 | Documento | Do que trata |
 | --- | --- |
-| [Guia de desenvolvimento](docs/desenvolvimento.md) | Passo a passo completo para todos os sistemas, variáveis de ambiente, modo sem chave da RAWG |
+| [Guia de desenvolvimento](docs/desenvolvimento.md) | Passo a passo completo para todos os sistemas, variáveis de ambiente, modo sem credenciais do IGDB |
 | [Como funciona por dentro](docs/como-funciona.md) | Funcionalidades em detalhe, estrutura de pastas, banco de dados, rotas da API, segurança e as decisões de produto e de engenharia |
 | [Testes](docs/testes.md) | As três suítes de testes e o que cada uma cobre |
 | [Solução de problemas](docs/solucao-de-problemas.md) | Erros comuns e como resolver |
@@ -243,11 +245,11 @@ Em resumo, e com mais detalhe em [docs/limitacoes-e-proximos-passos.md](docs/lim
 - **Não há e-mails**: sem recuperação de senha, verificação de e-mail ou notificações.
 - **Não há moderação** (denúncias, bloqueios). Planeje isso antes de abrir o cadastro ao público.
 - A interface está **só em português do Brasil**.
-- Se for publicar, leia os [Termos da RAWG](https://rawg.io/apidocs): o plano gratuito é para projetos pessoais, sem fins comerciais, e exige citar a RAWG como fonte.
+- Se for publicar, leia os [termos da API do IGDB](https://api-docs.igdb.com/#terms-of-service): o uso é gratuito para projetos sem fins comerciais, exige uma conta da Twitch com verificação em duas etapas e pede que o IGDB seja citado como fonte.
 
 ## Créditos e licenças
 
 - Código sob a licença **MIT** (arquivo `LICENSE`).
-- Dados e imagens de jogos: [RAWG](https://rawg.io). O uso da API exige atribuição e respeito aos termos de uso deles.
+- Dados e imagens de jogos: [IGDB](https://www.igdb.com), da Twitch. O uso da API exige atribuição e respeito aos termos de uso deles.
 - Fontes: **TeX Gyre Adventor** (GUST Font License) e **Lora** (SIL Open Font License). Autoria, licenças e links de origem estão em `frontend/src/assets/fonts/LICENSES.md`.
 - Os jogos, capas e nomes do servidor fictício de desenvolvimento são inventados e existem só para testes.

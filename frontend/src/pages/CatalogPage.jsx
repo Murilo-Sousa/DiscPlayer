@@ -12,15 +12,15 @@ import { Link, useSearchParams } from "../router/index.jsx";
 import { gamesApi } from "../services/api.js";
 
 const PER_PAGE = 24;
-const MAX_PAGES = 400; // a RAWG limita a paginação profunda
+const MAX_PAGES = 400; // páginas muito fundas são caras para o IGDB e ninguém chega lá: o catálogo para aqui
 const SHELF_SIZE = 12;
 
 const ORDERINGS = [
   { value: "relevance", label: "Relevância" },
   { value: "popular", label: "Mais populares" },
   { value: "released", label: "Lançamento mais recente" },
-  { value: "rating", label: "Melhor avaliação (RAWG)" },
-  { value: "metacritic", label: "Metacritic" },
+  { value: "rating", label: "Melhor avaliação dos jogadores" },
+  { value: "critics", label: "Melhor avaliação da crítica" },
   { value: "name", label: "Nome (A–Z)" },
 ];
 
@@ -102,10 +102,10 @@ export default function CatalogPage() {
   const recent = discover ? (featured.data?.new ?? []).slice(0, SHELF_SIZE) : [];
   const best = discover ? (topRated.data?.items ?? []) : [];
   const diary = useDiaryEntries([
-    ...(data?.results ?? []).map((game) => game.rawg_id),
-    ...popular.map((game) => game.rawg_id),
-    ...recent.map((game) => game.rawg_id),
-    ...best.map((item) => item.game.rawg_id),
+    ...(data?.results ?? []).map((game) => game.igdb_id),
+    ...popular.map((game) => game.igdb_id),
+    ...recent.map((game) => game.igdb_id),
+    ...best.map((item) => item.game.igdb_id),
   ]);
 
   const totalPages = data ? Math.min(MAX_PAGES, Math.max(1, Math.ceil(data.count / PER_PAGE))) : null;
@@ -119,7 +119,7 @@ export default function CatalogPage() {
     <div aria-busy={catalog.loading || undefined} data-loading={catalog.loading || undefined}>
       <GameGrid>
         {data.results.map((game) => (
-          <LibraryGameCard key={game.rawg_id} game={game} diary={diary} />
+          <LibraryGameCard key={game.igdb_id} game={game} diary={diary} />
         ))}
       </GameGrid>
       <Pagination
@@ -268,7 +268,7 @@ export default function CatalogPage() {
               }
             >
               {popular.map((game) => (
-                <ShelfItem key={game.rawg_id}>
+                <ShelfItem key={game.igdb_id}>
                   <LibraryGameCard game={game} diary={diary} />
                 </ShelfItem>
               ))}
@@ -284,7 +284,7 @@ export default function CatalogPage() {
               }
             >
               {recent.map((game) => (
-                <ShelfItem key={game.rawg_id}>
+                <ShelfItem key={game.igdb_id}>
                   <LibraryGameCard game={game} diary={diary} />
                 </ShelfItem>
               ))}
@@ -293,7 +293,7 @@ export default function CatalogPage() {
           {best.length > 0 && (
             <GameShelf title="Mais bem avaliados no DiscPlayer">
               {best.map((item) => (
-                <ShelfItem key={item.game.rawg_id}>
+                <ShelfItem key={item.game.igdb_id}>
                   <LibraryGameCard game={item.game} diary={diary} community={{ average: item.average, count: item.count }} showGenre={false} />
                 </ShelfItem>
               ))}

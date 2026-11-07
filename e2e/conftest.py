@@ -3,9 +3,10 @@
 Cada teste recebe uma "pilha" própria e descartável:
   * um banco SQLite novo e vazio;
   * a API Flask de verdade, servindo o front-end compilado (frontend/dist);
-  * uma RAWG de mentira (tests/fake_rawg_server.py), para não depender de chave nem de internet.
+  * um IGDB de mentira (tests/fake_igdb_server.py), com o login da Twitch incluído, para não depender de
+    credenciais nem de internet.
 
-As imagens de capa (media.rawg.io) são interceptadas no navegador e trocadas por desenhos
+As imagens de capa (images.igdb.com) são interceptadas no navegador e trocadas por desenhos
 gerados na hora, então nada sai da máquina.
 """
 from __future__ import annotations
@@ -26,8 +27,8 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "backend"))
 
 from app import create_app  # noqa: E402
-from app.services import rawg as rawg_service  # noqa: E402
-from tests.fake_rawg_server import create_fake_server  # noqa: E402
+from app.services import igdb as igdb_service  # noqa: E402
+from tests.fake_igdb_server import create_fake_server  # noqa: E402
 
 DIST = Path(os.environ.get("E2E_DIST", ROOT / "frontend" / "dist"))
 
@@ -67,39 +68,44 @@ class _Server:
 @dataclass
 class Stack:
     url: str
-    rawg: _Server
+    igdb: _Server
     app: object = None  # a aplicação Flask em execução (para preparar dados dentro do processo, como os perfis de exemplo)
 
-    def rawg_down(self) -> None:
-        """Derruba a RAWG de mentira e esvazia o cache do back-end (como após um reinício)."""
-        self.rawg.stop()
-        rawg_service.clear_cache()
+    def igdb_down(self) -> None:
+        """Derruba o IGDB de mentira e esvazia o cache do back-end (como após um reinício)."""
+        self.igdb.stop()
+        igdb_service.clear_cache()
+        igdb_service.clear_token()
 
-    def rawg_up(self) -> None:
-        self.rawg.start()
+    def igdb_up(self) -> None:
+        self.igdb.start()
 
 
 @pytest.fixture()
 def stack(tmp_path):
-    rawg = _Server(create_fake_server()).start()
-    rawg_service.clear_cache()  # o cache é global ao processo; cada teste começa limpo
+    igdb = _Server(create_fake_server()).start()
+    igdb_service.clear_cache()  # o cache e o token são globais ao processo; cada teste começa limpo
+    igdb_service.clear_token()
     app = create_app(
         {
             "SECRET_KEY": "e2e-" + "x" * 40,
             "DATABASE": str(tmp_path / "e2e.db"),
             "FRONTEND_DIST": str(DIST),
             "RATELIMIT_ENABLED": False,
-            "RAWG_API_KEY": "chave-de-teste",
-            "RAWG_BASE_URL": f"http://127.0.0.1:{rawg.port}/api",
+            "IGDB_CLIENT_ID": "id-de-teste",
+            "IGDB_CLIENT_SECRET": "segredo-de-teste",
+            "IGDB_BASE_URL": f"http://127.0.0.1:{igdb.port}/v4",
+            "IGDB_TOKEN_URL": f"http://127.0.0.1:{igdb.port}/oauth2/token",
+            "IGDB_MIN_INTERVAL": 0,
             "SESSION_COOKIE_SECURE": False,
         }
     )
     web = _Server(app).start()
     try:
-        yield Stack(url=f"http://127.0.0.1:{web.port}", rawg=rawg, app=app)
+        yield Stack(url=f"http://127.0.0.1:{web.port}", igdb=igdb, app=app)
     finally:
         web.stop()
-        rawg.stop()
+        igdb.stop()
 
 
 @pytest.fixture(scope="session")
@@ -147,7 +153,7 @@ class Client:
             timezone_id=timezone_id,
             reduced_motion="reduce" if reduced_motion else "no-preference",
         )
-        self.context.route(re.compile(r"https://media\.rawg\.io/.*"), _fake_cover)
+        self.context.route(re.compile(r"https://images\.igdb\.com/.*"), _fake_cover)
         self.page = self.context.new_page()
         self.errors: list[str] = []
         self.page.on("pageerror", lambda e: self.errors.append(f"pageerror: {e}"))

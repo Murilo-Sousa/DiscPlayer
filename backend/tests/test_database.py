@@ -23,9 +23,10 @@ def add_user(conn, name="ana"):
     ).lastrowid
 
 
-def add_game(conn, rawg_id=1):
+def add_game(conn, igdb_id=1, column="igdb_id"):
+    """`column` é "rawg_id" nos bancos anteriores à migração 0005."""
     return conn.execute(
-        "INSERT INTO games (rawg_id, name, slug, created_at) VALUES (?, 'G', 'g', ?)", (rawg_id, utcnow_iso())
+        f"INSERT INTO games ({column}, name, slug, created_at) VALUES (?, 'G', 'g', ?)", (igdb_id, utcnow_iso())
     ).lastrowid
 
 
@@ -60,6 +61,7 @@ def test_migrations_are_applied_once(app):
         "0002_jogadas_spoilers_foto_conta",
         "0003_regras_do_diario",
         "0004_perfis_de_exemplo",
+        "0005_igdb",
     ]
 
 
@@ -84,7 +86,7 @@ def test_migration_0002_keeps_existing_data_and_prepares_new_columns(tmp_path, m
         " VALUES ('bia', 'Bia', 'bia@x.co', 'h', ?)",
         (utcnow_iso(),),
     ).lastrowid
-    game = add_game(raw)
+    game = add_game(raw, column="rawg_id")
     raw.execute(
         "INSERT INTO reviews (user_id, game_id, rating, body, created_at) VALUES (?, ?, 8, 'Boa', ?)",
         (ana, game, utcnow_iso()),
@@ -100,6 +102,7 @@ def test_migration_0002_keeps_existing_data_and_prepares_new_columns(tmp_path, m
         "0002_jogadas_spoilers_foto_conta",
         "0003_regras_do_diario",
         "0004_perfis_de_exemplo",
+        "0005_igdb",
     ]
 
     raw = database.connect(path)
@@ -113,6 +116,43 @@ def test_migration_0002_keeps_existing_data_and_prepares_new_columns(tmp_path, m
         keys = [u["session_key"] for u in users]
         assert all(keys) and len(set(keys)) == 2  # cada conta antiga ganhou uma chave própria
         assert raw.execute("SELECT COUNT(*) FROM playthroughs").fetchone()[0] == 0
+    finally:
+        raw.close()
+
+
+def test_migration_0005_keeps_games_saved_with_the_rawg_but_they_can_never_collide_with_the_igdb(tmp_path, monkeypatch):
+    """Os números da RAWG não valem no IGDB: os jogos já guardados passam a negativos, sem apagar nada."""
+    old = tmp_path / "old-migrations"
+    old.mkdir()
+    for file in sorted(database.MIGRATIONS_DIR.glob("000[1-4]_*.sql")):
+        (old / file.name).write_text(file.read_text(encoding="utf-8"), encoding="utf-8")
+    monkeypatch.setattr(database, "MIGRATIONS_DIR", old)
+    path = tmp_path / "rawg-era.db"
+    assert len(database.migrate(path)) == 4
+
+    raw = database.connect(path)
+    ana = raw.execute(
+        "INSERT INTO users (username, display_name, email, password_hash, created_at)"
+        " VALUES ('ana', 'Ana', 'ana@x.co', 'h', ?)",
+        (utcnow_iso(),),
+    ).lastrowid
+    hades, celeste = add_game(raw, 3328, "rawg_id"), add_game(raw, 4200, "rawg_id")  # números da RAWG
+    raw.execute(
+        "INSERT INTO reviews (user_id, game_id, rating, body, created_at) VALUES (?, ?, 9, 'Ótimo', ?)",
+        (ana, hades, utcnow_iso()),
+    )
+    raw.close()
+
+    monkeypatch.undo()
+    assert database.migrate(path) == ["0005_igdb"]
+    raw = database.connect(path)
+    try:
+        rows = raw.execute("SELECT id, igdb_id FROM games ORDER BY id").fetchall()
+        assert [(r["id"], r["igdb_id"]) for r in rows] == [(hades, -3328), (celeste, -4200)]
+        assert raw.execute("SELECT body FROM reviews").fetchone()["body"] == "Ótimo"  # nada foi apagado
+        # um jogo novo do IGDB com o mesmo número não esbarra no antigo
+        add_game(raw, 3328)
+        assert raw.execute("SELECT COUNT(*) FROM games").fetchone()[0] == 3
     finally:
         raw.close()
 
@@ -265,8 +305,8 @@ def test_concurrent_writers_do_not_corrupt_data(app):
     errors: list[int] = []
 
     def work(client):
-        for rawg_id in range(900001, 900006):
-            status = client.put(f"/api/library/{rawg_id}", {"status": "jogando"}).status_code
+        for igdb_id in range(900001, 900006):
+            status = client.put(f"/api/library/{igdb_id}", {"status": "jogando"}).status_code
             if status not in (200, 201):
                 errors.append(status)
 

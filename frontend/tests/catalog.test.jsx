@@ -9,7 +9,7 @@ import { StatusDock } from "../src/pages/game/StatusDock.jsx";
 import { count, html } from "./helpers.jsx";
 
 const hades = {
-  rawg_id: 5,
+  igdb_id: 5,
   name: "Hades",
   slug: "hades",
   released: "2020-09-17",
@@ -91,7 +91,7 @@ test("a prateleira tem título, ação e uma lista de jogos", () => {
         <GameCard game={hades} />
       </ShelfItem>
       <ShelfItem>
-        <GameCard game={{ ...hades, rawg_id: 6, name: "Celeste" }} />
+        <GameCard game={{ ...hades, igdb_id: 6, name: "Celeste" }} />
       </ShelfItem>
     </GameShelf>,
   );

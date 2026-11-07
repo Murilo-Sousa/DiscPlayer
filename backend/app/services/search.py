@@ -1,4 +1,4 @@
-"""Pesquisa local (usuários, listas públicas e reviews). Os jogos vêm da RAWG."""
+"""Pesquisa local (usuários, listas públicas e reviews). Os jogos vêm do IGDB."""
 from __future__ import annotations
 
 import sqlite3

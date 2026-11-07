@@ -9,7 +9,7 @@ import { playSpan } from "../../utils/format.js";
  * Histórico de jogadas de um jogo: as anteriores (que dá para excluir) e a atual.
  * Só aparece depois do primeiro "Jogar de novo".
  */
-export function Playthroughs({ rawgId, entry, playthroughs, onChanged }) {
+export function Playthroughs({ igdbId, entry, playthroughs, onChanged }) {
   const toast = useToast();
   const [target, setTarget] = useState(null); // { id, number }
   const [pending, setPending] = useState(false);
@@ -19,7 +19,7 @@ export function Playthroughs({ rawgId, entry, playthroughs, onChanged }) {
   const remove = async () => {
     setPending(true);
     try {
-      const result = await libraryApi.removePlaythrough(rawgId, target.id);
+      const result = await libraryApi.removePlaythrough(igdbId, target.id);
       setTarget(null);
       onChanged(result);
       toast.success("Jogada excluída do histórico.");

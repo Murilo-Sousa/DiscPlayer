@@ -71,7 +71,7 @@ export default function SearchPage() {
               <>
                 <GameGrid dense>
                   {data.games.items.map((game) => (
-                    <GameCard key={game.rawg_id} game={game} />
+                    <GameCard key={game.igdb_id} game={game} />
                   ))}
                 </GameGrid>
                 <p className="section-foot">

@@ -18,7 +18,7 @@ from ..services import previews
 bp = Blueprint("spa", __name__)
 
 # O front-end só carrega recursos do próprio domínio, com duas exceções:
-# imagens (capas da RAWG em https; a foto de perfil é do próprio domínio; blob: é a prévia da foto
+# imagens (capas do IGDB em https; a foto de perfil é do próprio domínio; blob: é a prévia da foto
 # escolhida, criada pelo próprio navegador antes do envio) e estilos em linha do React (atributo style).
 CONTENT_SECURITY_POLICY = (
     "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
@@ -106,7 +106,7 @@ def render_index(dist: Path, path: str) -> str:
     """O index.html com título, descrição e imagem de prévia do endereço pedido."""
     base = _site_base()
     if previews.is_dynamic(path) and check_rate("preview", PREVIEW_LIMIT, 60) is not None:
-        preview = previews.default_preview(base)  # excesso de pedidos: não gasta banco nem RAWG
+        preview = previews.default_preview(base)  # excesso de pedidos: não gasta banco nem IGDB
     else:
         preview = previews.for_path(path, base)
     url = f"{base}/{path.strip('/')}"

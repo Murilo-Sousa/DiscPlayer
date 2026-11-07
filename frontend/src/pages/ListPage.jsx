@@ -21,16 +21,16 @@ function AddGamesDialog({ open, onClose, list, onAdded }) {
   const term = useDebounced(text.trim(), 350);
   const enabled = open && term.length >= 2;
   const state = useAsync((signal) => (enabled ? gamesApi.catalog({ q: term, per_page: 10 }, { signal }) : Promise.resolve(null)), [enabled, term]);
-  const inList = new Set(list.items.map((item) => item.game.rawg_id));
+  const inList = new Set(list.items.map((item) => item.game.igdb_id));
 
   useEffect(() => {
     if (!open) setText("");
   }, [open]);
 
   const add = async (game) => {
-    setBusy(game.rawg_id);
+    setBusy(game.igdb_id);
     try {
-      const result = await listsApi.addGame(list.id, game.rawg_id);
+      const result = await listsApi.addGame(list.id, game.igdb_id);
       onAdded(result.list);
       toast.success(`“${game.name}” entrou na lista.`);
     } catch (error) {
@@ -63,15 +63,15 @@ function AddGamesDialog({ open, onClose, list, onAdded }) {
         ) : (
           <ul className="add-list">
             {state.data.results.map((game) => {
-              const already = inList.has(game.rawg_id);
+              const already = inList.has(game.igdb_id);
               return (
-                <li key={game.rawg_id} className="add-row">
+                <li key={game.igdb_id} className="add-row">
                   <Cover game={game} ratio="poster" className="add-cover" />
                   <span className="add-text">
                     <span className="add-name">{game.name}</span>
                     <span className="muted">{formatYear(game.released)}</span>
                   </span>
-                  <button type="button" className="btn" disabled={already || busy === game.rawg_id || list.items.length >= 200} onClick={() => add(game)}>
+                  <button type="button" className="btn" disabled={already || busy === game.igdb_id || list.items.length >= 200} onClick={() => add(game)}>
                     {already ? "Na lista" : "Adicionar"}
                     <span className="sr-only">: {game.name}</span>
                   </button>
@@ -144,10 +144,10 @@ export default function ListPage() {
     if (target < 0 || target >= items.length) return;
     const moved = items[index];
     [items[index], items[target]] = [items[target], items[index]];
-    focusAfter.current = { id: moved.game.rawg_id, dir: delta < 0 ? "up" : "down" };
+    focusAfter.current = { id: moved.game.igdb_id, dir: delta < 0 ? "up" : "down" };
     setList({ ...list, items: items.map((item, position) => ({ ...item, position })) });
     try {
-      const result = await listsApi.reorder(list.id, items.map((item) => item.game.rawg_id));
+      const result = await listsApi.reorder(list.id, items.map((item) => item.game.igdb_id));
       setList(result.list);
     } catch (error) {
       toast.error(error.message);
@@ -158,7 +158,7 @@ export default function ListPage() {
   const removeGame = async (item) => {
     setBusy(true);
     try {
-      const result = await listsApi.removeGame(list.id, item.game.rawg_id);
+      const result = await listsApi.removeGame(list.id, item.game.igdb_id);
       setList(result.list);
       toast.success(`“${item.game.name}” saiu da lista.`);
     } catch (error) {
@@ -238,7 +238,7 @@ export default function ListPage() {
       ) : (
         <ol className="list-items" aria-busy={state.loading || undefined}>
           {list.items.map((item, index) => (
-            <li key={item.game.rawg_id} className="list-item">
+            <li key={item.game.igdb_id} className="list-item">
               <span className="list-item-position" aria-hidden="true">
                 {index + 1}
               </span>
@@ -255,10 +255,10 @@ export default function ListPage() {
               </span>
               {list.is_owner && (
                 <span className="list-item-tools">
-                  <button type="button" id={`move-up-${item.game.rawg_id}`} className="icon-btn" disabled={index === 0} onClick={() => move(index, -1)} aria-label={`Mover ${item.game.name} para cima`}>
+                  <button type="button" id={`move-up-${item.game.igdb_id}`} className="icon-btn" disabled={index === 0} onClick={() => move(index, -1)} aria-label={`Mover ${item.game.name} para cima`}>
                     <Icon name="up" size={18} />
                   </button>
-                  <button type="button" id={`move-down-${item.game.rawg_id}`} className="icon-btn" disabled={index === list.items.length - 1} onClick={() => move(index, 1)} aria-label={`Mover ${item.game.name} para baixo`}>
+                  <button type="button" id={`move-down-${item.game.igdb_id}`} className="icon-btn" disabled={index === list.items.length - 1} onClick={() => move(index, 1)} aria-label={`Mover ${item.game.name} para baixo`}>
                     <Icon name="down" size={18} />
                   </button>
                   <button type="button" className="icon-btn" disabled={busy} onClick={() => removeGame(item)} aria-label={`Remover ${item.game.name} da lista`}>

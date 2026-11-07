@@ -5,7 +5,7 @@ import re
 from playwright.sync_api import expect
 
 from helpers import api, open_game, register
-from tests.fake_rawg import by_name
+from tests.fake_igdb import by_name
 
 
 def gid(nome):
@@ -79,7 +79,7 @@ def test_chip_de_genero_filtra_pela_url_e_clicar_de_novo_tira(stack, client):
     todos = page.get_by_role("button", name="Todos", exact=True)
     expect(todos).to_have_attribute("aria-pressed", "true")
     rpg.click()
-    expect(page).to_have_url(re.compile(r"genero=rpg"))
+    expect(page).to_have_url(re.compile(r"genero=role-playing-rpg"))
     expect(rpg).to_have_attribute("aria-pressed", "true")
     expect(todos).to_have_attribute("aria-pressed", "false")
     page.wait_for_selector(".catalog-results .game-card")
@@ -122,7 +122,7 @@ def test_o_painel_de_filtros_abre_conta_os_filtros_e_os_chips_tiram_um_a_um(stac
 
 
 def test_filtros_na_url_abrem_o_catalogo_ja_filtrado_e_sem_resultado_oferece_limpar(stack, client):
-    client.open("/jogos?genero=rpg&ano=1990")
+    client.open("/jogos?genero=role-playing-rpg&ano=1990")
     page = client.page
     expect(page.get_by_text("Nenhum jogo com esses filtros")).to_be_visible()
     page.get_by_role("button", name="Limpar filtros").click()

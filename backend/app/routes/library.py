@@ -105,16 +105,16 @@ def _read_changes(data: dict) -> dict:
     return changes
 
 
-@bp.put("/<int:rawg_id>")
+@bp.put("/<int:igdb_id>")
 @login_required
-def save_entry(rawg_id: int):
+def save_entry(igdb_id: int):
     """Cria ou atualiza o registro do jogo. Só os campos enviados mudam."""
     data = json_body()
     changes = _read_changes(data)
     # "Só se for novo": os atalhos dos cards (guardar na fila) nunca podem mexer num jogo que já está no diário,
     # por exemplo se ele foi registrado em outra aba depois que a página carregou.
     create_only = data.get("create_only") is True
-    game = games_service.ensure_game(rawg_id)  # consulta a RAWG antes de abrir transação de escrita
+    game = games_service.ensure_game(igdb_id)  # consulta o IGDB antes de abrir transação de escrita
     user_id = current_user()["id"]
     with transaction():
         if create_only and library_service.get_entry(user_id, game["id"]):
@@ -134,17 +134,17 @@ def _entry_with_history(user_id: int, game: dict, entry) -> dict:
     }
 
 
-@bp.post("/<int:rawg_id>/replay")
+@bp.post("/<int:igdb_id>/replay")
 @login_required
 @rate_limit("library-write", 60, 60)
-def replay(rawg_id: int):
+def replay(igdb_id: int):
     """"Jogar de novo": guarda a jogada atual no histórico do jogo e começa outra."""
     data = json_body()
     errors = FieldErrors()
     today = read_client_today(data, errors)
     errors.raise_if_any()
     user_id = current_user()["id"]
-    game = games_service.get_local_game(rawg_id)
+    game = games_service.get_local_game(igdb_id)
     if game is None:
         raise ApiError(404, "not_found", "Este jogo não está no seu diário.")
     entry = library_service.replay_entry(user_id, game["id"], today=today)
@@ -153,23 +153,23 @@ def replay(rawg_id: int):
     return response
 
 
-@bp.delete("/<int:rawg_id>/playthroughs/<int:playthrough_id>")
+@bp.delete("/<int:igdb_id>/playthroughs/<int:playthrough_id>")
 @login_required
-def remove_playthrough(rawg_id: int, playthrough_id: int):
+def remove_playthrough(igdb_id: int, playthrough_id: int):
     user_id = current_user()["id"]
-    game = games_service.get_local_game(rawg_id)
+    game = games_service.get_local_game(igdb_id)
     if game is None or not library_service.delete_playthrough(user_id, game["id"], playthrough_id):
         raise ApiError(404, "not_found", "Jogada não encontrada.")
     entry = library_service.get_entry(user_id, game["id"])
     return jsonify(_entry_with_history(user_id, game, entry))
 
 
-@bp.delete("/<int:rawg_id>")
+@bp.delete("/<int:igdb_id>")
 @login_required
-def remove_entry(rawg_id: int):
+def remove_entry(igdb_id: int):
     data = request.get_json(silent=True)  # opcional: {"with_review": true} confirma que a nota sai junto
     confirmed = isinstance(data, dict) and data.get("with_review") is True
-    game = games_service.get_local_game(rawg_id)
+    game = games_service.get_local_game(igdb_id)
     result = library_service.delete_entry(current_user()["id"], game["id"], confirm_review=confirmed) if game else None
     if result is None:
         raise ApiError(404, "not_found", "Este jogo não está na sua biblioteca.")

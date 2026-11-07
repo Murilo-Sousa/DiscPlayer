@@ -25,34 +25,34 @@ export const gamesApi = {
   topRated: (params, options) => http.get("/games/top-rated", { ...options, params }),
   genres: (options) => http.get("/genres", options),
   platforms: (options) => http.get("/platforms", options),
-  detail: (rawgId, options) => http.get(`/games/${rawgId}`, options),
-  // Mais jogos do primeiro gênero do jogo (sem ele). Se a RAWG falhar, vem uma lista vazia.
-  related: (rawgId, options) => http.get(`/games/${rawgId}/related`, options),
+  detail: (igdbId, options) => http.get(`/games/${igdbId}`, options),
+  // Mais jogos do primeiro gênero do jogo (sem ele). Se o IGDB falhar, vem uma lista vazia.
+  related: (igdbId, options) => http.get(`/games/${igdbId}/related`, options),
   // Quem o usuário logado segue e já jogou o jogo (status, favorito e nota de cada pessoa).
-  following: (rawgId, options) => http.get(`/games/${rawgId}/following`, options),
-  reviews: (rawgId, params, options) => http.get(`/games/${rawgId}/reviews`, { ...options, params }),
+  following: (igdbId, options) => http.get(`/games/${igdbId}/following`, options),
+  reviews: (igdbId, params, options) => http.get(`/games/${igdbId}/reviews`, { ...options, params }),
 };
 
 export const libraryApi = {
   mine: (params, options) => http.get("/library", { ...options, params }),
   // Quais destes jogos já estão no diário de quem está logado, e com que status (para os cards).
-  statuses: (rawgIds, options) => http.get("/library/status", { ...options, params: { ids: rawgIds.join(",") } }),
+  statuses: (igdbIds, options) => http.get("/library/status", { ...options, params: { ids: igdbIds.join(",") } }),
   // "Guardar na fila" a partir de um card: só cria. Se o jogo já estiver no diário, o servidor recusa (409) e não muda nada.
-  queue: (rawgId) => http.put(`/library/${rawgId}`, { today: localToday(), status: "quero_jogar", create_only: true }),
+  queue: (igdbId) => http.put(`/library/${igdbId}`, { today: localToday(), status: "quero_jogar", create_only: true }),
   // `today` é a data local de quem usa o site: o servidor a usa ao preencher início/término automaticamente.
-  save: (rawgId, data) => http.put(`/library/${rawgId}`, { today: localToday(), ...data }),
+  save: (igdbId, data) => http.put(`/library/${igdbId}`, { today: localToday(), ...data }),
   // Se o jogo tem nota, a nota sai junto: o servidor só aceita isso com `withReview` (a pessoa já viu o aviso).
-  remove: (rawgId, { withReview = false } = {}) =>
-    http.delete(`/library/${rawgId}`, withReview ? { body: { with_review: true } } : undefined),
+  remove: (igdbId, { withReview = false } = {}) =>
+    http.delete(`/library/${igdbId}`, withReview ? { body: { with_review: true } } : undefined),
   // "Jogar de novo": a jogada atual vai para o histórico do jogo e começa outra (início em hoje, no fuso de quem usa).
-  replay: (rawgId) => http.post(`/library/${rawgId}/replay`, { today: localToday() }),
-  removePlaythrough: (rawgId, id) => http.delete(`/library/${rawgId}/playthroughs/${id}`),
+  replay: (igdbId) => http.post(`/library/${igdbId}/replay`, { today: localToday() }),
+  removePlaythrough: (igdbId, id) => http.delete(`/library/${igdbId}/playthroughs/${id}`),
 };
 
 export const reviewsApi = {
   recent: (params, options) => http.get("/reviews", { ...options, params }),
   // `today` é a data local de quem usa o site: o servidor a usa para saber se o jogo já saiu.
-  create: (rawgId, data) => http.post(`/games/${rawgId}/reviews`, { today: localToday(), ...data }),
+  create: (igdbId, data) => http.post(`/games/${igdbId}/reviews`, { today: localToday(), ...data }),
   update: (id, data) => http.patch(`/reviews/${id}`, data),
   remove: (id) => http.delete(`/reviews/${id}`),
   like: (id) => http.put(`/reviews/${id}/like`),
@@ -66,9 +66,9 @@ export const listsApi = {
   create: (data) => http.post("/lists", data),
   update: (id, data) => http.patch(`/lists/${id}`, data),
   remove: (id) => http.delete(`/lists/${id}`),
-  addGame: (id, rawgId) => http.post(`/lists/${id}/games`, { rawg_id: rawgId }),
-  removeGame: (id, rawgId) => http.delete(`/lists/${id}/games/${rawgId}`),
-  reorder: (id, rawgIds) => http.put(`/lists/${id}/order`, { rawg_ids: rawgIds }),
+  addGame: (id, igdbId) => http.post(`/lists/${id}/games`, { igdb_id: igdbId }),
+  removeGame: (id, igdbId) => http.delete(`/lists/${id}/games/${igdbId}`),
+  reorder: (id, igdbIds) => http.put(`/lists/${id}/order`, { igdb_ids: igdbIds }),
 };
 
 export const usersApi = {

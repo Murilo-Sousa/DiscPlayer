@@ -4,7 +4,7 @@ As consultas SQL do projeto seguem um contrato de apelidos de coluna, que é o
 que estas funções esperam:
 
   usuário   username, display_name, avatar_url            (+ bio, created_at)
-  jogo      rawg_id, game_name, game_slug, cover_url      (+ release_date)
+  jogo      igdb_id, game_name, game_slug, cover_url      (+ release_date)
   review    review_id, rating, body, has_spoilers, review_created_at,
             review_updated_at, like_count, liked
   registro  status, is_favorite, started_at, completed_at, status_changed_at,
@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import sqlite3
 
-from .services.rawg import thumb_url
+from .services.igdb import thumb_url
 
 EXCERPT_LENGTH = 280
 
@@ -58,9 +58,9 @@ def user_public(row: dict | sqlite3.Row) -> dict:
     return data
 
 
-def game_out(rawg_id: int, name: str, slug: str, cover_url: str | None, release_date: str | None = None) -> dict:
+def game_out(igdb_id: int, name: str, slug: str, cover_url: str | None, release_date: str | None = None) -> dict:
     return {
-        "rawg_id": rawg_id,
+        "igdb_id": igdb_id,
         "name": name,
         "slug": slug,
         "cover_url": cover_url,
@@ -71,7 +71,7 @@ def game_out(rawg_id: int, name: str, slug: str, cover_url: str | None, release_
 
 def game_from_row(row: sqlite3.Row) -> dict:
     return game_out(
-        row["rawg_id"],
+        row["igdb_id"],
         row["game_name"],
         row["game_slug"],
         row["cover_url"],
@@ -80,7 +80,7 @@ def game_from_row(row: sqlite3.Row) -> dict:
 
 
 def game_from_local(game: dict) -> dict:
-    return game_out(game["rawg_id"], game["name"], game["slug"], game["cover_url"], game.get("release_date"))
+    return game_out(game["igdb_id"], game["name"], game["slug"], game["cover_url"], game.get("release_date"))
 
 
 def entry_from_row(row: sqlite3.Row) -> dict:

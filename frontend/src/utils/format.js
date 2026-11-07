@@ -150,7 +150,7 @@ export function paragraphs(text) {
 
 /** Caminho da página de um jogo. O trecho do slug só embeleza a URL. */
 export function gamePath(game) {
-  const id = game.rawg_id ?? game.id;
+  const id = game.igdb_id ?? game.id;
   return game.slug ? `/jogos/${id}-${game.slug}` : `/jogos/${id}`;
 }
 

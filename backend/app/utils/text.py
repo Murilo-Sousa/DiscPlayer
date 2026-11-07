@@ -32,7 +32,7 @@ class _TextExtractor(HTMLParser):
 def strip_html(value: str | None, max_len: int = 6000) -> str:
     """Converte HTML em texto puro (parágrafos separados por linha em branco).
 
-    A descrição dos jogos vem da RAWG como HTML. Em vez de tentar "sanitizar"
+    A descrição dos jogos pode vir com HTML. Em vez de tentar "sanitizar"
     HTML, o back-end entrega apenas texto e o React o renderiza como texto, o
     que elimina a superfície de XSS.
     """

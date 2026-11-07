@@ -12,8 +12,8 @@ Cuidados de projeto:
   * As contas não fazem login: a senha é aleatória e ninguém a conhece (e o login ainda recusa contas de exemplo).
   * Tudo passa pelas mesmas regras do diário de uma pessoa real: só avalia quem começou o jogo, "Quero jogar" não tem
     datas, e assim por diante. Só as datas de criação são recuadas, para a atividade não nascer toda no mesmo minuto.
-  * Os jogos vêm da RAWG (busca pelo nome, na hora do seed): nenhum identificador ou capa é inventado. Um jogo que a
-    RAWG não encontrar é pulado, junto com o que dependia dele.
+  * Os jogos vêm do IGDB (busca pelo nome, na hora do seed): nenhum identificador ou capa é inventado. Um jogo que o
+    IGDB não encontrar é pulado, junto com o que dependia dele.
   * Em produção o comando pede `--sim`, para ninguém criar perfis de exemplo num site de verdade sem querer.
 """
 from __future__ import annotations
@@ -29,7 +29,7 @@ from . import db as database
 from .auth import hash_password
 from .db import execute, fetch_all, fetch_one, transaction
 from .services import games as games_service
-from .services import library, lists as lists_service, rawg
+from .services import library, lists as lists_service, igdb
 from .services import reviews as reviews_service
 from .utils.dates import today_utc, utcnow_iso
 
@@ -353,29 +353,29 @@ def _norm(text: str) -> str:
     return "".join(ch for ch in text.casefold() if ch.isalnum())
 
 
-def _find_on_rawg(name: str) -> int | None:
-    """O id do jogo na RAWG: o resultado com o mesmo nome; na falta dele, o primeiro cujo nome contém o procurado."""
-    found = rawg.search_games(search=name, page_size=10)["results"]
+def _find_on_igdb(name: str) -> int | None:
+    """O id do jogo no IGDB: o resultado com o mesmo nome; na falta dele, o primeiro cujo nome contém o procurado."""
+    found = igdb.search_games(search=name, page_size=10)["results"]
     wanted = _norm(name)
     for item in found:
         if _norm(item["name"]) == wanted:
-            return item["rawg_id"]
+            return item["igdb_id"]
     for item in found:
         if wanted in _norm(item["name"]):
-            return item["rawg_id"]
+            return item["igdb_id"]
     return None
 
 
 def _resolve_games() -> tuple[dict[str, dict], list[str]]:
-    """Procura cada jogo na RAWG e guarda a cópia local. Devolve (nome -> jogo, nomes não encontrados)."""
+    """Procura cada jogo no IGDB e guarda a cópia local. Devolve (nome -> jogo, nomes não encontrados)."""
     resolved: dict[str, dict] = {}
     missing: list[str] = []
     for name in _names_needed():
-        rawg_id = _find_on_rawg(name)
-        if rawg_id is None:
+        igdb_id = _find_on_igdb(name)
+        if igdb_id is None:
             missing.append(name)
             continue
-        resolved[name] = games_service.ensure_game(rawg_id)
+        resolved[name] = games_service.ensure_game(igdb_id)
     return resolved, missing
 
 
@@ -397,10 +397,10 @@ def seed() -> dict:
         )
     try:
         games, missing = _resolve_games()
-    except rawg.RawgError as exc:
-        raise DemoError(f"Não consegui falar com a RAWG para escolher os jogos ({exc.message}). Nada foi criado.") from exc
+    except igdb.IgdbError as exc:
+        raise DemoError(f"Não consegui falar com o IGDB para escolher os jogos ({exc.message}). Nada foi criado.") from exc
     if len(games) < len(_names_needed()) * 0.7:
-        raise DemoError("A RAWG não encontrou jogos suficientes para montar os perfis de exemplo. Nada foi criado.")
+        raise DemoError("O IGDB não encontrou jogos suficientes para montar os perfis de exemplo. Nada foi criado.")
 
     today = today_utc()
     today_iso = today.isoformat()
@@ -535,7 +535,7 @@ def main(argv: list[str] | None = None) -> int:
                         f"{result['lists']} listas, {result['follows']} seguidas e {result['likes']} curtidas."
                     )
                     if result["missing"]:
-                        print("Jogos que a RAWG não achou e foram pulados: " + ", ".join(result["missing"]) + ".")
+                        print("Jogos que o IGDB não achou e foram pulados: " + ", ".join(result["missing"]) + ".")
             else:
                 print(f"Removidos {remove()} perfil(is) de exemplo.")
         except DemoError as exc:

@@ -1,6 +1,6 @@
-"""Pesquisa global: jogos (RAWG), jogadores, listas públicas e reviews.
+"""Pesquisa global: jogos (IGDB), jogadores, listas públicas e reviews.
 
-Se a RAWG falhar, os resultados locais continuam sendo entregues e o erro dos
+Se o IGDB falhar, os resultados locais continuam sendo entregues e o erro dos
 jogos vai em `games.error`.
 """
 from __future__ import annotations
@@ -11,7 +11,7 @@ from ..auth import viewer_id
 from ..errors import ApiError
 from ..security import rate_limit
 from ..serializers import excerpt, review_from_row, user_public
-from ..services import rawg
+from ..services import igdb
 from ..services import search as search_service
 from .lists import summaries
 
@@ -38,8 +38,8 @@ def search():
 
     games: dict = {"items": [], "error": None}
     try:
-        games["items"] = rawg.search_games(search=term, page_size=6)["results"]
-    except rawg.RawgError as exc:
+        games["items"] = igdb.search_games(search=term, page_size=6)["results"]
+    except igdb.IgdbError as exc:
         games["error"] = {"code": exc.code, "message": exc.message}
 
     return jsonify(

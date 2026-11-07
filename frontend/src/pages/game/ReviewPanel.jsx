@@ -16,7 +16,7 @@ export const REVIEW_MAX = 5000;
  * Só avalia quem já começou o jogo: sem isso (fora do diário, na fila ou antes do lançamento), o painel explica o que falta
  * em vez de mostrar um formulário que o servidor recusaria. Uma nota que já existe continua editável.
  */
-export function ReviewPanel({ rawgId, game, entry, review, onChanged }) {
+export function ReviewPanel({ igdbId, game, entry, review, onChanged }) {
   const { user } = useAuth();
   const toast = useToast();
   const [editing, setEditing] = useState(false);
@@ -77,7 +77,7 @@ export function ReviewPanel({ rawgId, game, entry, review, onChanged }) {
         await reviewsApi.update(review.id, payload);
         toast.success("Review atualizada.");
       } else {
-        await reviewsApi.create(rawgId, payload);
+        await reviewsApi.create(igdbId, payload);
         toast.success("Review publicada.");
       }
       setEditing(false);

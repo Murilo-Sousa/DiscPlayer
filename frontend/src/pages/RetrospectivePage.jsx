@@ -199,7 +199,7 @@ function CompletedSection({ data }) {
     <Section title={`Zerados em ${year}`}>
       <GameGrid dense>
         {items.map((item) => (
-          <GameCard key={item.game.rawg_id} game={item.game} caption={<Caption item={item} />} showYear={false} />
+          <GameCard key={item.game.igdb_id} game={item.game} caption={<Caption item={item} />} showYear={false} />
         ))}
       </GameGrid>
       {totals.completed_games > items.length && (

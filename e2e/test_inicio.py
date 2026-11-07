@@ -4,7 +4,7 @@ import re
 from playwright.sync_api import expect
 
 from helpers import api, login, register
-from tests.fake_rawg import by_name
+from tests.fake_igdb import by_name
 
 
 def gid(nome):
@@ -32,7 +32,7 @@ def cenario(make_client, **kwargs):
     api(gente["duda"], "PUT", f"/api/library/{gid('Portal 2')}", {"status": "jogando", "started_at": "2026-09-01"})
     lista = api(gente["eva"], "POST", "/api/lists", {"title": "Roguelikes da madrugada", "is_public": True})["list"]
     for nome in ("Hades", "Celeste", "Hollow Knight"):
-        api(gente["eva"], "POST", f"/api/lists/{lista['id']}/games", {"rawg_id": gid(nome)})
+        api(gente["eva"], "POST", f"/api/lists/{lista['id']}/games", {"igdb_id": gid(nome)})
     api(gente["eva"], "PUT", f"/api/library/{gid('Minecraft')}", {"status": "jogando"})
     api(ana, "PUT", f"/api/library/{gid('Super Metroid')}", {"status": "jogando"})  # o jogo de quem vê não aparece
     for usuario in ("bia", "caio", "duda"):

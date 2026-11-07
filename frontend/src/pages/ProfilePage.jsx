@@ -61,7 +61,7 @@ function Summary({ profile, isSelf }) {
           <Section title="Favoritos">
             <GameGrid dense>
               {favorites.map((item) => (
-                <GameCard key={item.game.rawg_id} game={item.game} entry={item.entry} rating={item.rating} />
+                <GameCard key={item.game.igdb_id} game={item.game} entry={item.entry} rating={item.rating} />
               ))}
             </GameGrid>
           </Section>
@@ -124,7 +124,7 @@ function Summary({ profile, isSelf }) {
         <Section title="Atualizados recentemente">
           <GameGrid dense>
             {recent.slice(0, 6).map((item) => (
-              <GameCard key={item.game.rawg_id} game={item.game} entry={item.entry} rating={item.rating} />
+              <GameCard key={item.game.igdb_id} game={item.game} entry={item.entry} rating={item.rating} />
             ))}
           </GameGrid>
         </Section>

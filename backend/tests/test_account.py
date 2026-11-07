@@ -63,7 +63,7 @@ def fill_account(ana, bruno):
     bruno.put("/api/users/ana/follow")
     for owner, title in ((ana, "Lista da ana"), (bruno, "Lista do bruno")):
         list_id = owner.post("/api/lists", {"title": title}).get_json()["list"]["id"]
-        owner.post(f"/api/lists/{list_id}/games", {"rawg_id": HADES})
+        owner.post(f"/api/lists/{list_id}/games", {"igdb_id": HADES})
     ana.upload("/api/auth/me/avatar", images.encode(images.two_halves(300, 300), "PNG"))
     return bruno_review["id"]
 
@@ -185,7 +185,7 @@ def test_the_photo_of_a_deleted_account_stops_being_served(ana, api):
 
 def test_the_accounts_lists_are_gone(ana, api):
     list_id = ana.post("/api/lists", {"title": "Minha lista"}).get_json()["list"]["id"]
-    ana.post(f"/api/lists/{list_id}/games", {"rawg_id": HADES})
+    ana.post(f"/api/lists/{list_id}/games", {"igdb_id": HADES})
     delete_account(ana)
     assert api.get(f"/api/lists/{list_id}").status_code == 404
     assert api.get("/api/lists").get_json()["items"] == []

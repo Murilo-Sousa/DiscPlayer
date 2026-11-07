@@ -19,10 +19,10 @@ function without(entries, ids) {
  * `enabled` só fica verdadeiro depois que o servidor respondeu sobre estes jogos: sem saber o que já está no
  * diário, o atalho não é oferecido. Mesmo assim o servidor só aceita criar (nunca muda um jogo que já existe).
  */
-export function useDiaryEntries(rawgIds) {
+export function useDiaryEntries(igdbIds) {
   const { user } = useAuth();
   const toast = useToast();
-  const key = [...new Set(rawgIds)]
+  const key = [...new Set(igdbIds)]
     .filter((id) => Number.isInteger(id))
     .sort((a, b) => a - b)
     .slice(0, MAX_IDS)
@@ -55,7 +55,7 @@ export function useDiaryEntries(rawgIds) {
 
   const add = useCallback(
     async (game) => {
-      const id = game.rawg_id;
+      const id = game.igdb_id;
       setPending((current) => ({ ...current, [id]: true }));
       try {
         const result = await libraryApi.queue(id);

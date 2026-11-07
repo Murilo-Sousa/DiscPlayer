@@ -78,16 +78,20 @@ def build_config() -> dict:
         # Vazio: usa o endereço da própria requisição.
         "PUBLIC_URL": _public_url(),
         "RATELIMIT_ENABLED": _bool("RATELIMIT_ENABLED", True),
-        # RAWG
-        "RAWG_API_KEY": os.environ.get("RAWG_API_KEY", "").strip(),
-        "RAWG_BASE_URL": os.environ.get("RAWG_BASE_URL", "https://api.rawg.io/api").strip().rstrip("/"),
-        "RAWG_TIMEOUT": (3.05, 8.0),  # (conexão, leitura) em segundos
-        "RAWG_TTL_SEARCH": 300,
-        "RAWG_TTL_FEATURED": 1800,
-        "RAWG_TTL_DETAIL": 6 * 3600,
-        "RAWG_TTL_LOOKUPS": 24 * 3600,
-        # Quanto tempo um item expirado ainda pode ser servido se a RAWG falhar.
-        "RAWG_STALE_TTL": 7 * 24 * 3600,
+        # IGDB (banco de jogos da Twitch): o acesso é um Client ID e um Client Secret, os dois só no servidor.
+        "IGDB_CLIENT_ID": os.environ.get("IGDB_CLIENT_ID", "").strip(),
+        "IGDB_CLIENT_SECRET": os.environ.get("IGDB_CLIENT_SECRET", "").strip(),
+        "IGDB_BASE_URL": os.environ.get("IGDB_BASE_URL", "https://api.igdb.com/v4").strip().rstrip("/"),
+        "IGDB_TOKEN_URL": os.environ.get("IGDB_TOKEN_URL", "https://id.twitch.tv/oauth2/token").strip(),
+        "IGDB_TIMEOUT": (3.05, 8.0),  # (conexão, leitura) em segundos
+        # O IGDB aceita 4 requisições por segundo: este é o intervalo mínimo entre duas chamadas ao serviço.
+        "IGDB_MIN_INTERVAL": 0.26,
+        "IGDB_TTL_SEARCH": 300,
+        "IGDB_TTL_FEATURED": 1800,
+        "IGDB_TTL_DETAIL": 6 * 3600,
+        "IGDB_TTL_LOOKUPS": 24 * 3600,
+        # Quanto tempo um item expirado ainda pode ser servido se o IGDB falhar.
+        "IGDB_STALE_TTL": 7 * 24 * 3600,
         # Conteúdo adulto: explicit (padrão), mature ou off. Valor desconhecido cai no padrão, nunca desliga o filtro.
         "ADULT_CONTENT_FILTER": normalize_level(os.environ.get("ADULT_CONTENT_FILTER")),
         # Front-end compilado (npm run build) servido pelo Flask em produção.

@@ -33,8 +33,8 @@ export function wallGames(featured) {
   const games = [];
   for (const game of [...(featured?.popular ?? []), ...(featured?.new ?? [])]) {
     if (!game?.cover_thumb_url && !game?.cover_url) continue;
-    if (seen.has(game.rawg_id)) continue;
-    seen.add(game.rawg_id);
+    if (seen.has(game.igdb_id)) continue;
+    seen.add(game.igdb_id);
     games.push(game);
   }
   return games.length >= WALL_MIN ? games.slice(0, WALL_SIZE) : [];
@@ -56,7 +56,7 @@ function CoverWall({ games }) {
         {columns.map((column, index) => (
           <ul key={index} className="cover-wall-col">
             {column.map((game) => (
-              <li key={game.rawg_id}>
+              <li key={game.igdb_id}>
                 <Link to={gamePath(game)} className="cover-wall-link">
                   <Cover game={game} ratio="poster" />
                   <span className="cover-wall-name">{game.name}</span>
@@ -94,7 +94,7 @@ function CoverWallSkeleton() {
   );
 }
 
-/** Título editorial e, ao lado, o mural de capas da RAWG. Sem a RAWG, o mural some e o título fica sozinho. */
+/** Título editorial e, ao lado, o mural de capas do IGDB. Sem o IGDB, o mural some e o título fica sozinho. */
 function Hero() {
   const state = useAsync((signal) => gamesApi.featured({ signal }), []);
   const games = state.data ? wallGames(state.data) : [];
@@ -335,7 +335,7 @@ const PRINCIPLES = [
   },
   {
     title: "Média sem maquiagem",
-    text: "A nota do DiscPlayer vem só das pessoas daqui, sempre com o número de avaliações. A da RAWG aparece à parte, com a fonte.",
+    text: "A nota do DiscPlayer vem só das pessoas daqui, sempre com o número de avaliações. A do IGDB aparece à parte, com a fonte.",
   },
   {
     title: "Seus dados são seus",

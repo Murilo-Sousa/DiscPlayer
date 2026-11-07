@@ -12,7 +12,7 @@ import { ApiError } from "../services/http.js";
 import { RatingDiscs } from "../components/Disc.jsx";
 import { formatAverage, formatDate, paragraphs, parseGameParam, plural } from "../utils/format.js";
 import NotFoundPage from "./NotFoundPage.jsx";
-import { CommunityCard, RawgCard } from "./game/CommunityBlock.jsx";
+import { CommunityCard, IgdbCard } from "./game/CommunityBlock.jsx";
 import { FollowingPlayers } from "./game/FollowingPlayers.jsx";
 import { DiaryPanel } from "./game/DiaryPanel.jsx";
 import { ListsPanel } from "./game/ListsPanel.jsx";
@@ -45,7 +45,7 @@ function Description({ text }) {
 }
 
 /**
- * Imagem grande da RAWG, bem apagada, atrás do topo da página. Enfeita sem competir com o texto
+ * Imagem grande do IGDB, bem apagada, atrás do topo da página. Enfeita sem competir com o texto
  * (opacidade baixa, esmaecendo até o fundo) e some sozinha se a imagem não carregar.
  */
 function Backdrop({ src }) {
@@ -67,13 +67,13 @@ function Backdrop({ src }) {
 export default function GamePage() {
   const { id } = useParams();
   const { user, ready } = useAuth();
-  const rawgId = parseGameParam(id);
+  const igdbId = parseGameParam(id);
   const state = useAsync(
     (signal) =>
-      rawgId === null
+      igdbId === null
         ? Promise.reject(new ApiError({ status: 404, code: "not_found", message: "Jogo não encontrado." }))
-        : gamesApi.detail(rawgId, { signal }),
-    [rawgId],
+        : gamesApi.detail(igdbId, { signal }),
+    [igdbId],
   );
   const [reviewsKey, setReviewsKey] = useState(0);
   const diaryRef = useRef(null);
@@ -169,16 +169,10 @@ export default function GamePage() {
                   <dd>{game.publishers.slice(0, 3).join(", ")}</dd>
                 </div>
               )}
-              {game.playtime && (
+              {game.age_rating && (
                 <div>
-                  <dt>Tempo médio (RAWG)</dt>
-                  <dd>{game.playtime} h</dd>
-                </div>
-              )}
-              {game.esrb && (
-                <div>
-                  <dt>Classificação (ESRB)</dt>
-                  <dd>{game.esrb}</dd>
+                  <dt>Classificação ({game.age_rating.organization})</dt>
+                  <dd>{game.age_rating.label}</dd>
                 </div>
               )}
             </dl>
@@ -197,7 +191,7 @@ export default function GamePage() {
               <>
                 <div ref={diaryRef} className="game-diary-anchor">
                 <DiaryPanel
-                  rawgId={game.rawg_id}
+                  igdbId={game.igdb_id}
                   game={game}
                   entry={viewer?.entry ?? null}
                   hasRating={Boolean(viewer?.review)}
@@ -223,13 +217,13 @@ export default function GamePage() {
                 />
                 </div>
                 <ReviewPanel
-                  rawgId={game.rawg_id}
+                  igdbId={game.igdb_id}
                   game={game}
                   entry={viewer?.entry ?? null}
                   review={viewer?.review ?? null}
                   onChanged={refreshAll}
                 />
-                <ListsPanel rawgId={game.rawg_id} memberIds={viewer?.list_ids ?? []} onChange={(list_ids) => patchViewer({ list_ids })} />
+                <ListsPanel igdbId={game.igdb_id} memberIds={viewer?.list_ids ?? []} onChange={(list_ids) => patchViewer({ list_ids })} />
               </>
             ) : (
               <div ref={diaryRef} className="game-diary-anchor">
@@ -241,12 +235,12 @@ export default function GamePage() {
                 </section>
               </div>
             )}
-            <ReviewsList rawgId={game.rawg_id} refreshKey={reviewsKey} />
+            <ReviewsList igdbId={game.igdb_id} refreshKey={reviewsKey} />
           </div>
           <aside className="game-side" aria-label="Notas e dados do jogo">
             <CommunityCard community={community} />
-            <FollowingPlayers key={game.rawg_id} rawgId={game.rawg_id} />
-            <RawgCard game={game} />
+            <FollowingPlayers key={game.igdb_id} igdbId={game.igdb_id} />
+            <IgdbCard game={game} />
             {game.screenshots?.length > 0 && (
               <section className="shots" aria-labelledby="shots-title">
                 <h2 id="shots-title" className="score-title">
@@ -263,7 +257,7 @@ export default function GamePage() {
             )}
           </aside>
         </div>
-        <RelatedShelf key={game.rawg_id} rawgId={game.rawg_id} />
+        <RelatedShelf key={game.igdb_id} igdbId={game.igdb_id} />
       </div>
     </div>
   );

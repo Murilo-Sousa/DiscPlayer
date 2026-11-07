@@ -89,8 +89,8 @@ test("paragraphs separa por linha em branco e descarta vazios", () => {
 });
 
 test("gamePath e parseGameParam", () => {
-  assert.equal(gamePath({ rawg_id: 3498, slug: "gta-v" }), "/jogos/3498-gta-v");
-  assert.equal(gamePath({ rawg_id: 7 }), "/jogos/7");
+  assert.equal(gamePath({ igdb_id: 3498, slug: "gta-v" }), "/jogos/3498-gta-v");
+  assert.equal(gamePath({ igdb_id: 7 }), "/jogos/7");
   assert.equal(parseGameParam("3498-gta-v"), 3498);
   assert.equal(parseGameParam("3498"), 3498);
   assert.equal(parseGameParam("abc"), null);
@@ -115,7 +115,7 @@ test("isAvatarPath aceita só o endereço interno da foto enviada", () => {
   assert.equal(isAvatarPath("/api/avatars/Zm9vYmFyYmF6cXV4"), true);
   assert.equal(isAvatarPath("/api/avatars/abc_DEF-123456"), true);
   for (const bad of [
-    "https://media.rawg.io/a.png",
+    "https://images.igdb.com/igdb/image/upload/a.png",
     "http://exemplo.com/a.png",
     "javascript:alert(1)",
     "data:image/png;base64,AAAA",

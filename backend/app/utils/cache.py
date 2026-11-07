@@ -1,8 +1,8 @@
-"""Cache em memória com expiração, usado para reduzir chamadas à RAWG.
+"""Cache em memória com expiração, usado para reduzir chamadas ao IGDB.
 
 Cada entrada tem um prazo de validade (`ttl`) e um prazo de "obsolescência
 tolerada" (`stale_ttl`): depois que expira, o valor deixa de ser servido
-normalmente, mas continua disponível como último recurso se a RAWG falhar.
+normalmente, mas continua disponível como último recurso se o IGDB falhar.
 """
 from __future__ import annotations
 

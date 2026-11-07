@@ -9,7 +9,7 @@ ACTIVITY_SELECT = """
 SELECT a.id AS activity_id, a.type, a.status AS activity_status, a.is_replay AS activity_is_replay,
        a.created_at AS activity_created_at,
        u.username, u.display_name, u.avatar_url, u.is_demo,
-       g.rawg_id, g.name AS game_name, g.slug AS game_slug, g.cover_url, g.release_date,
+       g.igdb_id, g.name AS game_name, g.slug AS game_slug, g.cover_url, g.release_date,
        r.id AS review_id, r.rating AS review_rating, r.body AS review_body, r.has_spoilers AS review_has_spoilers,
        (SELECT COUNT(*) FROM review_likes rl WHERE rl.review_id = r.id) AS review_like_count,
        l.id AS list_id, l.title AS list_title

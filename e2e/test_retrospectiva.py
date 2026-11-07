@@ -6,7 +6,7 @@ from html.parser import HTMLParser
 from playwright.sync_api import expect
 
 from helpers import api, register, toast_text
-from tests.fake_rawg import by_name
+from tests.fake_igdb import by_name
 
 HADES = by_name("Hades")["id"]
 CELESTE = by_name("Celeste")["id"]
@@ -14,8 +14,8 @@ HOLLOW = by_name("Hollow Knight")["id"]
 ANO_ATUAL = datetime.now(timezone.utc).year  # o servidor conta o ano em UTC
 
 
-def zerar(client, rawg_id, inicio, fim):
-    api(client, "PUT", f"/api/library/{rawg_id}", {"status": "zerado", "started_at": inicio, "completed_at": fim})
+def zerar(client, igdb_id, inicio, fim):
+    api(client, "PUT", f"/api/library/{igdb_id}", {"status": "zerado", "started_at": inicio, "completed_at": fim})
 
 
 def preparar_ana(make_client):

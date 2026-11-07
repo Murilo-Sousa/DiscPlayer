@@ -105,7 +105,7 @@ export function LibraryView({ load, scope, emptyAll, prefix = "library" }) {
             <GameGrid>
               {state.data.items.map((item) => (
                 <GameCard
-                  key={item.game.rawg_id}
+                  key={item.game.igdb_id}
                   game={item.game}
                   entry={item.entry}
                   rating={item.rating}

@@ -4,7 +4,7 @@ import re
 from playwright.sync_api import expect
 
 from helpers import api, login, open_game, register
-from tests.fake_rawg import by_name
+from tests.fake_igdb import by_name
 
 
 def gid(nome):
@@ -34,7 +34,7 @@ def test_colagem_de_capas_da_lista_cabe_na_caixa(stack, make_client):
     register(ana, "Ana Souza", "ana")
     lista = api(ana, "POST", "/api/lists", {"title": "Quatro jogos", "is_public": True})["list"]
     for nome in ("Hades", "Celeste", "Hollow Knight", "Portal 2"):
-        api(ana, "POST", f"/api/lists/{lista['id']}/games", {"rawg_id": gid(nome)})
+        api(ana, "POST", f"/api/lists/{lista['id']}/games", {"igdb_id": gid(nome)})
     for largura in (1280, 390):
         c = make_client(width=largura, height=900)
         c.open("/listas")
@@ -53,7 +53,7 @@ def test_inicio_de_quem_ainda_nao_entrou_mostra_o_mural_de_jogos_em_alta(stack, 
     client.open("/")
     client.page.wait_for_selector(".cover-wall-link")
     nomes = client.page.locator(".cover-wall-name")
-    assert 6 <= nomes.count() <= 15  # a RAWG de teste tem poucos jogos recentes
+    assert 6 <= nomes.count() <= 15  # o IGDB de teste tem poucos jogos recentes
     primeiro = nomes.first.inner_text()
     # O mural anda devagar, e o Playwright espera o elemento parar para clicar: aqui o clique é direto.
     client.page.locator(".cover-wall-link").first.click(force=True)

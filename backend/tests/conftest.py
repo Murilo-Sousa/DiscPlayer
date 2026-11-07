@@ -1,4 +1,4 @@
-"""Fixtures compartilhadas. Nenhum teste fala com a RAWG de verdade."""
+"""Fixtures compartilhadas. Nenhum teste fala com o IGDB de verdade."""
 from __future__ import annotations
 
 import io
@@ -7,9 +7,9 @@ import pytest
 
 from app import create_app
 from app.security import reset_rate_limits
-from app.services import rawg
+from app.services import igdb
 
-from . import fake_rawg
+from . import fake_igdb
 
 PASSWORD = "uma-senha-longa-123"
 
@@ -59,12 +59,12 @@ class Api:
         data = {} if file is None else {name: (io.BytesIO(file), filename)}
         return getattr(self.client, method)(url, data=data, headers=merged, content_type="multipart/form-data")
 
-    def play(self, rawg_id, status="zerado"):
+    def play(self, igdb_id, status="zerado"):
         """Põe o jogo no diário como já jogado, se ainda não estiver: só quem começou o jogo pode avaliá-lo."""
-        entry = (self.get(f"/api/games/{rawg_id}").get_json().get("viewer") or {}).get("entry")
+        entry = (self.get(f"/api/games/{igdb_id}").get_json().get("viewer") or {}).get("entry")
         if entry and entry["status"] != "quero_jogar":
             return
-        response = self.put(f"/api/library/{rawg_id}", {"status": status})
+        response = self.put(f"/api/library/{igdb_id}", {"status": status})
         assert response.status_code in (200, 201), response.get_json()
 
     def register(self, username="ana", email=None, password=PASSWORD, **extra):
@@ -85,20 +85,23 @@ class Api:
 
 @pytest.fixture
 def app(tmp_path, monkeypatch):
-    monkeypatch.setattr(rawg, "fetch_json", fake_rawg.fetch_json)
-    rawg.clear_cache()
+    monkeypatch.setattr(igdb, "fetch_json", fake_igdb.fetch_json)
+    igdb.clear_cache()
+    igdb.clear_token()
     reset_rate_limits()
     application = create_app(
         {
             "TESTING": True,
             "DATABASE": str(tmp_path / "test.db"),
             "RATELIMIT_ENABLED": False,
-            "RAWG_API_KEY": "chave-de-teste",
+            "IGDB_CLIENT_ID": "id-de-teste",
+            "IGDB_CLIENT_SECRET": "segredo-de-teste",
+            "IGDB_MIN_INTERVAL": 0,  # o IGDB simulado não tem limite de requisições
             "FRONTEND_DIST": str(tmp_path / "dist-inexistente"),
         }
     )
     yield application
-    rawg.clear_cache()
+    igdb.clear_cache()
 
 
 @pytest.fixture
@@ -128,10 +131,10 @@ def bruno(make_user) -> Api:
     return make_user("bruno")
 
 
-# ids sintéticos da RAWG simulada
-HADES = fake_rawg.by_name("Hades")["id"]
-CELESTE = fake_rawg.by_name("Celeste")["id"]
-HOLLOW = fake_rawg.by_name("Hollow Knight")["id"]
-ZELDA = fake_rawg.by_name("The Legend of Zelda: Breath of the Wild")["id"]
+# ids sintéticos do IGDB simulado
+HADES = fake_igdb.by_name("Hades")["id"]
+CELESTE = fake_igdb.by_name("Celeste")["id"]
+HOLLOW = fake_igdb.by_name("Hollow Knight")["id"]
+ZELDA = fake_igdb.by_name("The Legend of Zelda: Breath of the Wild")["id"]
 
-UPCOMING = fake_rawg.by_name("Farol do Amanhã")["id"]  # ainda não lançado
+UPCOMING = fake_igdb.by_name("Farol do Amanhã")["id"]  # ainda não lançado

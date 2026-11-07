@@ -7,7 +7,7 @@ export function RankingList({ items }) {
   return (
     <ol className="ranking">
       {items.map((item, index) => (
-        <li key={item.game.rawg_id} className="ranking-item">
+        <li key={item.game.igdb_id} className="ranking-item">
           <span className="ranking-position" aria-hidden="true">
             {index + 1}
           </span>

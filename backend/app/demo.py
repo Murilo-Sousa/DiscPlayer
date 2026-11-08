@@ -5,6 +5,8 @@ portfólio ainda sem comunidade. Nada acontece sozinho: só o comando abaixo cri
 
     python -m app.demo seed      cria os perfis de exemplo (não faz nada se eles já existem)
     python -m app.demo remove    remove todos de uma vez, com diário, notas, listas e curtidas
+    python -m app.demo refresh   refaz os perfis com os jogos de hoje (use depois de trocar de serviço de jogos,
+                                 ou se o filtro de conteúdo adulto mudou); só apaga os antigos com os novos já prontos
     python -m app.demo status    mostra se existem e quantos
 
 Cuidados de projeto:
@@ -26,12 +28,18 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 
 from . import db as database
+from flask import current_app
+
 from .auth import hash_password
 from .db import execute, fetch_all, fetch_one, transaction
+from .services import adult
 from .services import games as games_service
 from .services import library, lists as lists_service, igdb
 from .services import reviews as reviews_service
 from .utils.dates import today_utc, utcnow_iso
+
+
+MIN_GAMES = 8  # com menos jogos que isso os perfis ficariam vazios
 
 
 class DemoError(Exception):
@@ -353,30 +361,42 @@ def _norm(text: str) -> str:
     return "".join(ch for ch in text.casefold() if ch.isalnum())
 
 
-def _find_on_igdb(name: str) -> int | None:
-    """O id do jogo no IGDB: o resultado com o mesmo nome; na falta dele, o primeiro cujo nome contém o procurado."""
-    found = igdb.search_games(search=name, page_size=10)["results"]
+def _find_on_igdb(name: str) -> tuple[int | None, bool]:
+    """(id no IGDB, escondido pelo filtro de conteúdo adulto?).
+
+    Escolhe o resultado com o mesmo nome; na falta dele, o primeiro cujo nome contém o procurado. A busca é feita sem
+    o filtro, de propósito: assim dá para saber se o jogo não existe (`(None, False)`) ou existe e o filtro o esconde
+    (`(id, True)`). Um jogo escondido nunca entra nos perfis, para ninguém ter no diário um jogo cuja página é
+    "indisponível".
+    """
+    query = igdb.Query("games", igdb._SUMMARY_FIELDS, igdb._MAIN_GAMES, igdb.clean_search(name), limit=10)
+    raw = igdb.fetch_json(query)
+    found = [r for r in raw if isinstance(r, dict) and isinstance(r.get("id"), int) and isinstance(r.get("name"), str)] if isinstance(raw, list) else []
     wanted = _norm(name)
-    for item in found:
-        if _norm(item["name"]) == wanted:
-            return item["igdb_id"]
-    for item in found:
-        if wanted in _norm(item["name"]):
-            return item["igdb_id"]
-    return None
+    pick = next((r for r in found if _norm(r["name"]) == wanted), None) or next((r for r in found if wanted in _norm(r["name"])), None)
+    if pick is None:
+        return None, False
+    level = adult.normalize_level(current_app.config.get("ADULT_CONTENT_FILTER"))
+    return pick["id"], adult.is_blocked(pick, level)
 
 
-def _resolve_games() -> tuple[dict[str, dict], list[str]]:
-    """Procura cada jogo no IGDB e guarda a cópia local. Devolve (nome -> jogo, nomes não encontrados)."""
+def _resolve_games() -> tuple[dict[str, dict], list[str], list[str]]:
+    """Procura cada jogo no IGDB e guarda a cópia local.
+
+    Devolve (nome -> jogo, nomes que o IGDB não achou, nomes escondidos pelo filtro de conteúdo adulto).
+    """
     resolved: dict[str, dict] = {}
     missing: list[str] = []
+    hidden: list[str] = []
     for name in _names_needed():
-        igdb_id = _find_on_igdb(name)
+        igdb_id, blocked = _find_on_igdb(name)
         if igdb_id is None:
             missing.append(name)
-            continue
-        resolved[name] = games_service.ensure_game(igdb_id)
-    return resolved, missing
+        elif blocked:
+            hidden.append(name)
+        else:
+            resolved[name] = games_service.ensure_game(igdb_id)
+    return resolved, missing, hidden
 
 
 # ---------------------------------------------------------------------------------------------- comandos
@@ -384,11 +404,24 @@ def count() -> int:
     return fetch_one("SELECT COUNT(*) AS n FROM users WHERE is_demo = 1")["n"]
 
 
-def seed() -> dict:
-    """Cria os perfis de exemplo. Se já existem, não mexe em nada (use `remove` antes para refazer)."""
-    if count():
-        return {"created": False, "users": count()}
-    taken = [p.username for p in CAST if fetch_one("SELECT 1 FROM users WHERE username = ?", (p.username,))]
+def stale_games() -> int:
+    """Quantos jogos das contas de exemplo vêm do serviço antigo (RAWG): têm o número negativo desde a migração 0005
+    e a página deles não abre."""
+    return fetch_one(
+        "SELECT COUNT(DISTINCT g.id) AS n FROM games g WHERE g.igdb_id < 0 AND ("
+        " EXISTS (SELECT 1 FROM library_entries e JOIN users u ON u.id = e.user_id WHERE e.game_id = g.id AND u.is_demo = 1)"
+        " OR EXISTS (SELECT 1 FROM reviews r JOIN users u ON u.id = r.user_id WHERE r.game_id = g.id AND u.is_demo = 1)"
+        " OR EXISTS (SELECT 1 FROM list_games lg JOIN lists l ON l.id = lg.list_id JOIN users u ON u.id = l.user_id"
+        "            WHERE lg.game_id = g.id AND u.is_demo = 1))"
+    )["n"]
+
+
+def seed(*, replace: bool = False) -> dict:
+    """Cria os perfis de exemplo. Se já existem, não mexe em nada, a menos que `replace`: aí os jogos são procurados
+    primeiro e só então os perfis antigos são trocados pelos novos, na mesma transação (se o IGDB falhar, nada muda)."""
+    if count() and not replace:
+        return {"created": False, "users": count(), "stale": stale_games()}
+    taken = [p.username for p in CAST if fetch_one("SELECT 1 FROM users WHERE username = ? AND is_demo = 0", (p.username,))]
     if taken:
         raise DemoError(
             "Estes nomes de usuário já pertencem a contas reais, então os perfis de exemplo não foram criados: "
@@ -396,11 +429,17 @@ def seed() -> dict:
             + "."
         )
     try:
-        games, missing = _resolve_games()
+        games, missing, hidden = _resolve_games()
     except igdb.IgdbError as exc:
-        raise DemoError(f"Não consegui falar com o IGDB para escolher os jogos ({exc.message}). Nada foi criado.") from exc
-    if len(games) < len(_names_needed()) * 0.7:
-        raise DemoError("O IGDB não encontrou jogos suficientes para montar os perfis de exemplo. Nada foi criado.")
+        raise DemoError(f"Não consegui falar com o IGDB para escolher os jogos ({exc.message}). Nada foi alterado.") from exc
+    available = len(_names_needed()) - len(hidden)  # o que o filtro esconde não conta contra o elenco
+    if len(games) < available * 0.7 or len(games) < MIN_GAMES:
+        if hidden:
+            raise DemoError(
+                "O filtro de conteúdo adulto esconde jogos demais do elenco para montar os perfis. "
+                "Use ADULT_CONTENT_FILTER=explicit (ou off) em backend/.env, reinicie e repita. Nada foi alterado."
+            )
+        raise DemoError("O IGDB não encontrou jogos suficientes para montar os perfis de exemplo. Nada foi alterado.")
 
     today = today_utc()
     today_iso = today.isoformat()
@@ -409,6 +448,8 @@ def seed() -> dict:
     reviews: dict[tuple[str, str], int] = {}
 
     with transaction():
+        if replace:
+            execute("DELETE FROM users WHERE is_demo = 1")
         for person in CAST:
             ids[person.username] = execute(
                 "INSERT INTO users (username, display_name, email, password_hash, bio, session_key, created_at, is_demo)"
@@ -492,7 +533,16 @@ def seed() -> dict:
             )
             stats["likes"] += 1
 
-    return {"created": True, "missing": missing, **stats}
+    if replace:
+        with transaction():  # jogos do serviço antigo que ninguém mais usa (os de contas reais ficam, são do diário delas)
+            execute(
+                "DELETE FROM games WHERE igdb_id < 0"
+                " AND NOT EXISTS (SELECT 1 FROM library_entries WHERE game_id = games.id)"
+                " AND NOT EXISTS (SELECT 1 FROM reviews WHERE game_id = games.id)"
+                " AND NOT EXISTS (SELECT 1 FROM list_games WHERE game_id = games.id)"
+            )
+
+    return {"created": True, "missing": missing, "hidden": hidden, **stats}
 
 
 def remove() -> int:
@@ -504,9 +554,18 @@ def remove() -> int:
 
 
 # ---------------------------------------------------------------------------------------------- linha de comando
+def _warn_if_stale(known: int | None = None) -> None:
+    stale = stale_games() if known is None else known
+    if stale:
+        print(
+            f"Atenção: {stale} jogo(s) dos perfis de exemplo vêm do serviço antigo (RAWG) e a página deles não abre. "
+            "Rode: python -m app.demo refresh"
+        )
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m app.demo", description="Perfis de exemplo do DiscPlayer.")
-    parser.add_argument("action", choices=["seed", "remove", "status"])
+    parser.add_argument("action", choices=["seed", "remove", "refresh", "status"])
     parser.add_argument("--sim", action="store_true", help="confirma a ação quando o site está em produção")
     args = parser.parse_args(argv)
 
@@ -525,15 +584,25 @@ def main(argv: list[str] | None = None) -> int:
             if args.action == "status":
                 total = count()
                 print(f"{total} perfil(is) de exemplo." if total else "Não há perfis de exemplo.")
-            elif args.action == "seed":
-                result = seed()
+                _warn_if_stale()
+            elif args.action in ("seed", "refresh"):
+                result = seed(replace=args.action == "refresh")
                 if not result["created"]:
-                    print(f"Os {result['users']} perfis de exemplo já existem. Para refazer: remove e depois seed.")
+                    print(f"Os {result['users']} perfis de exemplo já existem. Para refazê-los: python -m app.demo refresh")
+                    _warn_if_stale(result["stale"])
                 else:
+                    verb = "Refeitos" if args.action == "refresh" else "Criados"
                     print(
-                        f"Criados {result['users']} perfis, {result['entries']} jogos no diário, {result['reviews']} reviews, "
+                        f"{verb} {result['users']} perfis, {result['entries']} jogos no diário, {result['reviews']} reviews, "
                         f"{result['lists']} listas, {result['follows']} seguidas e {result['likes']} curtidas."
                     )
+                    if result["hidden"]:
+                        level = app.config["ADULT_CONTENT_FILTER"]
+                        print(
+                            f"Jogos do elenco que o filtro de conteúdo adulto (nível {level}) esconde, e que ficaram de fora: "
+                            + ", ".join(result["hidden"])
+                            + ". Com ADULT_CONTENT_FILTER=explicit eles entram."
+                        )
                     if result["missing"]:
                         print("Jogos que o IGDB não achou e foram pulados: " + ", ".join(result["missing"]) + ".")
             else:

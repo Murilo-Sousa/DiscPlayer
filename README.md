@@ -1,21 +1,39 @@
 # DiscPlayer
 
 [![CI](https://github.com/Murilo-Sousa/DiscPlayer/actions/workflows/ci.yml/badge.svg)](https://github.com/Murilo-Sousa/DiscPlayer/actions/workflows/ci.yml)
+[![Ver ao vivo](https://img.shields.io/badge/ver%20ao%20vivo-muh.pythonanywhere.com-e5d25b?style=flat-square&labelColor=1a1a1a)](https://muh.pythonanywhere.com)
 
 **O diário e a comunidade dos seus jogos.** Registre o que você joga, dê notas de 0 a 10, escreva reviews, monte listas e veja o que outras pessoas estão jogando. É a ideia do Letterboxd, só que para videogames.
+
+**▶ Experimente agora: <https://muh.pythonanywhere.com>**
 
 Os dados dos jogos (nome, capa, gêneros, plataformas, datas) vêm do [IGDB](https://www.igdb.com), o banco de jogos da Twitch. Todo o resto — contas, diário, notas, reviews, listas, seguidores — é da própria comunidade do DiscPlayer e fica no banco de dados do projeto. Nada na tela é inventado: um site novo mostra estados vazios que explicam como começar.
 
 ## Sumário
 
+- [Demonstração ao vivo](#demonstração-ao-vivo)
 - [O que dá para fazer](#o-que-dá-para-fazer)
 - [Tecnologias](#tecnologias)
+- [Destaques de engenharia](#destaques-de-engenharia)
 - [Abrir no seu computador](#abrir-no-seu-computador)
 - [Testes](#testes)
 - [Como o projeto está organizado](#como-o-projeto-está-organizado)
 - [Documentação](#documentação)
 - [Limitações](#limitações)
+- [Autor](#autor)
 - [Créditos e licenças](#créditos-e-licenças)
+
+## Demonstração ao vivo
+
+**<https://muh.pythonanywhere.com>**
+
+O DiscPlayer está publicado na PythonAnywhere, com o catálogo de jogos vindo do IGDB. Dá para criar uma conta, montar um diário, avaliar jogos, escrever reviews, criar listas e seguir outras pessoas. O passo a passo de como ele foi publicado está em [docs/hospedagem-pythonanywhere.md](docs/hospedagem-pythonanywhere.md).
+
+Algumas coisas que vale saber antes de entrar:
+
+- **É um projeto de portfólio em hospedagem gratuita.** O plano gratuito exige uma renovação todo mês e roda com um único processo, então o site pode ficar fora do ar por um tempo se a renovação atrasar.
+- **Os cadastros são abertos e não há moderação nem recuperação de senha por e-mail.** Não use uma senha que você já usa em outro lugar.
+- **Nada é inventado.** O que aparece no site vem do IGDB (os jogos) ou de quem se cadastrou (todo o resto). Um site novo mostra estados vazios que explicam como começar.
 
 ## O que dá para fazer
 
@@ -39,6 +57,19 @@ Na página de cada jogo, a média das notas da comunidade DiscPlayer e as notas 
 | Banco de dados | SQLite com SQL puro e migrações em arquivos `.sql` |
 | Dados de jogos | API do IGDB (Twitch), sempre intermediada pelo back-end (as credenciais nunca chegam ao navegador) |
 | Testes | pytest, `node:test` e Playwright, rodando a cada alteração no GitHub Actions |
+| Hospedagem | PythonAnywhere (plano gratuito), com HTTPS e cookie `Secure` |
+
+## Destaques de engenharia
+
+O que mais deu trabalho (e mais ensinou) neste projeto, para quem quiser olhar o código com um foco:
+
+- **Sessão e segurança sem atalhos.** Cookie de sessão assinado (`HttpOnly`, `SameSite=Lax`, `Secure` em produção), proteção CSRF por token e checagem do cabeçalho `Origin`, senhas com `scrypt`, limite de tentativas por IP e exclusão de conta que pede a senha de novo. Nada sensível vai para o `localStorage`.
+- **SQL puro com migrações numeradas.** O banco é SQLite, sem ORM, com alterações em arquivos `.sql` aplicados sozinhos quando o back-end sobe. A troca da fonte dos jogos (da RAWG para o IGDB) foi feita por uma migração que não apaga nada do que as pessoas já tinham registrado.
+- **Um cliente do IGDB pensado para falhar bem.** O token da Twitch fica em cache e é renovado sozinho, as chamadas respeitam o limite de 4 por segundo, e um cache guarda a última resposta boa para o catálogo continuar de pé se o IGDB cair. As consultas são montadas a partir de uma estrutura validada, e o que a pessoa digita na busca é limpo antes de virar consulta.
+- **Filtro de conteúdo adulto configurável**, em três níveis, que combina o tema do IGDB com as classificações etárias de várias organizações (ESRB, PEGI, USK, ClassInd, CERO, GRAC e ACB), nas listas, na busca e na página de cada jogo.
+- **Foto de perfil enviada como imagem.** O servidor valida o arquivo, recorta, reduz e guarda no banco, sem pasta de uploads.
+- **Mais de 1.100 testes automatizados** em três camadas (back-end, front-end e navegador de verdade), todos sem depender de internet, com um IGDB simulado. O CI roda tudo a cada alteração.
+- **Interface própria**: tema escuro neutro, tipografia editorial, responsiva e navegável pelo teclado, sem biblioteca de componentes.
 
 ## Abrir no seu computador
 
@@ -234,7 +265,7 @@ DiscPlayer/
 | [Testes](docs/testes.md) | As três suítes de testes e o que cada uma cobre |
 | [Solução de problemas](docs/solucao-de-problemas.md) | Erros comuns e como resolver |
 | [Produção e publicação](docs/producao.md) | Como rodar como servidor de verdade |
-| [Hospedagem gratuita na PythonAnywhere](docs/hospedagem-pythonanywhere.md) | Colocar o código no GitHub e o site no ar, passo a passo |
+| [Hospedagem gratuita na PythonAnywhere](docs/hospedagem-pythonanywhere.md) | O passo a passo usado para publicar o site, do GitHub ao endereço público |
 | [Limitações e próximos passos](docs/limitacoes-e-proximos-passos.md) | O que ainda não existe e o que vem a seguir |
 
 ## Limitações
@@ -245,7 +276,12 @@ Em resumo, e com mais detalhe em [docs/limitacoes-e-proximos-passos.md](docs/lim
 - **Não há e-mails**: sem recuperação de senha, verificação de e-mail ou notificações.
 - **Não há moderação** (denúncias, bloqueios). Planeje isso antes de abrir o cadastro ao público.
 - A interface está **só em português do Brasil**.
-- Se for publicar, leia os [termos da API do IGDB](https://api-docs.igdb.com/#terms-of-service): o uso é gratuito para projetos sem fins comerciais, exige uma conta da Twitch com verificação em duas etapas e pede que o IGDB seja citado como fonte.
+- A hospedagem gratuita tem **um só processo** e precisa ser **renovada todo mês** no painel da PythonAnywhere.
+- O uso da API do IGDB é gratuito para projetos sem fins comerciais, exige uma conta da Twitch com verificação em duas etapas e pede que o IGDB seja citado como fonte (o rodapé do site já faz isso). Se o projeto virar comercial, releia os [termos da API](https://api-docs.igdb.com/#terms-of-service).
+
+## Autor
+
+Feito por **Murilo Sousa** ([@Murilo-Sousa](https://github.com/Murilo-Sousa)).
 
 ## Créditos e licenças
 

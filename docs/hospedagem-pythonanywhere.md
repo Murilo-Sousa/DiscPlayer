@@ -5,8 +5,8 @@ Este guia leva o projeto do seu computador até um endereço público do tipo `h
 > **Antes de começar, três avisos honestos**
 >
 > 1. As informações sobre o plano gratuito foram conferidas nas páginas oficiais em **17/10/2026**. Planos e limites mudam: se algo na tela da PythonAnywhere for diferente do que está aqui, vale a tela deles.
-> 2. O guia **não foi executado de ponta a ponta na PythonAnywhere** (o ambiente onde o projeto foi escrito não alcança o site deles). O que foi testado: o arquivo `deploy/pythonanywhere_wsgi.py` em modo produção, atrás de um balanceador de carga simulado (cookie `Secure`, limite de cadastros por IP real). O resto segue a documentação da PythonAnywhere.
-> 3. O comando `npm run build` (parte 2) roda no CI do GitHub (Ubuntu, Node 22) a cada envio de código, mas ainda não foi visto no Windows. Se ele mostrar um erro, copie a mensagem e peça ajuda antes de seguir.
+> 2. Este passo a passo foi **seguido numa conta gratuita da PythonAnywhere em 08/11/2026**, por quem escreveu o projeto. Nessa execução, o `python -m app.igdb_check` passou no login da Twitch, nos gêneros, nas plataformas, nas listas, na busca, nos filtros e na página de um jogo. Antes disso, só o arquivo `deploy/pythonanywhere_wsgi.py` tinha sido testado, em modo produção e atrás de um balanceador de carga simulado (cookie `Secure`, limite de cadastros por IP real).
+> 3. O comando `npm run build` (parte 2) roda no CI do GitHub (Ubuntu, Node 22) a cada envio de código e também foi executado no Windows em 08/11/2026, gerando a pasta `dist` sem erros. Se ele mostrar um erro no seu computador, copie a mensagem e peça ajuda antes de seguir.
 
 ## O que esperar do plano gratuito
 
@@ -17,9 +17,11 @@ Este guia leva o projeto do seu computador até um endereço público do tipo `h
 | Disco | 512 MiB (o banco SQLite fica nele e **não se perde** entre atualizações). As fotos de perfil também ficam no banco (uns 15 KB cada, 256 KB no máximo), então não há pasta de uploads para configurar |
 | Validade | O web app **expira em 1 mês** se você não o estender: é preciso clicar em um botão no painel todo mês |
 | Suporte | Sem suporte direto para contas gratuitas (só fóruns e documentação) |
-| Acesso à internet de dentro do app | Só a sites de uma lista. `api.igdb.com` **está** na lista, mas `id.twitch.tv` (o login da Twitch, de onde vem o token do IGDB) **não aparecia** na lista quando conferimos em 07/11/2026. Veja o aviso abaixo |
+| Acesso à internet de dentro do app | Só a sites de uma lista. O IGDB e o login da Twitch (de onde vem o token) funcionaram numa conta gratuita em 08/11/2026, mas a lista muda: veja o aviso abaixo |
 
-> **Atenção: a lista de sites liberados e o login da Twitch.** O IGDB exige um token da Twitch, que o back-end pede em `https://id.twitch.tv/oauth2/token`. Em 07/11/2026, a [lista de sites liberados](https://www.pythonanywhere.com/whitelist/) do plano gratuito trazia `api.igdb.com`, mas não `id.twitch.tv`. Se for o caso, o catálogo não carrega na hospedagem gratuita. **Confira antes de publicar:** no console Bash da PythonAnywhere, com o ambiente virtual ativo, rode `cd ~/DiscPlayer/backend && python -m app.igdb_check`. Se a etapa "Login na Twitch" falhar por indisponibilidade, as saídas são (1) pedir a inclusão de `id.twitch.tv` na lista (a PythonAnywhere aceita pedidos para APIs públicas e documentadas, pelo [formulário de pedido](https://help.pythonanywhere.com/pages/RequestingAllowlistAdditions/)), (2) usar um plano pago da PythonAnywhere, que não tem a restrição, ou (3) outra hospedagem. As imagens das capas não dependem disso: elas são carregadas direto pelo navegador de quem visita o site.
+> **Atenção: a lista de sites liberados e o login da Twitch.** O IGDB exige um token da Twitch, que o back-end pede em `https://id.twitch.tv/oauth2/token`. Em 07/11/2026 a [lista de sites liberados](https://www.pythonanywhere.com/whitelist/) do plano gratuito não parecia trazer `id.twitch.tv`, mas em 08/11/2026 o login funcionou numa conta gratuita. Como a lista pode mudar, **confira antes de criar o web app**: no console Bash, com o ambiente virtual ativo, rode `cd ~/DiscPlayer/backend && python -m app.igdb_check`. Se a etapa "Login na Twitch" falhar por indisponibilidade, as saídas são (1) pedir a inclusão de `id.twitch.tv` na lista (a PythonAnywhere aceita pedidos para APIs públicas e documentadas, pelo [formulário de pedido](https://help.pythonanywhere.com/pages/RequestingAllowlistAdditions/)), (2) usar um plano pago da PythonAnywhere, que não tem a restrição, ou (3) outra hospedagem.
+>
+> **A etapa "Imagens" do teste aparece como aviso.** Ela tenta baixar uma capa de dentro do servidor, e o plano gratuito barra `images.igdb.com` (`ProxyError`). Isso não afeta o site: as capas são carregadas pelo navegador de quem visita, e o servidor só passa o endereço delas.
 
 Consequência do processo único: se o IGDB demorar para responder, outras pessoas podem esperar um pouco junto. O cache do projeto reduz isso, mas não elimina.
 
@@ -139,7 +141,7 @@ cd ~/DiscPlayer/backend
 pip install -r requirements.txt
 ```
 
-Se `python3.13` não existir lá, use a versão mais nova que a PythonAnywhere oferecer (o projeto precisa de **3.11 ou superior**). Depois que o `mkvirtualenv` termina, o ambiente já fica ativo (você vê `(discplayer-venv)` no começo da linha).
+Para ver a versão do Python do ambiente, rode `python --version` com ele ativo. Se `python3.13` não existir lá, use a versão mais nova que a PythonAnywhere oferecer (o projeto precisa de **3.11 ou superior**). Depois que o `mkvirtualenv` termina, o ambiente já fica ativo (você vê `(discplayer-venv)` no começo da linha).
 
 ### 3.4 Criar o arquivo `.env` com os segredos
 
@@ -170,6 +172,8 @@ Guarde a `SECRET_KEY` em um lugar seguro. Se ela mudar, todo mundo é desconecta
 
 ### 3.5 Enviar o site compilado
 
+O envio do `dist.zip` é **manual**: o `git clone` não o traz (a pasta `dist` não vai para o GitHub), e os comandos de `unzip` abaixo só abrem o arquivo depois que você o enviou pelo navegador.
+
 1. Aba **Files** > navegue até `/home/SEU_USUARIO/DiscPlayer/frontend/`.
 2. Clique em **Upload a file** e envie o `dist.zip` da Parte 2.
 3. No console Bash:
@@ -192,7 +196,7 @@ Guarde a `SECRET_KEY` em um lugar seguro. Se ela mudar, todo mundo é desconecta
 
 ### 3.7 Configurar o web app
 
-Na página do web app (aba **Web**), preencha:
+Na página do web app (aba **Web**), os campos de caminho vêm **vazios** (e o *Working directory* vem como `/home/SEU_USUARIO/`). Preencha, usando o nome de usuário exatamente como ele aparece em `/home/` (o Linux diferencia maiúsculas de minúsculas):
 
 | Campo | Valor |
 | --- | --- |
@@ -204,7 +208,7 @@ Na página do web app (aba **Web**), preencha:
 ### 3.8 Colar o arquivo WSGI
 
 1. Ainda na aba **Web**, clique no link do **WSGI configuration file** (algo como `/var/www/SEU_USUARIO_pythonanywhere_com_wsgi.py`).
-2. **Apague todo o conteúdo** e cole o conteúdo de [`deploy/pythonanywhere_wsgi.py`](../deploy/pythonanywhere_wsgi.py), trocando `SEU_USUARIO` na linha `PROJETO = ...`.
+2. **Apague todo o conteúdo** (o arquivo vem com um modelo de exemplo) e cole o conteúdo de [`deploy/pythonanywhere_wsgi.py`](../deploy/pythonanywhere_wsgi.py), trocando `SEU_USUARIO` na linha `PROJETO = ...`.
 3. Clique em **Save**.
 
 ### 3.9 Ligar
@@ -240,7 +244,7 @@ Depois de atualizar, **reinicie o app** na aba **Web** (botão **Reload**): o ba
 
 ## Renovar todo mês
 
-O plano gratuito derruba o web app depois de **1 mês** sem renovação. Entre na aba **Web** da PythonAnywhere uma vez por mês e use o botão de estender a validade (a página de limites deles não descreve o nome exato do botão; ele fica perto do topo da aba). Coloque um lembrete no calendário.
+O plano gratuito derruba o web app depois de **1 mês** sem renovação. A aba **Web** mostra a data (*"This site will be disabled on ..."*) e, logo abaixo, o botão **Run until 1 month from today**: entre uma vez por mês e clique nele. A PythonAnywhere também avisa por e-mail uma semana antes. Coloque um lembrete no calendário.
 
 ## Backup do banco
 
@@ -271,6 +275,7 @@ Primeiro de tudo, na aba **Web**, abra o **Error log** (e o **Server log**): qua
 | Catálogo mostra "A Twitch recusou as credenciais" | Client ID ou Client Secret errado | Corrija o `.env` e **Reload**. Rode `python -m app.igdb_check` no console para conferir |
 | Catálogo mostra "O IGDB está indisponível" | Falha de rede ou do IGDB | Veja o **Error log**; tente de novo em alguns minutos. Se o `python -m app.igdb_check` falhar já no "Login na Twitch" com a mensagem de indisponível, o `id.twitch.tv` está bloqueado (veja o aviso sobre a lista de sites liberados) |
 | "Muitas tentativas" com pouquíssimas pessoas | O IP real do visitante não está chegando ao app (todos parecem o mesmo) | Confira que o arquivo WSGI define `TRUSTED_PROXY_COUNT` como `1` (já vem no modelo). Como último recurso temporário, ponha `RATELIMIT_ENABLED=false` no `.env` e **Reload**: isso desliga a proteção contra tentativas em massa |
+| `python -m app.igdb_check` mostra aviso na etapa "Imagens" (`ProxyError`) | O plano gratuito não deixa o servidor baixar `images.igdb.com` | Pode ignorar: as capas são carregadas pelo navegador de quem visita. Só investigue se as capas também não aparecerem no site aberto no navegador |
 | O site sumiu depois de um tempo | O web app expirou (1 mês) | Aba **Web**: estenda a validade e clique em **Reload** |
 
 Se travar, copie as últimas linhas do **Error log** e peça ajuda.

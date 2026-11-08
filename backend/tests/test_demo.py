@@ -6,6 +6,7 @@ import pytest
 from app import create_app
 from app import demo
 from app.db import fetch_one
+from app.services import igdb
 from app.utils.dates import today_utc
 
 from .conftest import PASSWORD
@@ -92,7 +93,7 @@ def test_one_demo_review_carries_the_spoiler_warning_and_stays_out_of_the_feed_e
 def test_seed_twice_changes_nothing(app, seeded):
     before = sql(app, "SELECT (SELECT COUNT(*) FROM users), (SELECT COUNT(*) FROM reviews), (SELECT COUNT(*) FROM activities)")[0]
     with app.app_context():
-        assert demo.seed() == {"created": False, "users": 6}
+        assert demo.seed() == {"created": False, "users": 6, "stale": 0}
     assert tuple(sql(app, "SELECT (SELECT COUNT(*) FROM users), (SELECT COUNT(*) FROM reviews), (SELECT COUNT(*) FROM activities)")[0]) == tuple(before)
 
 
@@ -135,9 +136,9 @@ def create_client_with_username(app, username):
 
 
 def test_seed_aborts_without_writing_anything_if_the_igdb_finds_no_games(app, monkeypatch):
-    monkeypatch.setattr(demo, "_find_on_igdb", lambda name: None)
+    monkeypatch.setattr(demo, "_find_on_igdb", lambda name: (None, False))
     with app.app_context():
-        with pytest.raises(demo.DemoError, match="Nada foi criado"):
+        with pytest.raises(demo.DemoError, match="Nada foi alterado"):
             demo.seed()
         assert demo.count() == 0
     assert sql(app, "SELECT COUNT(*) FROM users")[0][0] == 0
@@ -145,7 +146,7 @@ def test_seed_aborts_without_writing_anything_if_the_igdb_finds_no_games(app, mo
 
 def test_a_game_the_igdb_does_not_find_is_skipped_and_reported(app, monkeypatch):
     original = demo._find_on_igdb
-    monkeypatch.setattr(demo, "_find_on_igdb", lambda name: None if name == "Elden Ring" else original(name))
+    monkeypatch.setattr(demo, "_find_on_igdb", lambda name: (None, False) if name == "Elden Ring" else original(name))
     with app.app_context():
         result = demo.seed()
     assert result["created"] is True and result["missing"] == ["Elden Ring"]
@@ -188,3 +189,88 @@ def test_every_demo_game_name_exists_in_the_fake_catalog():
         known = {g["name"] for g in fake_igdb._build()}
     missing = [name for name in demo._names_needed() if name not in known]
     assert missing == []
+
+
+# ------------------------------------------------- troca de serviço (RAWG -> IGDB) e filtro de conteúdo adulto
+def _demo_game_ids(app):
+    return [r[0] for r in sql(app, "SELECT DISTINCT g.igdb_id FROM games g JOIN library_entries e ON e.game_id = g.id JOIN users u ON u.id = e.user_id WHERE u.is_demo = 1")]
+
+
+def test_profiles_made_with_the_old_service_are_detected_and_refresh_remakes_them(app, seeded, make_user, capsys):
+    ana = make_user("ana")
+    ana.put("/api/library/%d" % _demo_game_ids(app)[0], {"status": "quero_jogar"})
+    with app.app_context():
+        assert demo.stale_games() == 0
+    # o que a migração 0005 faz com os jogos guardados antes da troca: os números ficam negativos
+    sql(app, "UPDATE games SET igdb_id = -igdb_id")
+    with app.app_context():
+        assert demo.stale_games() >= 15
+        again = demo.seed()  # sem refresh, não mexe em nada, mas avisa
+        assert again["created"] is False and again["stale"] >= 15
+        demo._warn_if_stale()
+    assert "python -m app.demo refresh" in capsys.readouterr().out
+    assert all(i < 0 for i in _demo_game_ids(app))
+
+    with app.app_context():
+        result = demo.seed(replace=True)
+        assert result["created"] is True and result["users"] == 6 and result["hidden"] == [] and result["missing"] == []
+        assert demo.stale_games() == 0
+    assert all(i > 0 for i in _demo_game_ids(app))
+    assert sql(app, "SELECT COUNT(*) FROM users WHERE is_demo = 1")[0][0] == 6
+    # a conta real e o diário dela ficaram como estavam
+    assert sql(app, "SELECT COUNT(*) FROM users WHERE username = 'ana' AND is_demo = 0")[0][0] == 1
+    assert sql(app, "SELECT COUNT(*) FROM library_entries e JOIN users u ON u.id = e.user_id WHERE u.username = 'ana'")[0][0] == 1
+    # jogos antigos que ninguém mais usa foram embora; o que a conta real usa fica
+    assert sql(app, "SELECT COUNT(*) FROM games WHERE igdb_id < 0")[0][0] == 1
+
+
+def test_every_game_of_the_refreshed_profiles_opens(app, seeded, api):
+    sql(app, "UPDATE games SET igdb_id = -igdb_id")
+    with app.app_context():
+        demo.seed(replace=True)
+    ids = _demo_game_ids(app)
+    assert len(ids) >= 15
+    assert all(api.get(f"/api/games/{igdb_id}").status_code == 200 for igdb_id in ids)
+
+
+def test_a_failed_refresh_changes_nothing(app, seeded, monkeypatch):
+    def down(_query):
+        raise igdb.IgdbUnavailable()
+
+    monkeypatch.setattr(igdb, "fetch_json", down)
+    with app.app_context(), pytest.raises(demo.DemoError, match="Nada foi alterado"):
+        demo.seed(replace=True)
+    assert sql(app, "SELECT COUNT(*) FROM users WHERE is_demo = 1")[0][0] == 6
+
+
+def test_the_lookup_tells_a_game_that_does_not_exist_from_one_the_filter_hides(app):
+    with app.app_context():
+        assert demo._find_on_igdb("Hades")[1] is False
+        assert demo._find_on_igdb("Jogo Que Nao Existe")  == (None, False)
+        witcher_id, hidden = demo._find_on_igdb("The Witcher 3: Wild Hunt")
+        assert witcher_id and hidden is False  # nível explicit: ESRB Mature aparece
+        app.config["ADULT_CONTENT_FILTER"] = "mature"
+        assert demo._find_on_igdb("The Witcher 3: Wild Hunt") == (witcher_id, True)
+
+
+def test_with_the_mature_filter_the_cast_keeps_only_games_whose_page_opens(app, api):
+    app.config["ADULT_CONTENT_FILTER"] = "mature"
+    igdb.clear_cache()
+    with app.app_context():
+        result = demo.seed()
+    assert result["created"] is True and result["users"] == 6
+    assert {"The Witcher 3: Wild Hunt", "Elden Ring", "Disco Elysium"} <= set(result["hidden"])
+    assert result["missing"] == []
+    names = {r[0] for r in sql(app, "SELECT DISTINCT g.name FROM games g JOIN library_entries e ON e.game_id = g.id")}
+    assert "Hades" in names and "Elden Ring" not in names and "The Witcher 3: Wild Hunt" not in names
+    assert all(api.get(f"/api/games/{igdb_id}").status_code == 200 for igdb_id in _demo_game_ids(app))
+    assert not _violations(app)  # as regras do diário continuam valendo para o que sobrou
+
+
+def test_a_cast_the_filter_empties_out_is_refused_with_a_hint(app, monkeypatch):
+    app.config["ADULT_CONTENT_FILTER"] = "mature"
+    igdb.clear_cache()
+    monkeypatch.setattr(demo, "MIN_GAMES", 100)
+    with app.app_context(), pytest.raises(demo.DemoError, match="ADULT_CONTENT_FILTER=explicit"):
+        demo.seed()
+    assert sql(app, "SELECT COUNT(*) FROM users WHERE is_demo = 1")[0][0] == 0

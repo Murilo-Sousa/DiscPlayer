@@ -1,4 +1,4 @@
-"""Catálogo (RAWG) e página do jogo (RAWG + dados da comunidade DiscPlayer)."""
+"""Catálogo (IGDB) e página do jogo (IGDB + dados da comunidade DiscPlayer)."""
 from __future__ import annotations
 
 import re
@@ -20,7 +20,7 @@ from ..serializers import (
 from ..services import games as games_service
 from ..services import lists as lists_service
 from ..services import library as library_service
-from ..services import rawg, reviews as reviews_service
+from ..services import igdb, reviews as reviews_service
 from ..utils.dates import today_utc
 from ..utils.pagination import page_envelope, page_args
 from ..utils.ratings import empty_distribution
@@ -55,8 +55,8 @@ def _catalog_params() -> dict:
         if not 1970 <= year <= today_utc().year + 2:
             _bad("year", f"use um ano entre 1970 e {today_utc().year + 2}.")
     ordering = (args.get("ordering") or "relevance").strip()
-    if ordering not in rawg.ORDERINGS:
-        _bad("ordering", "use um de: " + ", ".join(rawg.ORDERINGS) + ".")
+    if ordering not in igdb.ORDERINGS:
+        _bad("ordering", "use um de: " + ", ".join(igdb.ORDERINGS) + ".")
     if ordering == "relevance" and not q:
         ordering = "popular"  # sem texto de busca não existe "relevância"
     page, page_size = page_args(default_per_page=24, max_per_page=40)
@@ -72,16 +72,16 @@ def _catalog_params() -> dict:
 
 
 def _with_community(results: list[dict]) -> list[dict]:
-    """Cópias dos jogos da RAWG com a média da comunidade DiscPlayer (ou None). A lista da RAWG fica no cache: não se altera."""
-    summary = reviews_service.community_summary(game["rawg_id"] for game in results)
-    return [{**game, "community": summary.get(game["rawg_id"])} for game in results]
+    """Cópias dos jogos do IGDB com a média da comunidade DiscPlayer (ou None). A lista do IGDB fica no cache: não se altera."""
+    summary = reviews_service.community_summary(game["igdb_id"] for game in results)
+    return [{**game, "community": summary.get(game["igdb_id"])} for game in results]
 
 
 @bp.get("/games")
 @rate_limit("catalog", 120, 60)
 def catalog():
     params = _catalog_params()
-    data = rawg.search_games(**params)
+    data = igdb.search_games(**params)
     return jsonify({**data, "results": _with_community(data["results"]), "ordering": params["ordering"]})
 
 
@@ -92,8 +92,8 @@ def featured():
     out: dict = {"popular": None, "new": None, "errors": {}}
     for kind in ("popular", "new"):
         try:
-            out[kind] = _with_community(rawg.featured_games(kind)["results"])
-        except rawg.RawgError as exc:
+            out[kind] = _with_community(igdb.featured_games(kind)["results"])
+        except igdb.IgdbError as exc:
             out["errors"][kind] = {"code": exc.code, "message": exc.message}
             out[kind] = []
     if len(out["errors"]) == 2:
@@ -112,7 +112,7 @@ def top_rated():
     """Jogos mais bem avaliados pela comunidade DiscPlayer (média das reviews reais, com um mínimo de notas)."""
     _, per_page = page_args(default_per_page=8, max_per_page=20)
     rows = fetch_all(
-        "SELECT g.rawg_id, g.name AS game_name, g.slug AS game_slug, g.cover_url, g.release_date,"
+        "SELECT g.igdb_id, g.name AS game_name, g.slug AS game_slug, g.cover_url, g.release_date,"
         " AVG(r.rating) AS average, COUNT(*) AS count FROM reviews r JOIN games g ON g.id = r.game_id"
         " GROUP BY g.id HAVING COUNT(*) >= ? ORDER BY average DESC, count DESC, g.name LIMIT ?",
         (TOP_RATED_MIN_NOTES, per_page),
@@ -127,16 +127,16 @@ def top_rated():
 
 @bp.get("/genres")
 def genres():
-    return jsonify({"items": rawg.list_genres()})
+    return jsonify({"items": igdb.list_genres()})
 
 
 @bp.get("/platforms")
 def platforms():
-    return jsonify({"items": rawg.list_platforms()})
+    return jsonify({"items": igdb.list_platforms()})
 
 
 def _community_block(local: dict | None) -> dict:
-    """Bloco da comunidade DiscPlayer: sempre separado das notas da RAWG."""
+    """Bloco da comunidade DiscPlayer: sempre separado das notas do IGDB."""
     if local is None:
         return {
             "average": None,
@@ -148,27 +148,26 @@ def _community_block(local: dict | None) -> dict:
     return reviews_service.community_stats(local["id"])
 
 
-@bp.get("/games/<int:rawg_id>")
+@bp.get("/games/<int:igdb_id>")
 @rate_limit("game-detail", 120, 60)
-def game_detail(rawg_id: int):
-    local = games_service.get_local_game(rawg_id)
+def game_detail(igdb_id: int):
+    local = games_service.get_local_game(igdb_id)
     notice = None
     try:
-        detail = rawg.get_game(rawg_id)
-        detail["screenshots"] = rawg.get_screenshots(rawg_id)
-        detail["source"] = "rawg"
+        detail = igdb.get_game(igdb_id)
+        detail["source"] = "igdb"
         if local and (
             (local["name"], local["cover_url"]) != (detail["name"], detail.get("cover_url"))
             # A data de lançamento decide se o jogo já pode ser jogado e avaliado: não pode ficar velha.
             or games_service.release_of(detail) != local["release_date"]
         ):
             local = games_service.sync_game(detail)  # mantém a cópia local em dia
-    except rawg.RawgNotFound:
+    except igdb.IgdbNotFound:
         raise
-    except rawg.RawgError as exc:
+    except igdb.IgdbError as exc:
         if local is None:
             raise
-        # A RAWG falhou, mas o jogo já está no banco: servimos o que existe localmente.
+        # O IGDB falhou, mas o jogo já está no banco: servimos o que existe localmente.
         base = game_from_local(local)
         detail = {
             **base,
@@ -180,11 +179,11 @@ def game_detail(rawg_id: int):
             "screenshots": [],
             "cover_additional_url": None,
             "website": None,
-            "esrb": None,
+            "age_rating": None,
             "playtime": None,
-            "metacritic": None,
-            "rawg_rating": None,
-            "rawg_ratings_count": 0,
+            "critic_score": None,
+            "igdb_rating": None,
+            "igdb_ratings_count": 0,
             "source": "local",
         }
         notice = {"code": exc.code, "message": exc.message}
@@ -209,7 +208,7 @@ def game_detail(rawg_id: int):
             if entry
             else [],
             "review": review_from_row(mine, with_game=False, with_user=False) if mine else None,
-            "list_ids": sorted(lists_service.membership(uid, rawg_id)),
+            "list_ids": sorted(lists_service.membership(uid, igdb_id)),
         }
     return jsonify(payload)
 
@@ -217,41 +216,41 @@ def game_detail(rawg_id: int):
 RELATED_SIZE = 12
 
 
-@bp.get("/games/<int:rawg_id>/related")
+@bp.get("/games/<int:igdb_id>/related")
 @rate_limit("game-detail", 120, 60)
-def related(rawg_id: int):
+def related(igdb_id: int):
     """Mais jogos do primeiro gênero do jogo, dos mais populares, sem o próprio jogo.
 
-    É um extra da página do jogo: se a RAWG falhar, a resposta é uma lista vazia e a página segue sem a prateleira.
+    É um extra da página do jogo: se o IGDB falhar, a resposta é uma lista vazia e a página segue sem a prateleira.
     """
     try:
-        detail = rawg.get_game(rawg_id)
-        by_name = {genre["name"]: genre for genre in rawg.list_genres()}
+        detail = igdb.get_game(igdb_id)
+        by_name = {genre["name"]: genre for genre in igdb.list_genres()}
         genre = next((by_name[name] for name in detail.get("genres") or [] if name in by_name), None)
         if genre is None:
             return jsonify({"genre": None, "items": []})
-        found = rawg.search_games(genres=genre["slug"], ordering="popular", page_size=RELATED_SIZE + 1)["results"]
-    except rawg.RawgNotFound:
+        found = igdb.search_games(genres=genre["slug"], ordering="popular", page_size=RELATED_SIZE + 1)["results"]
+    except igdb.IgdbNotFound:
         raise
-    except rawg.RawgError:
+    except igdb.IgdbError:
         return jsonify({"genre": None, "items": []})
-    others = [game for game in found if game["rawg_id"] != rawg_id][:RELATED_SIZE]
+    others = [game for game in found if game["igdb_id"] != igdb_id][:RELATED_SIZE]
     return jsonify({"genre": {"name": genre["name"], "slug": genre["slug"]}, "items": _with_community(others)})
 
 
 FOLLOWING_SIZE = 12
 
 
-@bp.get("/games/<int:rawg_id>/following")
+@bp.get("/games/<int:igdb_id>/following")
 @login_required
 @rate_limit("game-following", 120, 60)
-def following_players(rawg_id: int):
+def following_players(igdb_id: int):
     """Quem o usuário segue e já jogou este jogo (status, favorito e nota de cada pessoa).
 
-    Só lê o banco: um jogo que ninguém registrou ainda (sem cópia local) responde vazio, sem chamar a RAWG.
+    Só lê o banco: um jogo que ninguém registrou ainda (sem cópia local) responde vazio, sem chamar o IGDB.
     Mostra o que já é público no perfil de cada pessoa; o texto da review não vai junto (só se existe).
     """
-    local = games_service.get_local_game(rawg_id)
+    local = games_service.get_local_game(igdb_id)
     empty = {"items": [], "total": 0, "rated": 0, "average": None, "want_to_play": 0}
     if local is None:
         return jsonify(empty)
@@ -269,9 +268,9 @@ def following_players(rawg_id: int):
     return jsonify({**found, "items": items})
 
 
-@bp.get("/games/<int:rawg_id>/reviews")
-def game_reviews(rawg_id: int):
-    local = games_service.get_local_game(rawg_id)
+@bp.get("/games/<int:igdb_id>/reviews")
+def game_reviews(igdb_id: int):
+    local = games_service.get_local_game(igdb_id)
     page, per_page = page_args(default_per_page=10, max_per_page=30)
     sort = request.args.get("sort", "recent")
     if sort not in {"recent", "popular", "highest", "lowest"}:

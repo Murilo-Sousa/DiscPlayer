@@ -10,16 +10,16 @@ from app.utils.dates import today_utc
 from .conftest import CELESTE, HADES
 
 
-def put(client, rawg_id, **body):
-    return client.put(f"/api/library/{rawg_id}", body)
+def put(client, igdb_id, **body):
+    return client.put(f"/api/library/{igdb_id}", body)
 
 
-def replay(client, rawg_id=HADES, **body):
-    return client.post(f"/api/library/{rawg_id}/replay", body)
+def replay(client, igdb_id=HADES, **body):
+    return client.post(f"/api/library/{igdb_id}/replay", body)
 
 
-def finished(client, rawg_id=HADES, start="2025-03-01", end="2025-03-20"):
-    return put(client, rawg_id, status="zerado", started_at=start, completed_at=end)
+def finished(client, igdb_id=HADES, start="2025-03-01", end="2025-03-20"):
+    return put(client, igdb_id, status="zerado", started_at=start, completed_at=end)
 
 
 def test_a_new_entry_has_one_play_and_no_history(ana):
@@ -88,7 +88,7 @@ def test_replay_of_a_game_that_is_not_in_the_diary_is_a_404(ana):
     assert replay(ana, HADES).status_code == 404  # jogo conhecido, mas fora do diário
     # guardar o jogo numa lista cria a cópia local dele, sem pô-lo no diário
     list_id = ana.post("/api/lists", {"title": "Fila"}).get_json()["list"]["id"]
-    assert ana.post(f"/api/lists/{list_id}/games", {"rawg_id": HADES}).status_code == 201
+    assert ana.post(f"/api/lists/{list_id}/games", {"igdb_id": HADES}).status_code == 201
     assert replay(ana, HADES).status_code == 404
 
 

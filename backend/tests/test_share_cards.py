@@ -47,8 +47,8 @@ def has_accent(image: Image.Image) -> bool:
     )
 
 
-def finish(client, rawg_id, start, end):
-    response = client.put(f"/api/library/{rawg_id}", {"status": "zerado", "started_at": start, "completed_at": end})
+def finish(client, igdb_id, start, end):
+    response = client.put(f"/api/library/{igdb_id}", {"status": "zerado", "started_at": start, "completed_at": end})
     assert response.status_code in (200, 201), response.get_json()
 
 

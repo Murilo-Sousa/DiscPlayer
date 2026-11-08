@@ -36,7 +36,7 @@ export function LoginPrompt({ children }) {
  * O que aparece depende do status (regras em utils/diary.js): "Quero jogar" é um jogo que ainda não começou, então não
  * tem datas nem favorito; só um jogo zerado tem data de término; e um jogo que ainda não saiu só vai para a fila.
  */
-export function DiaryPanel({ rawgId, game, entry, hasRating = false, playthroughs = [], onSaved, onReplayed, onPlaythroughsChanged, onRemoved, onOutdated }) {
+export function DiaryPanel({ igdbId, game, entry, hasRating = false, playthroughs = [], onSaved, onReplayed, onPlaythroughsChanged, onRemoved, onOutdated }) {
   const { user } = useAuth();
   const toast = useToast();
   const [pending, setPending] = useState(false);
@@ -64,7 +64,7 @@ export function DiaryPanel({ rawgId, game, entry, hasRating = false, playthrough
     setPending(true);
     setErrors({});
     try {
-      const result = await libraryApi.save(rawgId, changes);
+      const result = await libraryApi.save(igdbId, changes);
       onSaved(result.entry, result.rating);
       if (message) toast.success(message);
     } catch (error) {
@@ -84,7 +84,7 @@ export function DiaryPanel({ rawgId, game, entry, hasRating = false, playthrough
   const replay = async () => {
     setPending(true);
     try {
-      const result = await libraryApi.replay(rawgId);
+      const result = await libraryApi.replay(igdbId);
       setConfirmReplay(false);
       onReplayed(result);
       toast.success("Nova jogada começada. A anterior ficou no histórico.");
@@ -99,7 +99,7 @@ export function DiaryPanel({ rawgId, game, entry, hasRating = false, playthrough
   const remove = async () => {
     setPending(true);
     try {
-      const result = await libraryApi.remove(rawgId, { withReview: hasRating });
+      const result = await libraryApi.remove(igdbId, { withReview: hasRating });
       setConfirmRemove(false);
       onRemoved(result);
       toast.success(result?.review_removed ? "Jogo e nota removidos do seu diário." : "Jogo removido do seu diário.");
@@ -235,7 +235,7 @@ export function DiaryPanel({ rawgId, game, entry, hasRating = false, playthrough
               {span === 0 ? "Começou e terminou no mesmo dia." : `${plural(span, "dia", "dias")} entre começar e terminar.`}
             </p>
           )}
-          <Playthroughs rawgId={rawgId} entry={entry} playthroughs={playthroughs} onChanged={onPlaythroughsChanged} />
+          <Playthroughs igdbId={igdbId} entry={entry} playthroughs={playthroughs} onChanged={onPlaythroughsChanged} />
           <p className="panel-foot">
             Registrado em {formatDate(entry.created_at)}.{" "}
             <button type="button" className="link-btn link-danger" onClick={() => setConfirmRemove(true)}>

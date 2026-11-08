@@ -18,8 +18,8 @@ import {
 } from "../src/utils/diary.js";
 import { count, html } from "./helpers.jsx";
 
-const out = { rawg_id: 5, name: "Hades", released: "2020-09-17" };
-const upcoming = { rawg_id: 6, name: "Farol do Amanhã", released: "2999-01-01" };
+const out = { igdb_id: 5, name: "Hades", released: "2020-09-17" };
+const upcoming = { igdb_id: 6, name: "Farol do Amanhã", released: "2999-01-01" };
 const entry = (status, extra = {}) => ({
   status,
   is_favorite: false,
@@ -43,8 +43,8 @@ function loggedIn(element) {
 }
 
 const diary = (props) =>
-  loggedIn(<DiaryPanel rawgId={5} game={out} playthroughs={[]} onSaved={() => {}} onRemoved={() => {}} {...props} />);
-const rating = (props) => loggedIn(<ReviewPanel rawgId={5} game={out} onChanged={() => {}} {...props} />);
+  loggedIn(<DiaryPanel igdbId={5} game={out} playthroughs={[]} onSaved={() => {}} onRemoved={() => {}} {...props} />);
+const rating = (props) => loggedIn(<ReviewPanel igdbId={5} game={out} onChanged={() => {}} {...props} />);
 
 // ----------------------------------------------------------------------------- as regras
 test("regras: quais status já foram começados, quais têm data de término e quais se jogam de novo", () => {

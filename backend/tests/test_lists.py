@@ -3,10 +3,10 @@ from __future__ import annotations
 
 import pytest
 
-from . import fake_rawg
+from . import fake_igdb
 from .conftest import CELESTE, HADES, HOLLOW
 
-OTHER = fake_rawg.by_name("Portal 2")["id"]
+OTHER = fake_igdb.by_name("Portal 2")["id"]
 
 
 def make_list(client, title="Melhores indies", **extra):
@@ -15,8 +15,8 @@ def make_list(client, title="Melhores indies", **extra):
     return response.get_json()["list"]
 
 
-def add(client, list_id, rawg_id):
-    return client.post(f"/api/lists/{list_id}/games", {"rawg_id": rawg_id})
+def add(client, list_id, igdb_id):
+    return client.post(f"/api/lists/{list_id}/games", {"igdb_id": igdb_id})
 
 
 def titles(body):
@@ -51,8 +51,8 @@ def test_list_validation(ana, payload, field):
 
 def test_add_games_in_order_and_build_covers(ana):
     lst = make_list(ana)
-    for rawg_id in (HADES, CELESTE, HOLLOW):
-        assert add(ana, lst["id"], rawg_id).status_code == 201
+    for igdb_id in (HADES, CELESTE, HOLLOW):
+        assert add(ana, lst["id"], igdb_id).status_code == 201
     body = ana.get(f"/api/lists/{lst['id']}").get_json()
     assert titles(body) == ["Hades", "Celeste", "Hollow Knight"]
     assert [i["position"] for i in body["list"]["items"]] == [0, 1, 2]
@@ -63,7 +63,7 @@ def test_add_games_in_order_and_build_covers(ana):
 
 def test_covers_are_limited_to_four(ana):
     lst = make_list(ana)
-    for game in fake_rawg.GAMES[:6]:
+    for game in fake_igdb.GAMES[:6]:
         add(ana, lst["id"], game["id"])
     assert len(ana.get(f"/api/lists/{lst['id']}").get_json()["list"]["covers"]) == 4
 
@@ -75,7 +75,7 @@ def test_a_game_cannot_be_added_twice(ana):
     assert again.status_code == 409 and again.get_json()["error"]["code"] == "already_in_list"
 
 
-@pytest.mark.parametrize("payload", [{}, {"rawg_id": "abc"}, {"rawg_id": -1}, {"rawg_id": True}, {"rawg_id": 1.5}])
+@pytest.mark.parametrize("payload", [{}, {"igdb_id": "abc"}, {"igdb_id": -1}, {"igdb_id": True}, {"igdb_id": 1.5}])
 def test_add_game_validates_input(ana, payload):
     lst = make_list(ana)
     assert ana.post(f"/api/lists/{lst['id']}/games", payload).status_code == 422
@@ -88,9 +88,9 @@ def test_add_unknown_game_is_404(ana):
 
 def test_reorder_games(ana):
     lst = make_list(ana)
-    for rawg_id in (HADES, CELESTE, HOLLOW):
-        add(ana, lst["id"], rawg_id)
-    response = ana.put(f"/api/lists/{lst['id']}/order", {"rawg_ids": [HOLLOW, HADES, CELESTE]})
+    for igdb_id in (HADES, CELESTE, HOLLOW):
+        add(ana, lst["id"], igdb_id)
+    response = ana.put(f"/api/lists/{lst['id']}/order", {"igdb_ids": [HOLLOW, HADES, CELESTE]})
     assert response.status_code == 200
     assert titles(response.get_json()) == ["Hollow Knight", "Hades", "Celeste"]
     assert titles(ana.get(f"/api/lists/{lst['id']}").get_json()) == ["Hollow Knight", "Hades", "Celeste"]
@@ -109,16 +109,16 @@ def test_reorder_games(ana):
 )
 def test_reorder_rejects_inconsistent_orders(ana, order):
     lst = make_list(ana)
-    for rawg_id in (HADES, CELESTE, HOLLOW):
-        add(ana, lst["id"], rawg_id)
-    assert ana.put(f"/api/lists/{lst['id']}/order", {"rawg_ids": order}).status_code == 422
+    for igdb_id in (HADES, CELESTE, HOLLOW):
+        add(ana, lst["id"], igdb_id)
+    assert ana.put(f"/api/lists/{lst['id']}/order", {"igdb_ids": order}).status_code == 422
     assert titles(ana.get(f"/api/lists/{lst['id']}").get_json()) == ["Hades", "Celeste", "Hollow Knight"]
 
 
 def test_remove_game_keeps_positions_dense(ana):
     lst = make_list(ana)
-    for rawg_id in (HADES, CELESTE, HOLLOW):
-        add(ana, lst["id"], rawg_id)
+    for igdb_id in (HADES, CELESTE, HOLLOW):
+        add(ana, lst["id"], igdb_id)
     response = ana.delete(f"/api/lists/{lst['id']}/games/{CELESTE}")
     assert response.status_code == 200
     assert [i["position"] for i in response.get_json()["list"]["items"]] == [0, 1]
@@ -143,7 +143,7 @@ def test_only_the_owner_can_change_a_public_list(ana, bruno):
     assert bruno.patch(f"/api/lists/{lst['id']}", {"title": "roubada"}).status_code == 403
     assert add(bruno, lst["id"], CELESTE).status_code == 403
     assert bruno.delete(f"/api/lists/{lst['id']}/games/{HADES}").status_code == 403
-    assert bruno.put(f"/api/lists/{lst['id']}/order", {"rawg_ids": [HADES]}).status_code == 403
+    assert bruno.put(f"/api/lists/{lst['id']}/order", {"igdb_ids": [HADES]}).status_code == 403
     assert bruno.delete(f"/api/lists/{lst['id']}").status_code == 403
     body = bruno.get(f"/api/lists/{lst['id']}").get_json()["list"]
     assert body["title"] == "Melhores indies" and body["is_owner"] is False and body["game_count"] == 1

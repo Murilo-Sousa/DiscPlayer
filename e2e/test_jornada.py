@@ -68,13 +68,13 @@ def test_jornada_completa(stack, client):
 
 def test_catalogo_filtros_e_paginacao_na_url(stack, client):
     page = client.page
-    client.open("/jogos?genero=action&ordem=rating")
+    client.open("/jogos?genero=adventure&ordem=rating")
     page.wait_for_selector(".game-card")
     assert page.locator(".game-card").count() >= 1
     # O estado dos filtros mora na URL: recarregar mantém o resultado.
     page.reload(wait_until="networkidle")
     page.wait_for_selector(".game-card")
-    assert re.search(r"genero=action", page.url)
+    assert re.search(r"genero=adventure", page.url)
     assert client.errors == []
 
 

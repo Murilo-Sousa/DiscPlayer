@@ -15,7 +15,7 @@ export function buildOptions(data, query) {
   if (!data) return [];
   const options = [
     ...data.games.items.slice(0, 5).map((game) => ({
-      key: `g${game.rawg_id}`,
+      key: `g${game.igdb_id}`,
       group: "Jogos",
       label: game.name,
       hint: formatYear(game.released),

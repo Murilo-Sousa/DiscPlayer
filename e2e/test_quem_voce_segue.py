@@ -4,7 +4,7 @@ import re
 from playwright.sync_api import expect
 
 from helpers import api, open_game, register
-from tests.fake_rawg import by_name
+from tests.fake_igdb import by_name
 
 
 def gid(nome):

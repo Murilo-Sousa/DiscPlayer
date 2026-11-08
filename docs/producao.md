@@ -20,7 +20,8 @@ source .venv/bin/activate
 pip install -r requirements.txt
 export APP_ENV=production
 export SECRET_KEY="$(python -c 'import secrets; print(secrets.token_hex(32))')"   # guarde este valor!
-export RAWG_API_KEY="sua-chave"
+export IGDB_CLIENT_ID="seu-client-id"
+export IGDB_CLIENT_SECRET="seu-client-secret"
 export DATABASE_PATH=/var/lib/discplayer/discplayer.db
 
 # 3. suba com um servidor de verdade (não use `flask run`)
@@ -38,8 +39,8 @@ Orientações:
 
 O GitHub guarda o código, mas **não executa** o DiscPlayer (o GitHub Pages só serve sites estáticos, e aqui há uma API Python e um banco SQLite). Para outras pessoas abrirem um link, o projeto precisa rodar em um servidor.
 
-A opção gratuita que melhor combina com este projeto é a **PythonAnywhere**: ela roda Flask, guarda os arquivos (o banco SQLite não se perde), oferece HTTPS e libera o acesso a `api.rawg.io` no plano gratuito. O guia completo, com o código no GitHub e o passo a passo do painel, está em **[hospedagem-pythonanywhere.md](hospedagem-pythonanywhere.md)**, e o modelo do arquivo WSGI está em `deploy/pythonanywhere_wsgi.py`.
+A opção gratuita que melhor combina com este projeto é a **PythonAnywhere**: ela roda Flask, guarda os arquivos (o banco SQLite não se perde), oferece HTTPS e libera o acesso a `api.igdb.com` no plano gratuito (atenção: o login da Twitch, `id.twitch.tv`, pode não estar liberado; veja o aviso no guia da hospedagem). O guia completo, com o código no GitHub e o passo a passo do painel, está em **[hospedagem-pythonanywhere.md](hospedagem-pythonanywhere.md)**, e o modelo do arquivo WSGI está em `deploy/pythonanywhere_wsgi.py`.
 
 Limites do plano gratuito (conferidos em 17/10/2026; confirme na PythonAnywhere): 1 web app com 1 processo, 512 MiB de disco, endereço `seunome.pythonanywhere.com` e **validade de 1 mês, que você precisa estender manualmente**. Outras hospedagens gratuitas populares (como o plano grátis do Render) usam disco temporário e **apagariam o banco** a cada reinício, por isso não servem para este projeto sem trocar o SQLite por um banco externo.
 
-Antes de abrir o site ao público, leia os [Termos da RAWG](https://rawg.io/apidocs) (o plano gratuito é para projetos pessoais e sem fins comerciais, com link de volta para a RAWG) e as [Limitações conhecidas](limitacoes-e-proximos-passos.md#limitações-conhecidas).
+Antes de abrir o site ao público, leia os [termos da API do IGDB](https://api-docs.igdb.com/#terms-of-service) (uso gratuito para projetos sem fins comerciais, com link de volta para o IGDB) e as [Limitações conhecidas](limitacoes-e-proximos-passos.md#limitações-conhecidas).

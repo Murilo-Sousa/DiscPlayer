@@ -5,15 +5,15 @@ from datetime import date, timedelta
 
 import pytest
 
-from app.services import rawg
+from app.services import igdb
 from app.utils.dates import today_utc
 
-from . import fake_rawg
+from . import fake_igdb
 from .conftest import CELESTE, HADES, HOLLOW
 
 
-def put(client, rawg_id, **body):
-    return client.put(f"/api/library/{rawg_id}", body)
+def put(client, igdb_id, **body):
+    return client.put(f"/api/library/{igdb_id}", body)
 
 
 def test_log_a_game_creates_entry_with_server_side_metadata(ana):
@@ -22,8 +22,8 @@ def test_log_a_game_creates_entry_with_server_side_metadata(ana):
     body = response.get_json()
     assert body["entry"]["status"] == "quero_jogar"
     assert body["entry"]["is_favorite"] is False
-    assert body["game"]["name"] == "Hades"  # nome e capa vêm da RAWG, não do cliente
-    assert body["game"]["cover_url"].startswith("https://media.rawg.io/")
+    assert body["game"]["name"] == "Hades"  # nome e capa vêm do IGDB, não do cliente
+    assert body["game"]["cover_url"].startswith("https://images.igdb.com/")
 
 
 def test_client_cannot_inject_game_metadata(ana):
@@ -62,9 +62,9 @@ def test_invalid_status_is_rejected(ana, status):
 
 
 def test_all_five_statuses_are_accepted(ana):
-    games = [fake_rawg.GAMES[i]["id"] for i in range(5)]
-    for rawg_id, status in zip(games, ["quero_jogar", "jogando", "zerado", "abandonado", "pausado"]):
-        assert put(ana, rawg_id, status=status).status_code == 201
+    games = [fake_igdb.GAMES[i]["id"] for i in range(5)]
+    for igdb_id, status in zip(games, ["quero_jogar", "jogando", "zerado", "abandonado", "pausado"]):
+        assert put(ana, igdb_id, status=status).status_code == 201
     counts = ana.get("/api/library").get_json()["counts"]
     assert counts["total"] == 5
     assert all(counts[s] == 1 for s in ["quero_jogar", "jogando", "zerado", "abandonado", "pausado"])
@@ -116,11 +116,11 @@ def test_status_changes_are_recorded_in_the_history_without_duplicating_the_entr
 
 
 def test_list_filters_sorting_and_pagination(ana):
-    ids = [fake_rawg.GAMES[i]["id"] for i in range(6)]
-    for rawg_id in ids[:4]:
-        put(ana, rawg_id, status="zerado")
-    for rawg_id in ids[4:]:
-        put(ana, rawg_id, status="jogando")
+    ids = [fake_igdb.GAMES[i]["id"] for i in range(6)]
+    for igdb_id in ids[:4]:
+        put(ana, igdb_id, status="zerado")
+    for igdb_id in ids[4:]:
+        put(ana, igdb_id, status="jogando")
     only_playing = ana.get("/api/library?status=jogando").get_json()
     assert len(only_playing["items"]) == 2
     assert only_playing["counts"]["total"] == 6  # as contagens ignoram o filtro
@@ -170,19 +170,19 @@ def test_unknown_game_is_a_404_and_nothing_is_saved(ana):
     assert ana.get("/api/library").get_json()["counts"]["total"] == 0
 
 
-def test_rawg_outage_blocks_new_games_but_not_games_already_saved(ana, monkeypatch):
+def test_igdb_outage_blocks_new_games_but_not_games_already_saved(ana, monkeypatch):
     put(ana, HADES, status="jogando")  # Hades passa a existir no banco local
 
     def down(*_a, **_k):
-        raise rawg.RawgUnavailable()
+        raise igdb.IgdbUnavailable()
 
-    monkeypatch.setattr(rawg, "fetch_json", down)
-    rawg.clear_cache()
+    monkeypatch.setattr(igdb, "fetch_json", down)
+    igdb.clear_cache()
 
-    assert put(ana, HADES, status="zerado").status_code == 200  # não precisa da RAWG
+    assert put(ana, HADES, status="zerado").status_code == 200  # não precisa do IGDB
     blocked = put(ana, HOLLOW, status="jogando")
     assert blocked.status_code == 503
-    assert blocked.get_json()["error"]["code"] == "rawg_unavailable"
+    assert blocked.get_json()["error"]["code"] == "igdb_unavailable"
     assert ana.get("/api/library").get_json()["counts"]["total"] == 1
 
 

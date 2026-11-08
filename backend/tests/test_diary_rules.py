@@ -13,26 +13,26 @@ from datetime import date, timedelta
 import pytest
 
 from app import db as database
-from app.services import rawg
+from app.services import igdb
 from app.utils.dates import utcnow_iso
 
-from . import fake_rawg
+from . import fake_igdb
 from .conftest import CELESTE, HADES, HOLLOW, UPCOMING
 
 STARTED = ["jogando", "pausado", "abandonado", "zerado"]
 TODAY = date.today()
 
 
-def put(client, rawg_id, **body):
-    return client.put(f"/api/library/{rawg_id}", body)
+def put(client, igdb_id, **body):
+    return client.put(f"/api/library/{igdb_id}", body)
 
 
-def entry(client, rawg_id=HADES):
-    return client.get(f"/api/games/{rawg_id}").get_json()["viewer"]["entry"]
+def entry(client, igdb_id=HADES):
+    return client.get(f"/api/games/{igdb_id}").get_json()["viewer"]["entry"]
 
 
-def rate(client, rawg_id=HADES, rating=8, **body):
-    return client.post(f"/api/games/{rawg_id}/reviews", {"rating": rating, **body})
+def rate(client, igdb_id=HADES, rating=8, **body):
+    return client.post(f"/api/games/{igdb_id}/reviews", {"rating": rating, **body})
 
 
 def error_of(response):
@@ -309,22 +309,22 @@ def test_an_unreleased_game_on_the_wish_list_cannot_be_rated_or_started(ana):
 
 def test_once_the_game_comes_out_it_can_be_played_and_rated(ana, app):
     put(ana, UPCOMING, status="quero_jogar")
-    sql(app, "UPDATE games SET release_date = ? WHERE rawg_id = ?", ((TODAY - timedelta(days=1)).isoformat(), UPCOMING))
-    # a página do jogo traz a data da RAWG, que continua no futuro; ela só substitui a cópia local quando difere
+    sql(app, "UPDATE games SET release_date = ? WHERE igdb_id = ?", ((TODAY - timedelta(days=1)).isoformat(), UPCOMING))
+    # a página do jogo traz a data do IGDB, que continua no futuro; ela só substitui a cópia local quando difere
     assert put(ana, UPCOMING, status="jogando").status_code == 200
     assert rate(ana, UPCOMING).status_code == 201
 
 
 def test_a_game_without_a_known_release_date_is_not_blocked(ana, app):
     put(ana, HADES, status="quero_jogar")
-    sql(app, "UPDATE games SET release_date = NULL WHERE rawg_id = ?", (HADES,))
+    sql(app, "UPDATE games SET release_date = NULL WHERE igdb_id = ?", (HADES,))
     assert put(ana, HADES, status="jogando").status_code == 200
 
 
 def test_the_release_day_uses_the_clients_today(ana, app):
     put(ana, HADES, status="quero_jogar")
     tomorrow = (TODAY + timedelta(days=1)).isoformat()
-    sql(app, "UPDATE games SET release_date = ? WHERE rawg_id = ?", (tomorrow, HADES))
+    sql(app, "UPDATE games SET release_date = ? WHERE igdb_id = ?", (tomorrow, HADES))
     # quem está no fuso em que já é "amanhã" pode jogar; quem está em "hoje" ainda não
     assert put(ana, HADES, status="jogando", today=TODAY.isoformat()).status_code == 409
     assert put(ana, HADES, status="jogando", today=tomorrow).status_code == 200
@@ -333,7 +333,7 @@ def test_the_release_day_uses_the_clients_today(ana, app):
 def test_rating_also_uses_the_clients_today_to_decide_if_the_game_is_out(ana, app):
     put(ana, HADES, status="jogando")
     tomorrow = (TODAY + timedelta(days=1)).isoformat()
-    sql(app, "UPDATE games SET release_date = ? WHERE rawg_id = ?", (tomorrow, HADES))
+    sql(app, "UPDATE games SET release_date = ? WHERE igdb_id = ?", (tomorrow, HADES))
     refused = rate(ana, today=TODAY.isoformat())
     assert refused.status_code == 409 and error_of(refused)["code"] == "not_released"
     assert rate(ana, today=tomorrow).status_code == 201  # no fuso em que o jogo já saiu, a nota vale
@@ -345,32 +345,32 @@ def test_rating_rejects_an_impossible_today(ana):
     assert response.status_code == 422 and "today" in error_of(response)["fields"]
 
 
-def test_a_game_the_rawg_postpones_to_no_date_loses_the_old_local_date(ana, app, monkeypatch):
-    """A RAWG pode tirar a data de um jogo (adiado, "a anunciar"): a cópia local acompanha, em vez de guardar a antiga."""
+def test_a_game_the_igdb_postpones_to_no_date_loses_the_old_local_date(ana, app, monkeypatch):
+    """O IGDB pode tirar a data de um jogo (adiado, "a anunciar"): a cópia local acompanha, em vez de guardar a antiga."""
     put(ana, UPCOMING, status="quero_jogar")
-    assert sql(app, "SELECT release_date FROM games WHERE rawg_id = ?", (UPCOMING,))[0][0] > TODAY.isoformat()
-    original = fake_rawg.fetch_json
+    assert sql(app, "SELECT release_date FROM games WHERE igdb_id = ?", (UPCOMING,))[0][0] > TODAY.isoformat()
+    original = fake_igdb.fetch_json
 
-    def without_date(path, params=None):
-        data = original(path, params)
-        if path.strip("/") == f"games/{UPCOMING}":
-            data = {**data, "released": None}
+    def without_date(query):
+        data = original(query)
+        if ("id", "=", UPCOMING) in query.filters and isinstance(data, list):
+            data = [{k: v for k, v in game.items() if k != "first_release_date"} for game in data]
         return data
 
-    monkeypatch.setattr(rawg, "fetch_json", without_date)
-    rawg.clear_cache()
+    monkeypatch.setattr(igdb, "fetch_json", without_date)
+    igdb.clear_cache()
     ana.get(f"/api/games/{UPCOMING}")
-    assert sql(app, "SELECT release_date FROM games WHERE rawg_id = ?", (UPCOMING,))[0][0] is None
+    assert sql(app, "SELECT release_date FROM games WHERE igdb_id = ?", (UPCOMING,))[0][0] is None
     # sem data conhecida, ninguém é barrado por falta de dado (a mesma regra de qualquer jogo sem data)
     assert put(ana, UPCOMING, status="jogando").status_code == 200
 
 
 def test_the_games_page_refreshes_a_stale_local_release_date(ana, app):
     put(ana, HADES, status="quero_jogar")
-    sql(app, "UPDATE games SET release_date = ? WHERE rawg_id = ?", ((TODAY + timedelta(days=90)).isoformat(), HADES))
+    sql(app, "UPDATE games SET release_date = ? WHERE igdb_id = ?", ((TODAY + timedelta(days=90)).isoformat(), HADES))
     assert put(ana, HADES, status="jogando").status_code == 409  # a cópia local diz que ainda vai sair
-    ana.get(f"/api/games/{HADES}")  # abrir a página traz a data certa da RAWG (2020)
-    assert sql(app, "SELECT release_date FROM games WHERE rawg_id = ?", (HADES,))[0][0] == "2020-09-17"
+    ana.get(f"/api/games/{HADES}")  # abrir a página traz a data certa do IGDB (2020)
+    assert sql(app, "SELECT release_date FROM games WHERE igdb_id = ?", (HADES,))[0][0] == "2020-09-17"
     assert put(ana, HADES, status="jogando").status_code == 200
 
 
@@ -478,7 +478,7 @@ def test_migration_0003_cleans_old_entries_and_backfills_the_status_date(tmp_pat
     raw.close()
 
     monkeypatch.undo()
-    assert database.migrate(path) == ["0003_regras_do_diario", "0004_perfis_de_exemplo"]
+    assert database.migrate(path) == ["0003_regras_do_diario", "0004_perfis_de_exemplo", "0005_igdb"]
 
     raw = database.connect(path)
     try:

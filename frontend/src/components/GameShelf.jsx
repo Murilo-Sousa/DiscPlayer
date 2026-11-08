@@ -13,7 +13,7 @@ function prefersReducedMotion() {
  * `diary` vem de `useDiaryEntries`; sem login, o card é o comum (com a média da comunidade, se houver).
  */
 export function LibraryGameCard({ game, diary, community, showGenre = true }) {
-  const entry = diary.entries[game.rawg_id];
+  const entry = diary.entries[game.igdb_id];
   return (
     <GameCard
       game={game}
@@ -21,7 +21,7 @@ export function LibraryGameCard({ game, diary, community, showGenre = true }) {
       community={community === undefined ? game.community : community}
       showGenre={showGenre}
       onQuickAdd={diary.enabled && !entry ? () => diary.add(game) : undefined}
-      quickAddPending={Boolean(diary.pending[game.rawg_id])}
+      quickAddPending={Boolean(diary.pending[game.igdb_id])}
     />
   );
 }

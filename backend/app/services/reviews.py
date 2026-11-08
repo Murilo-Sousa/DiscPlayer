@@ -15,7 +15,7 @@ REVIEW_COLUMNS = """
     r.id AS review_id, r.rating, r.body, r.has_spoilers,
     r.created_at AS review_created_at, r.updated_at AS review_updated_at,
     u.username, u.display_name, u.avatar_url, u.is_demo,
-    g.rawg_id, g.name AS game_name, g.slug AS game_slug, g.cover_url, g.release_date,
+    g.igdb_id, g.name AS game_name, g.slug AS game_slug, g.cover_url, g.release_date,
     (SELECT COUNT(*) FROM review_likes rl WHERE rl.review_id = r.id) AS like_count,
     EXISTS (SELECT 1 FROM review_likes rl
              WHERE rl.review_id = r.id AND rl.user_id = :viewer) AS liked
@@ -169,17 +169,17 @@ def community_stats(game_id: int) -> dict:
     }
 
 
-def community_summary(rawg_ids) -> dict[int, dict]:
-    """Média e número de notas dos jogos que têm review (chave: id da RAWG). Quem não tem nota fica de fora."""
-    ids = sorted({int(rawg_id) for rawg_id in rawg_ids})
+def community_summary(igdb_ids) -> dict[int, dict]:
+    """Média e número de notas dos jogos que têm review (chave: id do IGDB). Quem não tem nota fica de fora."""
+    ids = sorted({int(igdb_id) for igdb_id in igdb_ids})
     if not ids:
         return {}
     rows = fetch_all(
-        "SELECT g.rawg_id, AVG(r.rating) AS average, COUNT(*) AS count FROM reviews r JOIN games g ON g.id = r.game_id"
-        f" WHERE g.rawg_id IN ({','.join('?' * len(ids))}) GROUP BY g.id",
+        "SELECT g.igdb_id, AVG(r.rating) AS average, COUNT(*) AS count FROM reviews r JOIN games g ON g.id = r.game_id"
+        f" WHERE g.igdb_id IN ({','.join('?' * len(ids))}) GROUP BY g.id",
         tuple(ids),
     )
-    return {row["rawg_id"]: {"average": round(row["average"], 2), "count": row["count"]} for row in rows}
+    return {row["igdb_id"]: {"average": round(row["average"], 2), "count": row["count"]} for row in rows}
 
 
 def set_like(user_id: int, review_id: int, liked: bool) -> int:

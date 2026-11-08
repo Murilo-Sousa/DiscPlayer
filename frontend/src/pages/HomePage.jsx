@@ -114,7 +114,7 @@ function Discover() {
         ) : (
           <GameGrid dense>
             {games.slice(0, 6).map((game) => (
-              <GameCard key={game.rawg_id} game={game} />
+              <GameCard key={game.igdb_id} game={game} />
             ))}
           </GameGrid>
         )}

@@ -134,8 +134,8 @@ def create_client_with_username(app, username):
     return client
 
 
-def test_seed_aborts_without_writing_anything_if_the_rawg_finds_no_games(app, monkeypatch):
-    monkeypatch.setattr(demo, "_find_on_rawg", lambda name: None)
+def test_seed_aborts_without_writing_anything_if_the_igdb_finds_no_games(app, monkeypatch):
+    monkeypatch.setattr(demo, "_find_on_igdb", lambda name: None)
     with app.app_context():
         with pytest.raises(demo.DemoError, match="Nada foi criado"):
             demo.seed()
@@ -143,9 +143,9 @@ def test_seed_aborts_without_writing_anything_if_the_rawg_finds_no_games(app, mo
     assert sql(app, "SELECT COUNT(*) FROM users")[0][0] == 0
 
 
-def test_a_game_the_rawg_does_not_find_is_skipped_and_reported(app, monkeypatch):
-    original = demo._find_on_rawg
-    monkeypatch.setattr(demo, "_find_on_rawg", lambda name: None if name == "Elden Ring" else original(name))
+def test_a_game_the_igdb_does_not_find_is_skipped_and_reported(app, monkeypatch):
+    original = demo._find_on_igdb
+    monkeypatch.setattr(demo, "_find_on_igdb", lambda name: None if name == "Elden Ring" else original(name))
     with app.app_context():
         result = demo.seed()
     assert result["created"] is True and result["missing"] == ["Elden Ring"]
@@ -154,18 +154,18 @@ def test_a_game_the_rawg_does_not_find_is_skipped_and_reported(app, monkeypatch)
 
 
 def test_the_command_line_asks_for_confirmation_in_production(tmp_path, monkeypatch, capsys):
-    from app.services import rawg
-    from . import fake_rawg
+    from app.services import igdb
+    from . import fake_igdb
 
-    monkeypatch.setattr(rawg, "fetch_json", fake_rawg.fetch_json)
-    rawg.clear_cache()
+    monkeypatch.setattr(igdb, "fetch_json", fake_igdb.fetch_json)
+    igdb.clear_cache()
     production = create_app(
         {
             "IS_PRODUCTION": True,
             "SECRET_KEY": "p" * 40,
             "DATABASE": str(tmp_path / "prod.db"),
             "RATELIMIT_ENABLED": False,
-            "RAWG_API_KEY": "chave-de-teste",
+            "IGDB_API_KEY": "chave-de-teste",
             "FRONTEND_DIST": str(tmp_path / "dist-inexistente"),
         }
     )
@@ -180,11 +180,11 @@ def test_the_command_line_asks_for_confirmation_in_production(tmp_path, monkeypa
 
 
 def test_every_demo_game_name_exists_in_the_fake_catalog():
-    """O elenco só usa jogos que a RAWG de teste conhece (e, no uso real, a busca por nome os acha)."""
-    from . import fake_rawg
+    """O elenco só usa jogos que o IGDB de teste conhece (e, no uso real, a busca por nome os acha)."""
+    from . import fake_igdb
 
-    known = {game["name"] for game in fake_rawg.GAMES} if hasattr(fake_rawg, "GAMES") else None
+    known = {game["name"] for game in fake_igdb.GAMES} if hasattr(fake_igdb, "GAMES") else None
     if known is None:  # o módulo expõe a lista com outro nome
-        known = {g["name"] for g in fake_rawg._build()}
+        known = {g["name"] for g in fake_igdb._build()}
     missing = [name for name in demo._names_needed() if name not in known]
     assert missing == []

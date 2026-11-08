@@ -58,15 +58,15 @@ _HTTP_MESSAGES = {
 
 
 def register_error_handlers(app: Flask) -> None:
-    # Importado aqui para evitar import circular (a RAWG usa utilitários do app).
-    from .services.rawg import RawgError
+    # Importado aqui para evitar import circular (o IGDB usa utilitários do app).
+    from .services.igdb import IgdbError
 
     @app.errorhandler(ApiError)
     def handle_api_error(error: ApiError):
         return error_response(error.status, error.code, error.message, error.fields, error.headers)
 
-    @app.errorhandler(RawgError)
-    def handle_rawg_error(error: RawgError):
+    @app.errorhandler(IgdbError)
+    def handle_igdb_error(error: IgdbError):
         headers = {"Retry-After": str(error.retry_after)} if error.retry_after else None
         return error_response(error.status, error.code, error.message, headers=headers)
 

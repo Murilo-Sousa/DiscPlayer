@@ -90,7 +90,7 @@ function Footer() {
           {user ? <Link to={userPath(user.username)}>Meu perfil</Link> : <Link to="/cadastro">Criar conta</Link>}
         </nav>
         <p className="site-footer-credit">
-          Dados e imagens dos jogos: <a href="https://rawg.io" target="_blank" rel="noopener noreferrer">RAWG</a>
+          Dados e imagens dos jogos: <a href="https://www.igdb.com" target="_blank" rel="noopener noreferrer">IGDB</a>
         </p>
       </div>
     </footer>

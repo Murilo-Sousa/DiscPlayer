@@ -1,8 +1,8 @@
-"""Se a RAWG cair, o site continua útil e explica o que houve."""
+"""Se o IGDB cair, o site continua útil e explica o que houve."""
 from helpers import open_game, register
 
 
-def test_site_continua_util_sem_rawg(stack, make_client):
+def test_site_continua_util_sem_igdb(stack, make_client):
     c = make_client()
     page = c.page
     register(c, "Ana Souza", "ana")
@@ -11,7 +11,7 @@ def test_site_continua_util_sem_rawg(stack, make_client):
     page.get_by_role("button", name="Jogando").click()  # guarda uma cópia local do jogo
     page.wait_for_selector(".toast")
 
-    stack.rawg_down()
+    stack.igdb_down()
 
     # Catálogo: erro claro, com botão para tentar de novo.
     c.open("/jogos?q=zelda")
@@ -34,9 +34,9 @@ def test_site_continua_util_sem_rawg(stack, make_client):
     assert page.locator(".search-group", has_text="Jogadores").count() == 1
     assert "indisponível" in page.locator(".search-status").inner_text()
 
-    # A RAWG volta e o botão recupera a tela sem recarregar a página.
+    # O IGDB volta e o botão recupera a tela sem recarregar a página.
     c.open("/jogos?q=zelda")
     page.wait_for_selector(".state-error")
-    stack.rawg_up()
+    stack.igdb_up()
     page.get_by_role("button", name="Tentar de novo").click()
     page.wait_for_selector(".game-card")

@@ -30,10 +30,10 @@ def _detail(row) -> dict:
     return data
 
 
-def _rawg_id(data: dict, errors: FieldErrors) -> int | None:
-    value = data.get("rawg_id")
+def _igdb_id(data: dict, errors: FieldErrors) -> int | None:
+    value = data.get("igdb_id")
     if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
-        errors.add("rawg_id", "Informe o identificador do jogo.")
+        errors.add("igdb_id", "Informe o identificador do jogo.")
         return None
     return value
 
@@ -124,22 +124,22 @@ def add_game(list_id: int):
     user = current_user()
     data = json_body()
     errors = FieldErrors()
-    rawg_id = _rawg_id(data, errors)
+    igdb_id = _igdb_id(data, errors)
     errors.raise_if_any()
     lists_service.get_owned(list_id, user["id"])
-    game = games_service.ensure_game(rawg_id)  # type: ignore[arg-type]
+    game = games_service.ensure_game(igdb_id)  # type: ignore[arg-type]
     lists_service.add_game(list_id, game["id"])
     response = jsonify({"list": _detail(lists_service.get_visible(list_id, user["id"]))})
     response.status_code = 201
     return response
 
 
-@bp.delete("/lists/<int:list_id>/games/<int:rawg_id>")
+@bp.delete("/lists/<int:list_id>/games/<int:igdb_id>")
 @login_required
-def remove_game(list_id: int, rawg_id: int):
+def remove_game(list_id: int, igdb_id: int):
     user = current_user()
     lists_service.get_owned(list_id, user["id"])
-    if not lists_service.remove_game(list_id, rawg_id):
+    if not lists_service.remove_game(list_id, igdb_id):
         raise ApiError(404, "not_found", "Este jogo não está na lista.")
     return jsonify({"list": _detail(lists_service.get_visible(list_id, user["id"]))})
 
@@ -149,18 +149,18 @@ def remove_game(list_id: int, rawg_id: int):
 def reorder_games(list_id: int):
     user = current_user()
     data = json_body()
-    rawg_ids = data.get("rawg_ids")
+    igdb_ids = data.get("igdb_ids")
     if (
-        not isinstance(rawg_ids, list)
-        or len(rawg_ids) > lists_service.MAX_GAMES_PER_LIST
-        or not all(isinstance(i, int) and not isinstance(i, bool) for i in rawg_ids)
+        not isinstance(igdb_ids, list)
+        or len(igdb_ids) > lists_service.MAX_GAMES_PER_LIST
+        or not all(isinstance(i, int) and not isinstance(i, bool) for i in igdb_ids)
     ):
         raise ApiError(
             422,
             "validation_error",
             "Revise os campos destacados.",
-            fields={"rawg_ids": "Envie a lista de identificadores dos jogos na nova ordem."},
+            fields={"igdb_ids": "Envie a lista de identificadores dos jogos na nova ordem."},
         )
     lists_service.get_owned(list_id, user["id"])
-    lists_service.reorder(list_id, rawg_ids)
+    lists_service.reorder(list_id, igdb_ids)
     return jsonify({"list": _detail(lists_service.get_visible(list_id, user["id"]))})

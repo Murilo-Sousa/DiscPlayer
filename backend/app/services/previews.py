@@ -8,9 +8,9 @@ Regras:
   * só entra o que já é público (perfil, jogo, lista PÚBLICA, retrospectiva); lista privada e
     qualquer coisa que não exista caem na prévia padrão do site, sem revelar nada;
   * nunca levanta erro: se algo falhar (banco), a prévia padrão é usada e a página abre normal;
-  * nunca chama a RAWG: um jogo que ninguém registrou usa o cache dela (que a própria página do jogo
+  * nunca chama o IGDB: um jogo que ninguém registrou usa o cache dele (que a própria página do jogo
     preenche ao abrir) e, sem cache, cai na prévia padrão. Assim um robô que percorre endereços de jogos
-    não gasta a cota da RAWG nem deixa a página lenta;
+    não gasta a cota do IGDB nem deixa a página lenta;
   * não há texto de review nem e-mail na prévia;
   * todo texto é escapado na hora de virar HTML (veja `spa.py`), então nome, bio e título de lista
     com aspas ou `<` não quebram a página.
@@ -22,7 +22,7 @@ import re
 from dataclasses import dataclass
 from urllib.parse import quote
 
-from . import cards, rawg
+from . import cards, igdb
 from . import games as games_service
 from . import lists as lists_service
 from . import profiles as profiles_service
@@ -96,12 +96,12 @@ def _card_url(base: str, path: str) -> str | None:
 
 
 # --------------------------------------------------------------------------- jogo
-def _game_preview(rawg_id: int, base: str) -> Preview | None:
-    local = games_service.get_local_game(rawg_id)
+def _game_preview(igdb_id: int, base: str) -> Preview | None:
+    local = games_service.get_local_game(igdb_id)
     if local is not None:
         name, cover, released = local["name"], local["cover_url"], local["release_date"]
     else:
-        detail = rawg.cached_game(rawg_id)  # só o cache: aqui a RAWG nunca é chamada
+        detail = igdb.cached_game(igdb_id)  # só o cache: aqui o IGDB nunca é chamado
         if detail is None:
             return None
         name, cover, released = detail["name"], detail.get("cover_url"), detail.get("released")
@@ -117,7 +117,7 @@ def _game_preview(rawg_id: int, base: str) -> Preview | None:
         )
     else:
         parts.append(f"Registre, avalie e escreva sobre {name} no DiscPlayer.")
-    cover_url = rawg.safe_image_url(cover)
+    cover_url = igdb.safe_image_url(cover)
     return Preview(
         title=_clean(f"{name} · {SITE_NAME}", TITLE_LIMIT),
         description=_clean(" ".join(parts), DESCRIPTION_LIMIT),
@@ -198,7 +198,7 @@ def _list_preview(list_id: int, base: str) -> Preview | None:
     )
     description = _clean(f"Lista de {row['display_name']}. {description}", DESCRIPTION_LIMIT)
     first = lists_service.covers_for([list_id], per_list=1).get(list_id) or []
-    cover = rawg.safe_image_url(first[0]["cover_url"]) if first else None
+    cover = igdb.safe_image_url(first[0]["cover_url"]) if first else None
     return Preview(
         title=_clean(f"{row['title']} · lista de {row['display_name']} · {SITE_NAME}", TITLE_LIMIT),
         description=description,

@@ -6,7 +6,7 @@ import { PlayerCard, PlayingRail, ScopeSwitch } from "../src/pages/home/PlayingR
 import { count, html } from "./helpers.jsx";
 
 const user = (username, extra = {}) => ({ username, display_name: username.toUpperCase(), avatar_url: null, is_demo: false, ...extra });
-const game = (rawgId, name) => ({ rawg_id: rawgId, name, slug: name.toLowerCase().replace(/\W+/g, "-"), cover_url: null, cover_thumb_url: null });
+const game = (igdbId, name) => ({ igdb_id: igdbId, name, slug: name.toLowerCase().replace(/\W+/g, "-"), cover_url: null, cover_thumb_url: null });
 const NOW = "2026-11-02T12:00:00Z";
 
 // ----------------------------------------------------------------------------- seletor

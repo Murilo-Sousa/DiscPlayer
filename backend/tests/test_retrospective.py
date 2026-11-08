@@ -5,13 +5,13 @@ import pytest
 
 from app import create_app
 from app import db as database
-from app.services import rawg
+from app.services import igdb
 from app.utils.dates import today_utc
 
-from . import fake_rawg
+from . import fake_igdb
 from .conftest import CELESTE, HADES, HOLLOW, ZELDA, Api
 
-BALATRO = fake_rawg.by_name("Balatro")["id"]
+BALATRO = fake_igdb.by_name("Balatro")["id"]
 THIS_YEAR = today_utc().year
 
 
@@ -25,22 +25,22 @@ def get(client, username="ana", year=None):
     return response.get_json()
 
 
-def put(client, rawg_id, **body):
-    response = client.put(f"/api/library/{rawg_id}", body)
+def put(client, igdb_id, **body):
+    response = client.put(f"/api/library/{igdb_id}", body)
     assert response.status_code in (200, 201), response.get_json()
     return response
 
 
-def finish(client, rawg_id, start, end):
-    return put(client, rawg_id, status="zerado", started_at=start, completed_at=end)
+def finish(client, igdb_id, start, end):
+    return put(client, igdb_id, status="zerado", started_at=start, completed_at=end)
 
 
-def review(client, rawg_id, rating, body=None):
+def review(client, igdb_id, rating, body=None):
     payload = {"rating": rating}
     if body:
         payload["body"] = body
-    client.play(rawg_id, status="pausado")  # só avalia quem já jogou; "pausado" não cria datas nem conclusões
-    response = client.post(f"/api/games/{rawg_id}/reviews", payload)
+    client.play(igdb_id, status="pausado")  # só avalia quem já jogou; "pausado" não cria datas nem conclusões
+    response = client.post(f"/api/games/{igdb_id}/reviews", payload)
     assert response.status_code == 201, response.get_json()
     return response.get_json()["review"]["id"]
 
@@ -214,7 +214,7 @@ def test_the_current_year_matches_the_profile_numbers(ana):
 
 
 def test_completed_games_are_listed_best_rated_first_and_capped(ana):
-    names = [g for g in fake_rawg.GAMES if g["id"] not in (HADES,)][:13]
+    names = [g for g in fake_igdb.GAMES if g["id"] not in (HADES,)][:13]
     finish(ana, HADES, "2025-01-01", "2025-01-02")
     review(ana, HADES, 10)
     for index, game in enumerate(names):
@@ -405,14 +405,14 @@ def test_deleting_the_diary_entry_removes_it_from_the_retrospective(ana):
 def test_the_retrospective_is_rate_limited(tmp_path, monkeypatch):
     from app.security import reset_rate_limits
 
-    monkeypatch.setattr(rawg, "fetch_json", fake_rawg.fetch_json)
+    monkeypatch.setattr(igdb, "fetch_json", fake_igdb.fetch_json)
     reset_rate_limits()
     app = create_app(
         {
             "TESTING": True,
             "DATABASE": str(tmp_path / "limite.db"),
             "RATELIMIT_ENABLED": True,
-            "RAWG_API_KEY": "chave-de-teste",
+            "IGDB_API_KEY": "chave-de-teste",
             "FRONTEND_DIST": str(tmp_path / "sem-dist"),
         }
     )

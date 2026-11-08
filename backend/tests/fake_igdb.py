@@ -47,6 +47,8 @@ THEMES = {
     "action": (1, "Action"), "fantasy": (17, "Fantasy"), "horror": (19, "Horror"), "erotic": (42, "Erotic"),
 }
 ORGANIZATIONS = {"ESRB": 1, "PEGI": 2, "ClassInd": 6}
+# Como o IGDB de verdade escreve o nome de cada organização (conferido com `python -m app.igdb_check`).
+_ORGANIZATION_NAMES = {"ClassInd": "CLASS_IND"}
 
 # Classificações da ESRB por jogo; quem não está aqui é "T" (Teen). Valores só para o ambiente de testes.
 _ESRB_BY_NAME = {
@@ -189,7 +191,7 @@ def _game(igdb_id, name, released, genres, platforms, studio, critic, added, *, 
             {"developer": False, "publisher": True, "company": {"id": 2, "name": studio}},
         ],
         "age_ratings": [
-            {"organization": {"id": ORGANIZATIONS[org], "name": org}, "rating_category": {"id": 1, "rating": rating}}
+            {"organization": {"id": ORGANIZATIONS[org], "name": _ORGANIZATION_NAMES.get(org, org)}, "rating_category": {"id": 1, "rating": rating}}
             for org, rating in ratings
         ],
         "themes": [{"id": THEMES[t][0], "name": THEMES[t][1], "slug": t} for t in themes],

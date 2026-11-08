@@ -447,7 +447,7 @@ def normalize_summary(raw: dict) -> dict | None:
 
 
 def _age_label(organization: str, rating: str) -> str:
-    key = organization.lower()
+    key = adult.organization_key(organization)
     if key == "classind":
         return "Livre" if rating.upper() == "L" else f"{rating} anos"
     if key == "esrb":
@@ -462,7 +462,7 @@ def age_rating(raw: dict) -> dict | None:
     found = adult.age_ratings(raw)
     for preferred in ("classind", "esrb", "pegi"):
         for organization, rating in found:
-            if organization.lower() == preferred:
+            if adult.organization_key(organization) == preferred:
                 return {"label": _age_label(organization, rating), "organization": organization}
     if found:
         organization, rating = found[0]
@@ -532,6 +532,7 @@ _DETAIL_FIELDS = _SUMMARY_FIELDS + (
 )
 # Só jogos "principais": sem DLCs, expansões nem edições (que têm um jogo-pai).
 _MAIN_GAMES = (("parent_game", "null", None), ("version_parent", "null", None))
+_NEW_MIN_RATINGS = 3  # votos mínimos para um jogo entrar em "Lançamentos recentes"
 _SEARCH_POOL = 100  # com busca e uma ordem própria, ordena-se localmente os 100 melhores resultados
 
 
@@ -648,8 +649,14 @@ def search_games(
 
 
 def featured_games(kind: str, page_size: int = 12) -> dict:
-    """Listas curadas para a página inicial: 'popular' ou 'new'."""
+    """Listas curadas para a página inicial: 'popular' ou 'new'.
+
+    Com o filtro de conteúdo adulto ligado, parte dos jogos mais votados é escondida (no nível "mature", metade). Para
+    a faixa não ficar pela metade, busca-se mais jogos do que o necessário e fica-se com os primeiros que passam.
+    """
     today = today_utc()
+    level = adult.normalize_level(current_app.config.get("ADULT_CONTENT_FILTER"))
+    fetch_size = page_size if level == adult.OFF else min(page_size * 3, 60)
     filters = list(_MAIN_GAMES) + [("cover", "notnull", None)]
     if kind == "popular":
         filters += [("first_release_date", ">=", _timestamp(datetime(today.year - 1, 1, 1))), ("first_release_date", "<=", _now()),
@@ -657,12 +664,20 @@ def featured_games(kind: str, page_size: int = 12) -> dict:
         sort = "total_rating_count desc"
     elif kind == "new":
         start = today - timedelta(days=75)
-        filters += [("first_release_date", ">=", _timestamp(start)), ("first_release_date", "<=", _now())]
+        # Só jogos que alguém já avaliou: sem isso a lista se enche de cadastros desconhecidos, lançados todo dia.
+        filters += [("first_release_date", ">=", _timestamp(start)), ("first_release_date", "<=", _now()),
+                    ("total_rating_count", ">=", _NEW_MIN_RATINGS)]
         sort = "first_release_date desc"
     else:
         raise ValueError(kind)
-    key = ("featured", kind, page_size, today.isoformat())
-    return _cached(key, "IGDB_TTL_FEATURED", lambda: _listing(tuple(filters), sort=sort, page=1, page_size=page_size))
+
+    def load() -> dict:
+        data = _listing(tuple(filters), sort=sort, page=1, page_size=fetch_size)
+        data["results"] = data["results"][:page_size]
+        data["page_size"] = page_size
+        return data
+
+    return _cached(("featured", kind, page_size, level, today.isoformat()), "IGDB_TTL_FEATURED", load)
 
 
 def get_game(igdb_id: int) -> dict:

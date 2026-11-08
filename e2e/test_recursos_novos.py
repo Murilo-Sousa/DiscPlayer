@@ -117,7 +117,7 @@ def test_jogar_de_novo_guarda_a_jogada_e_comeca_outra(stack, client):
 
     page.get_by_role("button", name="Jogar de novo").click()
     page.locator("dialog[open]").get_by_role("button", name="Jogar de novo").click()
-    assert "Nova jogada" in toast_text(client)
+    expect(page.locator(".toast").last).to_contain_text("Nova jogada")  # espera o aviso novo (o do "Zerado" ainda pode estar na tela)
 
     expect(page.get_by_role("button", name="Jogando")).to_have_attribute("aria-pressed", "true")
     expect(page.get_by_role("button", name="Jogar de novo")).to_have_count(0)  # jogando: não se recomeça

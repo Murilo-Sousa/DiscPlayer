@@ -177,7 +177,7 @@ O IGDB lista jogos adultos junto com os outros e não tem como pedir que ele os 
 | `ADULT_CONTENT_FILTER` | O que esconde |
 | --- | --- |
 | `explicit` (padrão) | O que a ESRB classifica como *Adults Only* (o 18+ de verdade) e os jogos com o tema *Erotic* |
-| `mature` | Tudo isso, mais o que alguma organização põe em 17+/18+: ESRB *Mature*, PEGI 18, USK 18, ClassInd 18, CERO Z, GRAC 18+ e ACB R18+. É bem mais rígido: esconde, por exemplo, The Witcher 3 e Red Dead Redemption 2 |
+| `mature` | Tudo isso, mais o que alguma organização põe em 17+/18+: ESRB *Mature*, PEGI 18, USK 18, ClassInd 18 (o IGDB escreve `CLASS_IND`), CERO Z, GRAC 19+ e ACB R 18+. É bem mais rígido: esconde, por exemplo, The Witcher 3 e Red Dead Redemption 2 |
 | `off` | Nada |
 
 A nota "18" só vale junto da organização que a usa (o filtro confere o par organização + nota). Quem abre o endereço de um jogo escondido vê "Jogo indisponível". `GET /api/health` mostra o nível em uso (`adult_content_filter`).

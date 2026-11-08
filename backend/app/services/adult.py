@@ -37,7 +37,7 @@ _RATINGS_MATURE_LEVEL = {
     "usk": frozenset({"18"}),
     "classind": frozenset({"18"}),
     "cero": frozenset({"z"}),
-    "grac": frozenset({"18+", "18"}),
+    "grac": frozenset({"19+", "18+", "18"}),  # na Coreia o "adulto" é 19+
     "acb": frozenset({"r 18+", "r18+", "rc"}),
 }
 
@@ -54,6 +54,15 @@ _LEGACY_RATINGS = {
 }
 
 _NON_SLUG = re.compile(r"[^a-z0-9]+")
+
+# O IGDB escreve o nome da organização do seu jeito ("CLASS_IND" para a classificação do Brasil). Comparamos sempre a
+# chave sem maiúsculas nem pontuação e mostramos o nome por extenso de cada uma.
+_CANONICAL = {"esrb": "ESRB", "pegi": "PEGI", "cero": "CERO", "usk": "USK", "grac": "GRAC", "classind": "ClassInd", "acb": "ACB", "iarc": "IARC"}
+
+
+def organization_key(name: str) -> str:
+    """"CLASS_IND", "ClassInd" e "class ind" viram "classind"."""
+    return _NON_SLUG.sub("", str(name).lower())
 
 
 def normalize_level(value) -> str:
@@ -94,7 +103,7 @@ def age_ratings(raw) -> list[tuple[str, str]]:
             organization = organization or _LEGACY_ORGANIZATIONS.get(item["category"])
             rating = _LEGACY_RATINGS.get((organization, item["rating"]))
         if isinstance(organization, str) and isinstance(rating, str) and organization.strip() and rating.strip():
-            found.append((organization.strip(), rating.strip()))
+            found.append((_CANONICAL.get(organization_key(organization), organization.strip()), rating.strip()))
     return found
 
 
@@ -109,7 +118,7 @@ def block_reason(raw, level: str) -> str | None:
         for key, values in _RATINGS_MATURE_LEVEL.items():
             ratings.setdefault(key, set()).update(values)
     for organization, rating in age_ratings(raw):
-        if rating.lower() in ratings.get(organization.lower(), ()):
+        if rating.lower() in ratings.get(organization_key(organization), ()):
             return f"classificação {organization} {rating}"
     found = raw.get("themes")
     for theme in found if isinstance(found, list) else ():

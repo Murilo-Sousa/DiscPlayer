@@ -47,6 +47,9 @@ def raw(*ratings, themes=()):
         (raw(("PEGI", "18")), False, True),
         (raw(("USK", "18")), False, True),
         (raw(("ClassInd", "18")), False, True),
+        (raw(("CLASS_IND", "18")), False, True),  # assim o IGDB escreve a classificação do Brasil
+        (raw(("Class Ind", "18")), False, True),
+        (raw(("GRAC", "19+")), False, True),  # na Coreia o adulto é 19+
         (raw(("CERO", "Z")), False, True),
         (raw(("GRAC", "18+")), False, True),
         (raw(("ACB", "R 18+")), False, True),
@@ -76,6 +79,13 @@ def test_a_rating_only_counts_in_the_organization_that_uses_it(organization, rat
 def test_organization_and_rating_names_are_matched_without_regard_to_case_or_spaces():
     assert adult.is_blocked(raw((" esrb ", " ao ")), "explicit") is True
     assert adult.is_blocked(raw(("pegi", "18")), "mature") is True
+
+
+def test_organization_names_are_written_the_way_the_igdb_writes_them_and_shown_in_full():
+    assert adult.age_ratings(raw(("CLASS_IND", "14"), ("esrb", "T"), ("Organização Nova", "X"))) == [
+        ("ClassInd", "14"), ("ESRB", "T"), ("Organização Nova", "X"),
+    ]
+    assert adult.block_reason(raw(("CLASS_IND", "18")), "mature") == "classificação ClassInd 18"
 
 
 def test_the_reason_says_what_matched():

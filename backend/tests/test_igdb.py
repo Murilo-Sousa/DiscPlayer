@@ -455,6 +455,13 @@ def test_the_age_rating_shown_prefers_the_brazilian_one():
     assert igdb.age_rating({"id": 1}) is None
 
 
+def test_the_brazilian_rating_is_recognized_with_the_name_the_igdb_really_uses():
+    """O IGDB manda `CLASS_IND`, não `ClassInd`: sem esse cuidado a classificação do Brasil nunca era usada."""
+    shown = igdb.age_rating(_ratings(("ESRB", "T"), ("CLASS_IND", "14")))
+    assert shown == {"label": "14 anos", "organization": "ClassInd"}
+    assert igdb.age_rating(_ratings(("CLASS_IND", "L"), ("PEGI", "3"))) == {"label": "Livre", "organization": "ClassInd"}
+
+
 def test_age_ratings_are_read_in_the_current_and_in_the_old_format_and_junk_is_ignored():
     legacy = {"id": 1, "age_ratings": [{"category": 1, "rating": 11}, {"category": 6, "rating": 32}, {"category": 2, "rating": 5}]}
     assert adult.age_ratings(legacy) == [("ESRB", "M"), ("ClassInd", "18"), ("PEGI", "18")]
@@ -731,3 +738,54 @@ def test_top_rated_needs_notes_from_three_different_people(ana, bruno, make_user
     carla.post(f"/api/games/{HADES}/reviews", {"rating": 10})
     items = ana.get("/api/games/top-rated").get_json()["items"]
     assert [(i["game"]["name"], i["count"]) for i in items] == [("Hades", 3)]
+
+
+# ------------------------------------------------------------------- listas da página inicial
+def test_featured_asks_for_more_than_it_shows_when_the_adult_filter_hides_games(app, monkeypatch):
+    """No nível "mature" metade dos jogos mais votados some: a faixa busca mais para continuar cheia."""
+    limits: dict[str, int] = {}
+    real = fake_igdb.fetch_json
+
+    def spy(query):
+        if query.endpoint == "games" and not query.count:
+            limits[app.config["ADULT_CONTENT_FILTER"]] = query.limit
+        return real(query)
+
+    monkeypatch.setattr(igdb, "fetch_json", spy)
+    with app.app_context():
+        for level in ("off", "explicit", "mature"):
+            app.config["ADULT_CONTENT_FILTER"] = level
+            igdb.clear_cache()
+            data = igdb.featured_games("new", page_size=4)
+            assert len(data["results"]) == 4 and data["page_size"] == 4
+    assert limits == {"off": 4, "explicit": 12, "mature": 12}
+
+
+def test_featured_fills_the_strip_with_the_games_that_pass_the_filter(app, monkeypatch):
+    """Metade do que o IGDB devolve é adulto: sem a busca extra, a faixa de 6 ficaria com 3."""
+    adult_game = fake_igdb.by_name("Jardim Proibido")
+    normal = [g for g in fake_igdb.GAMES if g["name"] in {n for n, *_ in fake_igdb._FICTIONAL_NEW}]
+    mixed = []
+    for index, game in enumerate(normal[:6]):
+        mixed += [game, {**adult_game, "id": 800000 + index, "name": f"Adulto {index}"}]
+    real = fake_igdb.fetch_json
+
+    def half_adult(query):
+        if query.endpoint == "games" and not query.count and query.sort == "first_release_date desc":
+            return [fake_igdb._project(g, query.fields) for g in mixed[: query.limit]]
+        return real(query)
+
+    monkeypatch.setattr(igdb, "fetch_json", half_adult)
+    with app.app_context():
+        data = igdb.featured_games("new", page_size=6)
+    assert [g["name"] for g in data["results"]] == [g["name"] for g in normal[:6]]
+
+
+def test_new_releases_need_a_few_ratings_so_unknown_entries_do_not_fill_the_strip(app, monkeypatch):
+    yesterday = (date.today()).isoformat()
+    unknown = fake_igdb._game(910001, "Cadastro Sem Votos", yesterday, "action", "pc", "X", None, 4)  # 1 voto
+    noticed = fake_igdb._game(910002, "Jogo Com Votos", yesterday, "action", "pc", "X", None, 12)  # 3 votos
+    monkeypatch.setattr(fake_igdb, "GAMES", [*fake_igdb.GAMES, unknown, noticed])
+    with app.app_context():
+        names = [g["name"] for g in igdb.featured_games("new")["results"]]
+    assert "Jogo Com Votos" in names and "Cadastro Sem Votos" not in names

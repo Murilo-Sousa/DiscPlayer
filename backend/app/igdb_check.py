@@ -17,6 +17,7 @@ Código de saída: 0 se nada falhou (avisos não contam), 1 se alguma conferênc
 from __future__ import annotations
 
 import argparse
+import logging
 import sys
 import time
 from datetime import date
@@ -185,14 +186,14 @@ def _filters(report: Report) -> None:
         report.fail(f"filtro de ano ({year}): veio jogo de outro ano")
     else:
         report.ok(f"filtro de ano ({year}): {in_year['count']} jogos")
-    for ordering in igdb.ORDERINGS:
+    for ordering in (o for o in igdb.ORDERINGS if o != "relevance"):  # (a relevância é a ordem da busca, já conferida)
         data = igdb.search_games(ordering=ordering, page_size=8)["results"]
         if not data:
             report.fail(f"ordem “{ordering}”: nada")
             continue
         if ordering == "name":
             names = [g["name"].lower() for g in data]
-            (report.ok if names == sorted(names) else report.warn)(f"ordem “name”: {', '.join(g['name'] for g in data[:3])}…")
+            (report.ok if names == sorted(names) else report.info)(f"ordem “name”: {', '.join(g['name'] for g in data[:3])}… (símbolos e números vêm primeiro, na ordem do IGDB)")
         else:
             report.ok(f"ordem “{ordering}”: {', '.join(g['name'] for g in data[:3])}…")
     combined = igdb.search_games(genres="role-playing-rpg", platforms="2", year=year, page_size=4)
@@ -220,7 +221,7 @@ def _detail(report: Report) -> None:
         ("publicadoras", bool(game["publishers"]), ", ".join(game["publishers"][:3])),
         ("plataformas", bool(game["platforms"]), f"{len(game['platforms'])} no total"),
         ("capa", bool(game["cover_url"]), game["cover_url"] or ""),
-        ("imagem grande do topo", bool(game["cover_additional_url"]), ""),
+        ("imagem grande do topo", bool(game["cover_additional_url"]), (game["cover_additional_url"] or "").rsplit("/", 2)[-2] + "/" + (game["cover_additional_url"] or "").rsplit("/", 1)[-1]),
         ("capturas de tela", bool(game["screenshots"]), f"{len(game['screenshots'])}"),
         ("nota dos jogadores", game["igdb_rating"] is not None, f"{game['igdb_rating']} de 10 ({game['igdb_ratings_count']} votos)"),
         ("nota da crítica", game["critic_score"] is not None, f"{game['critic_score']} de 100"),
@@ -342,11 +343,18 @@ def run(out: Callable[[str], None] = print, *, images: bool = True) -> int:
     ]
     if images:
         steps.append(("Imagens", _images))
-    for title, check in steps:
-        _step(report, title, lambda check=check: check(report))
-        if title == "Login na Twitch" and report.fail_count:
-            report.info("Sem o login não dá para continuar. Confira o Client ID e o Client Secret.")
-            break
+    # O serviço registra em log cada recusa do IGDB; aqui elas já saem no relatório, então o log só atrapalharia.
+    logger = logging.getLogger(igdb.__name__)
+    previous_level = logger.level
+    logger.setLevel(logging.CRITICAL)
+    try:
+        for title, check in steps:
+            _step(report, title, lambda check=check: check(report))
+            if title == "Login na Twitch" and report.fail_count:
+                report.info("Sem o login não dá para continuar. Confira o Client ID e o Client Secret.")
+                break
+    finally:
+        logger.setLevel(previous_level)
     report.title("Resumo")
     summary = f"{report.ok_count} ok, {report.warn_count} aviso(s), {report.fail_count} falha(s)"
     if report.fail_count:

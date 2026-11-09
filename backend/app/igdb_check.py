@@ -307,6 +307,16 @@ def _images(report: Report) -> None:
             response = requests.get(url, timeout=(3.05, 8.0), stream=True)
             kind = response.headers.get("Content-Type", "")
             response.close()
+        except requests.ConnectionError as exc:
+            # Hospedagens com lista de sites liberados (como o plano gratuito da PythonAnywhere) barram
+            # `images.igdb.com` para o servidor. O DiscPlayer nunca baixa capas no servidor: ele só passa o
+            # endereço, e quem baixa é o navegador de quem visita. Por isso, aqui, é aviso e não falha.
+            report.warn(f"este servidor não alcança as capas ({type(exc).__name__}). Endereço: {url}")
+            report.info(
+                "Isso não afeta o site: quem baixa as capas é o navegador de quem visita, não o servidor. "
+                "Só se preocupe se as capas também não aparecerem no site aberto no navegador."
+            )
+            return
         except requests.RequestException as exc:
             report.fail(f"não consegui baixar uma capa ({type(exc).__name__}). Endereço: {url}")
             continue

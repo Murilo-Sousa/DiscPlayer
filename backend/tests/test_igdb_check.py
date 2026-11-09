@@ -236,7 +236,7 @@ def test_the_cover_check_downloads_a_cover_and_reports_the_type(app, twitch, mon
     [
         (Answer(status=403, headers={"Content-Type": "text/html"}), "a capa respondeu HTTP 403"),
         (Answer(status=200, headers={"Content-Type": "text/html"}), "a capa respondeu HTTP 200 (text/html)"),
-        (requests.ConnectionError("sem rede"), "não consegui baixar uma capa (ConnectionError)"),
+        (requests.ReadTimeout("demorou demais"), "não consegui baixar uma capa (ReadTimeout)"),
     ],
 )
 def test_a_cover_that_does_not_open_is_a_failure(app, twitch, monkeypatch, outcome, expected):
@@ -249,3 +249,22 @@ def test_a_cover_that_does_not_open_is_a_failure(app, twitch, monkeypatch, outco
     code, text = report_of(app)
     assert code == 1
     assert expected in text
+
+
+@pytest.mark.parametrize("error", [requests.ConnectionError("sem rede"), requests.exceptions.ProxyError("403 Forbidden")])
+def test_a_host_that_cannot_reach_the_cover_server_gets_a_warning_not_a_failure(app, twitch, monkeypatch, error):
+    # Caso real: no plano gratuito da PythonAnywhere o servidor não alcança images.igdb.com (ProxyError),
+    # mas o site funciona, porque as capas são baixadas pelo navegador de quem visita.
+    asked: list[str] = []
+
+    def get(url, **_kwargs):
+        asked.append(url)
+        raise error
+
+    monkeypatch.setattr(igdb_check.requests, "get", get)
+    code, text = report_of(app)
+    assert code == 0, text
+    assert len(asked) == 1  # não insiste: uma tentativa basta para saber
+    assert "este servidor não alcança as capas" in text
+    assert "quem baixa as capas é o navegador" in text
+    assert "0 falha(s)" in text
